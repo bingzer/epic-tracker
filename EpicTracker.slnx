@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="EpicTracker/EpicTracker.csproj" />
+  <Project Path="EpicTracker.Api/EpicTracker.Api.csproj" />
+  <Project Path="EpicTracker.Tests/EpicTracker.Tests.csproj" />
+</Solution>

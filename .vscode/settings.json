@@ -1,0 +1,13 @@
+{
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/bin": true,
+    "**/obj": true,
+    "**/dist": true,
+    "**/coverage": true,
+    "**/.vscode": true,
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/logs": true
+  }
+}

@@ -1,0 +1,18 @@
+namespace EpicTracker.Lifecycles.EpicStates;
+
+/// <summary>
+/// Terminal state. Epic is complete and closed.
+/// </summary>
+internal class ClosedState : EpicState
+{
+    public override string Name => "closed";
+
+    public override async Task<EpicState> MoveNext(Epic epic, CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+
+        epic.SetEpicAgentInstruction("This epic is already closed.");
+
+        return this;
+    }
+}

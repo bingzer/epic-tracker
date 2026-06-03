@@ -1,0 +1,27 @@
+## .NET
+bin/
+obj/
+*.user
+*.db
+*.db-shm
+*.db-wal
+logs/
+publish/
+.vs/
+/node_modules/
+/dist/
+
+## Node
+EpicTracker.UI/node_modules/
+EpicTracker.UI/dist/
+
+## wwwroot (built by UI)
+EpicTracker.Api/wwwroot/
+
+## Local agent runtime artifacts
+specs/
+epics/
+.claude/
+
+## Misc
+.DS_Store

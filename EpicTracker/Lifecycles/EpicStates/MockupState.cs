@@ -31,7 +31,7 @@ internal class MockupState : EpicState
                 questions: $"Mockup is ready for review at {epic.MockupPath}. Please approve to proceed to waterproofing, or reject with feedback.",
                 approveToStateName: new WaterproofingState().Name,
                 rejectToStateName: Name,
-                instruction: "Mockup ready. Raised HumanInLoop for human review. Call Advance."
+                instruction: "Mockup ready. HumanInLoop raised for human review. Wait for further instruction."
             );
 
             return new HumanInLoopState();

@@ -70,7 +70,7 @@ internal class SpecWritingState : EpicState
                 questions: $"All specs have been reviewed and approved by agents. Please review the final spec list in the dashboard and approve to proceed to implementation.\n\nSpecs:\n{specList}",
                 approveToStateName: new ImplementationState().Name,
                 rejectToStateName: Name,
-                instruction: "All specs approved by agents. Raised HumanInLoop for final human review. Call Advance."
+                instruction: "All specs approved by agents. HumanInLoop raised for final human review. Wait for further instruction."
             );
 
             return new HumanInLoopState();

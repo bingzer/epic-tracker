@@ -17,23 +17,28 @@ internal class WaterproofingState : EpicState
 
         if (epic.AgentSwarm is null)
         {
+            epic.RaiseAgentSwarm(
+                $"Read the epic document at {epic.EpicDocumentPath} and reach agreement on scope and responsibilities.",
+                new SpecWritingState().Name
+            );
+
             epic.SetEpicAgentInstruction($"""
-                All agents must align on scope and responsibilities before spec writing can begin.
-                Raise an agent swarm with objective: "Read the epic document at {epic.EpicDocumentPath} and reach agreement on scope and responsibilities."
-                Set toStateName to "{new SpecWritingState().Name}". Include all coding agents and yourself.
+                Agent swarm raised for waterproofing alignment.
+                Message each coding agent via tmux, ask them to read the epic document and reply AGREE or DISAGREE with a note on their scope.
+                Call submit_agreement for each agent on their behalf, then call Advance.
                 """);
 
             return this;
         }
 
-        if (!epic.AgentSwarm.HasConsensus)
+        if (!epic.AgentSwarmHasConsensus())
         {
             epic.SetEpicAgentInstruction("Swarm in progress. Collect agreements from all agents.");
 
             return new AgentSwarmState();
         }
 
-        epic.AgentSwarm = null;
+        epic.ResetAgentSwarm();
 
         epic.SetEpicAgentInstruction("All agents have reached consensus. Proceed to spec writing.");
 

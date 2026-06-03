@@ -420,6 +420,81 @@ public class EpicStateTests
         var next = await state.MoveNext(epic);
 
         Assert.Equal("implementation", next.Name);
+    }
+
+    [Fact]
+    public async Task SpecWritingState_AllAbandoned_SetsInstructionAndReturnsThis()
+    {
+        var epic = BaseEpic();
+        epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting", IsAbandoned = true });
+        epic.Specs.Add(new Spec { Id = "s2", AssignedAgentId = "agent-2", CurrentStateName = "spec_drafting", IsAbandoned = true });
+        var state = new SpecWritingState();
+
+        var next = await state.MoveNext(epic);
+
+        Assert.Equal("spec_writing", next.Name);
+        Assert.Contains("coding agent", epic.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SpecWritingState_SwarmConsensus_ApprovesSpecsResetsSwarmRaisesHumanInLoop()
+    {
+        var epic = BaseEpic();
+        var spec = new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting", SpecDocPath = "/s1.md" };
+        epic.Specs.Add(spec);
+        epic.AgentSwarm = ConsensusSwarm("spec_writing", epic.CodingAgents);
+        var state = new SpecWritingState();
+
+        var next = await state.MoveNext(epic);
+
+        Assert.Equal("human_in_loop", next.Name);
+        Assert.True(spec.IsSpecApproved);
+        Assert.Null(epic.AgentSwarm);
+        Assert.NotNull(epic.HumanInLoop);
+    }
+
+    [Fact]
+    public async Task SpecWritingState_NoPendingSpecs_NoHuman_RaisesHumanInLoopAndRoutesToHumanInLoopState()
+    {
+        var epic = BaseEpic();
+        epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting", SpecDocPath = "/s1.md", IsSpecApproved = true });
+        var state = new SpecWritingState();
+
+        var next = await state.MoveNext(epic);
+
+        Assert.Equal("human_in_loop", next.Name);
+        Assert.NotNull(epic.HumanInLoop);
+        Assert.Equal("implementation", epic.HumanInLoop!.ApproveToStateName);
+        Assert.Equal("spec_writing", epic.HumanInLoop!.RejectToStateName);
+    }
+
+    [Fact]
+    public async Task SpecWritingState_NoPendingSpecs_HumanApproved_AdvancesToImplementation()
+    {
+        var epic = BaseEpic();
+        epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting", SpecDocPath = "/s1.md", IsSpecApproved = true });
+        epic.HumanInLoop = new HumanInLoop { IsApproved = true, ApproveToStateName = "implementation", RejectToStateName = "spec_writing" };
+        var state = new SpecWritingState();
+
+        var next = await state.MoveNext(epic);
+
+        Assert.Equal("implementation", next.Name);
+    }
+
+    [Fact]
+    public async Task SpecWritingState_NoPendingSpecs_HumanRejected_AbandonsAllSpecsResetsHumanReturnsThis()
+    {
+        var epic = BaseEpic();
+        var spec = new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting", SpecDocPath = "/s1.md", IsSpecApproved = true };
+        epic.Specs.Add(spec);
+        epic.HumanInLoop = new HumanInLoop { IsApproved = false, ApproveToStateName = "implementation", RejectToStateName = "spec_writing" };
+        var state = new SpecWritingState();
+
+        var next = await state.MoveNext(epic);
+
+        Assert.Equal("spec_writing", next.Name);
+        Assert.True(spec.IsAbandoned);
+        Assert.Null(epic.HumanInLoop);
         Assert.NotNull(epic.EpicAgentInstruction);
     }
 

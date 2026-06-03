@@ -11,7 +11,6 @@ public class EpicEntity
     public bool IsDocDrafted { get; set; }
     public string? MockupPath { get; set; }
     public bool IsMockupDone { get; set; }
-    public bool IsSpecListApproved { get; set; }
     public string? ReviewerAgentId { get; set; }
     public string CodingAgents { get; set; } = default!;
     public string CurrentStateName { get; set; } = default!;

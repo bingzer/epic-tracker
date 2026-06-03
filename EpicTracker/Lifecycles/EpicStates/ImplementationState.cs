@@ -52,12 +52,11 @@ internal class ImplementationState : EpicState
 
         var specList = string.Join("\n", epic.Specs.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.SpecDocPath}"));
 
-        epic.HumanInLoop = new HumanInLoop
-        {
-            Questions = $"All specs are done. Please review and approve to close the epic, or reject to return to spec writing.\n\nSpecs:\n{specList}",
-            ApproveToStateName = new ClosedState().Name,
-            RejectToStateName = new SpecWritingState().Name
-        };
+        epic.RaiseHumanInLoop(
+            $"All specs are done. Please review and approve to close the epic, or reject to return to spec writing.\n\nSpecs:\n{specList}",
+            new ClosedState().Name,
+            new SpecWritingState().Name
+        );
 
         epic.SetEpicAgentInstruction("All specs done. Raised HumanInLoop for final sign-off.");
 

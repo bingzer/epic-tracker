@@ -25,16 +25,16 @@ internal class MockupState : EpicState
             return this;
         }
 
-        if (epic.HumanInLoop is null || epic.HumanInLoop.IsApproved is null)
+        if (!epic.IsAwaitingHumanApproval() || epic.HasHumanApproved() is null)
         {
             epic.SetEpicAgentInstruction("Mockup is ready for human review. Raise a HumanInLoop with the mockup location and ask the user to approve or reject.");
             return this;
         }
 
-        if (epic.HumanInLoop.IsApproved == false)
+        if (epic.HasHumanApproved() == false)
         {
             epic.IsMockupDone = false;
-            epic.HumanInLoop = null;
+            epic.ResetHumanApproval();
 
             epic.SetEpicAgentInstruction($"""
                 The mockup was rejected. Review the human's feedback and revise the mockup files at {epic.MockupPath}.

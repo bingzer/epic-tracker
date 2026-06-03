@@ -8,99 +8,90 @@ internal class SpecWritingState : EpicState
     {
         await Task.CompletedTask;
 
-        if (epic.HumanInLoop is not null && epic.HumanInLoop.IsApproved is null)
-        {
-            epic.SetEpicAgentInstruction("Waiting for human response. Do not call Advance until the human has responded via the dashboard.");
-
-            return this;
-        }
-
-        if (epic.HumanInLoop?.IsApproved is not null)
-        {
-            if (epic.HumanInLoop.IsApproved == false)
-            {
-                foreach (var spec in epic.Specs)
-                {
-                    spec.IsAbandoned = true;
-                }
-
-                epic.AgentSwarm = null;
-                epic.HumanInLoop = null;
-
-                epic.SetEpicAgentInstruction("Human rejected the spec list. All specs abandoned. Instruct coding agents to re-submit specs from scratch, then call Advance.");
-
-                return this;
-            }
-
-            var toStateName = epic.HumanInLoop.ApproveToStateName;
-
-            epic.HumanInLoop = null;
-
-            epic.SetEpicAgentInstruction($"Human approved. Proceeding to {toStateName}.");
-
-            return EpicState.Create(toStateName);
-        }
-
-        if (epic.CodingAgents.Count == 0)
-        {
-            epic.SetEpicAgentInstruction("No coding agents assigned. Call update_epic with field CodingAgents (comma-separated agent ids) then call Advance.");
-
-            return this;
-        }
-
-        if (epic.Specs.Count == 0)
+        if (epic.Specs.All(s => s.IsAbandoned))
         {
             var agentList = string.Join(", ", epic.CodingAgents);
 
             epic.SetEpicAgentInstruction($"""
-                Instruct each coding agent to read the epic document at {epic.EpicDocumentPath}.
-                Each agent must either write a spec document under the epic path and signal you with the path, or signal "no spec needed" if they have no development work.
+                Read the epic document at {epic.EpicDocumentPath}.
+                Instruct each coding agent (via tmux) to write a spec document under the epic path and send you the path when done.
                 Agents: {agentList}
-                For each agent that submits a spec, call create_spec to register it. Note which agents said no spec needed.
+                For each agent that sends you a spec path, call create_spec to register it.
                 Once all agents have responded, call Advance.
-                If no agent submitted a spec, raise a HumanInLoop to confirm before proceeding.
                 """);
 
             return this;
         }
 
-        if (!epic.IsSpecListApproved)
+        var pendingSpecs = epic.Specs.Where(s => !s.IsSpecApproved && !s.IsAbandoned).ToList();
+        if (pendingSpecs.Count > 0)
         {
             if (epic.AgentSwarm is null)
             {
-                var specList = string.Join("\n", epic.Specs.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.SpecDocPath}"));
+                var specList = string.Join("\n", pendingSpecs.Select(s => $"- {s.Id}: {s.SpecDocPath}"));
+
+                epic.RaiseAgentSwarm(
+                    $"""
+                    Review all pending specs together. Reach consensus on the final spec list.
+                    If a spec should be abandoned, tell the epic agent the spec ID and it will call update_spec to mark it abandoned.
+                    If new specs are needed that were not thought of, tell the epic agent and it will call create_spec to register them.
+                    Once all changes are made, all agents must agree the spec list is complete and correct.
+                    Pending specs:
+                    {specList}
+                    """,
+                    Name
+                );
 
                 epic.SetEpicAgentInstruction($"""
-                    Specs submitted so far:
-                    {specList}
-                    Raise an agent swarm to review all specs — agents should agree on the final list, adding, removing, or modifying specs until consensus.
-                    Objective: "Review all submitted specs. Reach consensus on the final spec list for this epic."
-                    Set toStateName to "{Name}".
+                    Agent swarm raised to review all specs.
+                    Message each coding agent via tmux, ask them to review the specs and reply AGREE or DISAGREE with a note.
+                    Call submit_agreement for each agent on their behalf, then call Advance.
                     """);
 
                 return this;
             }
 
-            if (!epic.AgentSwarm.HasConsensus)
+            if (!epic.AgentSwarmHasConsensus())
             {
                 return new AgentSwarmState();
             }
 
-            epic.IsSpecListApproved = true;
-
-            epic.HumanInLoop = new HumanInLoop
+            foreach (var spec in pendingSpecs)
             {
-                Questions = $"Agents have reached consensus on the spec list. Please review and approve to proceed to development.\n\nSpecs:\n{string.Join("\n", epic.Specs.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.SpecDocPath}"))}",
-                ApproveToStateName = new ImplementationState().Name,
-                RejectToStateName = Name
-            };
+                spec.IsSpecApproved = true;
+            }
 
-            epic.SetEpicAgentInstruction("Specs approved by agents. Raised HumanInLoop for final sign-off. Call Advance to enter human_in_loop state.");
+            epic.ResetAgentSwarm();
+        }
+
+        if (epic.HasHumanApproved() == false)
+        {
+            foreach (var spec in epic.Specs)
+            {
+                spec.IsAbandoned = true;
+            }
+
+            epic.ResetHumanApproval();
+
+            epic.SetEpicAgentInstruction("Human rejected the spec list. All specs abandoned. Instruct coding agents to start fresh, then call Advance.");
+
+            return this;
+        }
+
+        if (!epic.IsAwaitingHumanApproval())
+        {
+            var specList = string.Join("\n", epic.Specs.Where(s => !s.IsAbandoned).Select(s => $"- {s.Id}: {s.SpecDocPath}"));
+
+            epic.RaiseHumanInLoop(
+                $"All specs have been reviewed and approved by agents. Please review the final spec list in the dashboard and approve to proceed to implementation.\n\nSpecs:\n{specList}",
+                new ImplementationState().Name,
+                Name
+            );
+
+            epic.SetEpicAgentInstruction("All specs approved by agents. Raised HumanInLoop for final human review. Call Advance.");
 
             return new HumanInLoopState();
         }
-
-        epic.SetEpicAgentInstruction("Spec list was previously approved. Proceeding to implementation.");
 
         return new ImplementationState();
     }

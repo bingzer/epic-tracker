@@ -25,26 +25,28 @@ internal class MockupState : EpicState
             return this;
         }
 
-        if (!epic.IsAwaitingHumanApproval() || epic.HasHumanApproved() is null)
+        if (epic.NeedsHumanReview())
         {
-            epic.SetEpicAgentInstruction("Mockup is ready for human review. Raise a HumanInLoop with the mockup location and ask the user to approve or reject.");
-            return this;
+            epic.RaiseHumanInLoop(
+                questions: $"Mockup is ready for review at {epic.MockupPath}. Please approve to proceed to waterproofing, or reject with feedback.",
+                approveToStateName: new WaterproofingState().Name,
+                rejectToStateName: Name,
+                instruction: "Mockup ready. Raised HumanInLoop for human review. Call Advance."
+            );
+
+            return new HumanInLoopState();
         }
 
-        if (epic.HasHumanApproved() == false)
+        if (epic.IsHumanRejected())
         {
             epic.IsMockupDone = false;
-            epic.ResetHumanApproval();
-
-            epic.SetEpicAgentInstruction($"""
+            epic.ResetHumanApproval($"""
                 The mockup was rejected. Review the human's feedback and revise the mockup files at {epic.MockupPath}.
                 {AgentSwarm.OptionalSwarmNudge}
                 """);
 
             return this;
         }
-
-        epic.SetEpicAgentInstruction("Mockup approved. Proceeding to waterproofing.");
 
         return new WaterproofingState();
     }

@@ -93,7 +93,7 @@ public class EpicServiceTests : IDisposable
     // ── waterproofing state ──────────────────────────────────────────────────
 
     [Fact]
-    public async Task WaterproofingState_BlocksUntilSwarmRaised()
+    public async Task WaterproofingState_RaisesSwarmAndTransitionsToAgentSwarm_OnFirstAdvance()
     {
         var epic = await Create();
         await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
@@ -101,7 +101,7 @@ public class EpicServiceTests : IDisposable
 
         var result = await Advance(epic.Id);
 
-        Assert.Equal("waterproofing", result.CurrentStateName);
+        Assert.Equal("agent_swarm", result.CurrentStateName);
         Assert.NotNull(result.EpicAgentInstruction);
     }
 
@@ -178,14 +178,14 @@ public class EpicServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SpecWritingState_BlocksForSwarmWhenSpecsSubmittedButNoSwarm()
+    public async Task SpecWritingState_RaisesSwarmAndTransitionsToAgentSwarm_WhenSpecsSubmittedButNoSwarm()
     {
         var epic = await AdvanceEpicToSpecWriting();
         await _svc.CreateSpec(epic.Id, new CreateSpecRequest("coding-agent-1", "/specs/spec-1.md", false, null));
 
         var result = await Advance(epic.Id);
 
-        Assert.Equal("spec_writing", result.CurrentStateName);
+        Assert.Equal("agent_swarm", result.CurrentStateName);
         Assert.Contains("swarm", result.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -344,7 +344,6 @@ public class EpicServiceTests : IDisposable
 
         await _svc.Advance(epic.Id, new AdvanceEpicRequest("epic-agent-1"));
 
-        await _svc.RaiseHumanInLoop(epic.Id, new RaiseHumanInLoopRequest("Approve mockup?", "waterproofing", "mockup"));
         await _svc.ApproveHumanInLoop(epic.Id, new ApproveEpicHumanInLoopRequest(true, null));
         var result = await _svc.Advance(epic.Id, new AdvanceEpicRequest("epic-agent-1"));
 
@@ -359,8 +358,6 @@ public class EpicServiceTests : IDisposable
         var epic = await Create();
         await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
         await Advance(epic.Id);
-
-        await _svc.RaiseAgentSwarm(epic.Id, new RaiseAgentSwarmRequest("Align on scope", "spec_writing"));
 
         for (var i = 0; i < 7; i++)
         {

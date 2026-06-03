@@ -92,19 +92,20 @@ public class EpicStateTests
     }
 
     [Fact]
-    public async Task WaterproofingState_BlocksWhenNoSwarm()
+    public async Task WaterproofingState_RaisesSwarmAndRoutesToAgentSwarm_WhenNoSwarm()
     {
         var epic = BaseEpic();
         var state = new WaterproofingState();
 
         var next = await state.MoveNext(epic);
 
-        Assert.Equal("waterproofing", next.Name);
+        Assert.Equal("agent_swarm", next.Name);
+        Assert.NotNull(epic.AgentSwarm);
         Assert.Contains("swarm", epic.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task WaterproofingState_RoutesToAgentSwarm_WhenSwarmNoConsensus()
+    public async Task WaterproofingState_ResetsSwarmAndAdvancesToSpecWriting_WhenSwarmAlreadySet()
     {
         var epic = BaseEpic();
         epic.AgentSwarm = new AgentSwarm
@@ -117,7 +118,8 @@ public class EpicStateTests
 
         var next = await state.MoveNext(epic);
 
-        Assert.Equal("agent_swarm", next.Name);
+        Assert.Equal("spec_writing", next.Name);
+        Assert.Null(epic.AgentSwarm);
     }
 
     [Fact]
@@ -162,7 +164,7 @@ public class EpicStateTests
     }
 
     [Fact]
-    public async Task MockupState_BlocksWhenAwaitingHumanReview()
+    public async Task MockupState_RaisesHumanInLoopAndRoutesToHumanInLoopState_WhenMockupDoneAndNoReview()
     {
         var epic = BaseEpic();
         epic.MockupPath = "/mockups";
@@ -171,7 +173,8 @@ public class EpicStateTests
 
         var next = await state.MoveNext(epic);
 
-        Assert.Equal("mockup", next.Name);
+        Assert.Equal("human_in_loop", next.Name);
+        Assert.NotNull(epic.HumanInLoop);
         Assert.Contains("HumanInLoop", epic.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -203,7 +206,6 @@ public class EpicStateTests
         var next = await state.MoveNext(epic);
 
         Assert.Equal("waterproofing", next.Name);
-        Assert.NotNull(epic.EpicAgentInstruction);
     }
 
     // ── AgentSwarmState ──────────────────────────────────────────────────────
@@ -346,7 +348,7 @@ public class EpicStateTests
     }
 
     [Fact]
-    public async Task SpecWritingState_BlocksWhenSpecsButNoSwarm()
+    public async Task SpecWritingState_RaisesSwarmAndRoutesToAgentSwarm_WhenSpecsButNoSwarm()
     {
         var epic = BaseEpic();
         epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting" });
@@ -354,15 +356,16 @@ public class EpicStateTests
 
         var next = await state.MoveNext(epic);
 
-        Assert.Equal("spec_writing", next.Name);
+        Assert.Equal("agent_swarm", next.Name);
+        Assert.NotNull(epic.AgentSwarm);
         Assert.Contains("swarm", epic.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task SpecWritingState_RoutesToAgentSwarm_WhenSwarmNoConsensus()
+    public async Task SpecWritingState_RaisesHumanInLoop_WhenSwarmExistsButNoConsensus()
     {
         var epic = BaseEpic();
-        epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting" });
+        epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting", SpecDocPath = "/s1.md" });
         epic.AgentSwarm = new AgentSwarm
         {
             Objective = "Review specs",
@@ -373,7 +376,8 @@ public class EpicStateTests
 
         var next = await state.MoveNext(epic);
 
-        Assert.Equal("agent_swarm", next.Name);
+        Assert.Equal("human_in_loop", next.Name);
+        Assert.NotNull(epic.HumanInLoop);
     }
 
     [Fact]

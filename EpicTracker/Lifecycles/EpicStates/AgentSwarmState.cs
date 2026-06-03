@@ -24,12 +24,12 @@ internal class AgentSwarmState : EpicState
 
         if (swarm.Iteration >= MaxIterations)
         {
-            epic.HumanInLoop = new HumanInLoop
-            {
-                Questions = "Agents could not reach consensus after maximum iterations. Please review and provide direction.",
-                ApproveToStateName = this.Name,
-                RejectToStateName = this.Name
-            };
+            epic.RaiseHumanInLoop(
+                questions: "Agents could not reach consensus after maximum iterations. Please review and provide direction.",
+                approveToStateName: Name,
+                rejectToStateName: Name,
+                instruction: "Max swarm iterations reached. Raised HumanInLoop for human input."
+            );
 
             return new HumanInLoopState();
         }

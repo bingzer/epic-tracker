@@ -15,32 +15,22 @@ internal class WaterproofingState : EpicState
             return new MockupState();
         }
 
-        if (epic.AgentSwarm is null)
+        if (epic.NeedsAgentSwarm())
         {
             epic.RaiseAgentSwarm(
-                $"Read the epic document at {epic.EpicDocumentPath} and reach agreement on scope and responsibilities.",
-                new SpecWritingState().Name
+                objective: $"Read the epic document at {epic.EpicDocumentPath} and reach agreement on scope and responsibilities.",
+                toStateName: new SpecWritingState().Name,
+                instruction: $"""
+                    Agent swarm raised for waterproofing alignment.
+                    Message each coding agent via tmux, ask them to read the epic document and reply AGREE or DISAGREE with a note on their scope.
+                    Call submit_agreement for each agent on their behalf, then call Advance.
+                    """
             );
-
-            epic.SetEpicAgentInstruction($"""
-                Agent swarm raised for waterproofing alignment.
-                Message each coding agent via tmux, ask them to read the epic document and reply AGREE or DISAGREE with a note on their scope.
-                Call submit_agreement for each agent on their behalf, then call Advance.
-                """);
-
-            return this;
-        }
-
-        if (!epic.AgentSwarmHasConsensus())
-        {
-            epic.SetEpicAgentInstruction("Swarm in progress. Collect agreements from all agents.");
 
             return new AgentSwarmState();
         }
 
-        epic.ResetAgentSwarm();
-
-        epic.SetEpicAgentInstruction("All agents have reached consensus. Proceed to spec writing.");
+        epic.ResetAgentSwarm("All agents have reached consensus. Proceed to spec writing.");
 
         return new SpecWritingState();
     }

@@ -14,11 +14,6 @@ internal class ImplementationState : EpicState
 
         epic.HumanInLoop = null;
 
-        foreach (var spec in epic.Specs)
-        {
-            spec.IsSpecApproved = true;
-        }
-
         var drafting = epic.Specs.Where(s => s.CurrentStateName == "spec_drafting").ToList();
         if (drafting.Count > 0)
         {

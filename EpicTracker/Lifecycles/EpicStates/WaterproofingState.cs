@@ -22,7 +22,9 @@ internal class WaterproofingState : EpicState
                 toStateName: new SpecWritingState().Name,
                 instruction: $"""
                     Agent swarm raised for waterproofing alignment.
-                    Message each coding agent via tmux, ask them to read the epic document and reply AGREE or DISAGREE with a note on their scope.
+                    Use the tmux-broker MCP tools (mcp__tmux-broker__send_message / mcp__tmux-broker__get_message) to message each coding agent — do NOT spawn sub-agents.
+                    IMPORTANT: Coding agents do not have the epic-tracker MCP tool. All communication with them must go through tmux-broker messages only.
+                    Ask each agent to read the epic document and reply AGREE or DISAGREE with a note on their scope.
                     Call submit_agreement for each agent on their behalf, then call Advance.
                     """
             );

@@ -18,6 +18,7 @@ internal class SpecWritingState : EpicState
                 Agents: {agentList}
                 For each agent that sends you a spec path, call create_spec to register it.
                 Once all agents have responded, call Advance.
+                Do NOT dispatch any coding work yet — this is the spec writing phase only.
                 """);
 
             return this;

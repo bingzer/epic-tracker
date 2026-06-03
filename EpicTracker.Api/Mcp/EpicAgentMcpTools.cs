@@ -122,7 +122,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return result;
     }
 
-    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentId (string), ReviewerAgentId (string), SpecDocPath (string), CodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsSpecApproved (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
+    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentId (string), ReviewerAgentId (string), SpecDocPath (string), CodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
     public async Task<Spec> UpdateSpec(
         [Description("The ID of the spec to update.")] string specId,
         [Description("The name of the field to set.")] string fieldName,

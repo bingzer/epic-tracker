@@ -247,10 +247,6 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux)
                 entity.IsCodeDone = bool.Parse(value);
                 break;
 
-            case "IsSpecApproved":
-                entity.IsSpecApproved = bool.Parse(value);
-                break;
-
             case "IsAcPassed":
                 entity.IsAcPassed = bool.Parse(value);
                 break;
@@ -261,7 +257,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux)
 
             default:
                 throw new InvalidOperationException(
-                    $"Unknown field '{fieldName}'. Valid fields: AssignedAgentId, ReviewerAgentId, SpecDocPath, CodeReviewRequired, IsSpecDrafted, IsCodeDone, IsSpecApproved, IsAcPassed, IsCodeReviewApproved.");
+                    $"Unknown field '{fieldName}'. Valid fields: AssignedAgentId, ReviewerAgentId, SpecDocPath, CodeReviewRequired, IsSpecDrafted, IsCodeDone, IsAcPassed, IsCodeReviewApproved.");
         }
 
         entity.UpdatedAt = DateTime.UtcNow;

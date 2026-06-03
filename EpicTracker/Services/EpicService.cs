@@ -43,16 +43,24 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux)
     {
         var now = DateTime.UtcNow;
 
-        var slug = Slugify(request.Name, Guid.NewGuid().ToString());
+        var baseSlug = Slugify(request.Name, Guid.NewGuid().ToString());
+        var slug = baseSlug;
+        var counter = 2;
+
+        while (await db.Epics.AnyAsync(e => e.Id == slug, cancellationToken))
+        {
+            slug = $"{baseSlug}-{counter++}";
+        }
 
         var entity = new EpicEntity
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = slug,
             Name = request.Name,
             EpicAgent = request.EpicAgent,
             Brief = request.Brief,
             Slug = slug,
             NeedsMockup = request.NeedsMockup,
+            ReviewerAgentId = request.ReviewerAgentId,
             CodingAgents = JsonSerializer.Serialize(request.CodingAgents ?? []),
             CurrentStateName = new DraftingState().Name,
             CreatedAt = now,

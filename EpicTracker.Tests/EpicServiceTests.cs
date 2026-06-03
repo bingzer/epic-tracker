@@ -2,6 +2,7 @@ using EpicTracker.Contracts;
 using EpicTracker.Data;
 using EpicTracker.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace EpicTracker.Tests;
@@ -21,7 +22,7 @@ public class EpicServiceTests : IDisposable
         _db.Database.OpenConnection();
         _db.Database.EnsureCreated();
 
-        _svc = new EpicService(_db);
+        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance));
     }
 
     public void Dispose()
@@ -32,15 +33,13 @@ public class EpicServiceTests : IDisposable
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    private Epic BaseEpic() => new()
-    {
-        Name = "My Epic",
-        EpicAgent = "epic-agent-1",
-        Description = "Test epic",
-        EpicDocumentPath = "/epics/my-epic.md",
-        EpicGovernancePath = "/epics/governance.md",
-        CodingAgents = ["coding-agent-1", "coding-agent-2"]
-    };
+    private CreateEpicRequest BaseEpic() => new(
+        EpicAgent: "epic-agent-1",
+        Brief: "Test epic",
+        Name: "My Epic",
+        CodingAgents: ["coding-agent-1", "coding-agent-2"],
+        NeedsMockup: false,
+        ReviewerAgentId: null);
 
     private async Task<Epic> Create() => await _svc.CreateEpic(BaseEpic());
 
@@ -84,7 +83,7 @@ public class EpicServiceTests : IDisposable
     public async Task DraftingState_AdvancesToWaterproofing_WhenDocDrafted()
     {
         var epic = await Create();
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: true, isMockupDone: null, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
 
         var result = await Advance(epic.Id);
 
@@ -97,7 +96,7 @@ public class EpicServiceTests : IDisposable
     public async Task WaterproofingState_BlocksUntilSwarmRaised()
     {
         var epic = await Create();
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: true, isMockupDone: null, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
         await Advance(epic.Id);
 
         var result = await Advance(epic.Id);
@@ -110,7 +109,7 @@ public class EpicServiceTests : IDisposable
     public async Task WaterproofingState_AdvancesToSpecWriting_WhenConsensusReached()
     {
         var epic = await Create();
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: true, isMockupDone: null, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
         await Advance(epic.Id);
 
         await _svc.RaiseAgentSwarm(epic.Id, new RaiseAgentSwarmRequest("Align on scope", "spec_writing"));
@@ -308,17 +307,15 @@ public class EpicServiceTests : IDisposable
     [Fact]
     public async Task MockupFlow_RoutesToMockup_WhenNeedsMockup()
     {
-        var epic = await _svc.CreateEpic(new Epic
-        {
-            Name = "Mockup Epic",
-            EpicAgent = "epic-agent-1",
-            EpicDocumentPath = "/epics/e.md",
-            EpicGovernancePath = "/epics/g.md",
-            CodingAgents = ["coding-agent-1"],
-            NeedsMockup = true
-        });
+        var epic = await _svc.CreateEpic(new CreateEpicRequest(
+            EpicAgent: "epic-agent-1",
+            Brief: "Mockup test",
+            Name: "Mockup Epic",
+            CodingAgents: ["coding-agent-1"],
+            NeedsMockup: true,
+            ReviewerAgentId: null));
 
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: true, isMockupDone: null, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
 
         await _svc.Advance(epic.Id, new AdvanceEpicRequest("epic-agent-1"));
         var result = await _svc.Advance(epic.Id, new AdvanceEpicRequest("epic-agent-1"));
@@ -329,23 +326,21 @@ public class EpicServiceTests : IDisposable
     [Fact]
     public async Task MockupFlow_AdvancesToWaterproofing_AfterApproval()
     {
-        var epic = await _svc.CreateEpic(new Epic
-        {
-            Name = "Mockup Epic",
-            EpicAgent = "epic-agent-1",
-            EpicDocumentPath = "/epics/e.md",
-            EpicGovernancePath = "/epics/g.md",
-            CodingAgents = ["coding-agent-1"],
-            NeedsMockup = true
-        });
+        var epic = await _svc.CreateEpic(new CreateEpicRequest(
+            EpicAgent: "epic-agent-1",
+            Brief: "Mockup test",
+            Name: "Mockup Epic",
+            CodingAgents: ["coding-agent-1"],
+            NeedsMockup: true,
+            ReviewerAgentId: null));
 
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: true, isMockupDone: null, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
 
         await _svc.Advance(epic.Id, new AdvanceEpicRequest("epic-agent-1"));
         await _svc.Advance(epic.Id, new AdvanceEpicRequest("epic-agent-1"));
 
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: null, isMockupDone: null, mockupPath: "/mockups", epicDocumentPath: null, epicGovernancePath: null);
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: null, isMockupDone: true, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        await _svc.UpdateEpicField(epic.Id, "MockupPath", "/mockups");
+        await _svc.UpdateEpicField(epic.Id, "IsMockupDone", "true");
 
         await _svc.Advance(epic.Id, new AdvanceEpicRequest("epic-agent-1"));
 
@@ -362,7 +357,7 @@ public class EpicServiceTests : IDisposable
     public async Task AgentSwarm_EscalatesToHumanInLoop_AfterMaxIterations()
     {
         var epic = await Create();
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: true, isMockupDone: null, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
         await Advance(epic.Id);
 
         await _svc.RaiseAgentSwarm(epic.Id, new RaiseAgentSwarmRequest("Align on scope", "spec_writing"));
@@ -742,7 +737,7 @@ public class EpicServiceTests : IDisposable
     {
         var epic = await Create();
 
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: true, isMockupDone: null, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
 
         await Advance(epic.Id);
 
@@ -803,8 +798,7 @@ public class EpicServiceTests : IDisposable
             Id = epicId,
             Name = "test",
             EpicAgent = "epic-agent-1",
-            EpicDocumentPath = "/e",
-            EpicGovernancePath = "/g",
+            Slug = epicId,
             CodingAgents = "[]",
             CurrentStateName = "implementation",
             CreatedAt = DateTime.UtcNow,

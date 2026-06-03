@@ -7,6 +7,7 @@ export interface CreateEpicPayload {
   name?: string;
   codingAgents?: string[];
   needsMockup: boolean;
+  reviewerAgentId?: string;
 }
 
 export const EpicApi = {

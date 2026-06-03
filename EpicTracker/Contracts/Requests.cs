@@ -23,4 +23,5 @@ public record CreateEpicRequest(
     string Brief,
     string? Name,
     List<string>? CodingAgents,
-    bool NeedsMockup);
+    bool NeedsMockup,
+    string? ReviewerAgentId);

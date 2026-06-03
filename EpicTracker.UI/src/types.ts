@@ -55,6 +55,9 @@ export interface Epic {
   isDocDrafted: boolean;
   mockupPath: string | null;
   isMockupDone: boolean;
+  isSpecListApproved: boolean;
+  reviewerAgentId: string | null;
+  createdAt: string;
   specs: Spec[];
   currentStateName: string;
   epicAgentInstruction: string | null;

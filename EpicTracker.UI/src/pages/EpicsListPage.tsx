@@ -12,6 +12,7 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
   const [agentInput, setAgentInput] = useState('');
   const [codingAgents, setCodingAgents] = useState<string[]>([]);
   const [needsMockup, setNeedsMockup] = useState(false);
+  const [reviewerAgentId, setReviewerAgentId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +23,7 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
     setAgentInput('');
     setCodingAgents([]);
     setNeedsMockup(false);
+    setReviewerAgentId('');
     setError(null);
   }
 
@@ -50,6 +52,7 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
         name: name.trim() || undefined,
         codingAgents: codingAgents.length > 0 ? codingAgents : undefined,
         needsMockup,
+        reviewerAgentId: reviewerAgentId.trim() || undefined,
       };
       const epic = await EpicApi.create(payload);
       onCreated(epic);
@@ -129,6 +132,10 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
           </div>
         )}
       </div>
+      <div>
+        <label className={labelCls}>Code reviewer</label>
+        <input value={reviewerAgentId} onChange={e => setReviewerAgentId(e.target.value)} placeholder="reviewer-agent-id" className={inputCls} />
+      </div>
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -173,7 +180,7 @@ function EpicRow({ epic }: { epic: Epic }) {
             HUMAN REVIEW
           </span>
         )}
-        <span className="text-xs text-gray-400 dark:text-zinc-600 font-mono ml-auto">{epic.id}</span>
+        <span className="text-xs text-gray-400 dark:text-zinc-600 font-mono ml-auto">{epic.slug}</span>
       </div>
       {epic.brief && (
         <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400 line-clamp-2">{epic.brief}</p>
@@ -193,7 +200,7 @@ export default function EpicsListPage() {
 
   useEffect(() => {
     EpicApi.list()
-      .then(setEpics)
+      .then(epics => setEpics([...epics].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
       .finally(() => setLoading(false));
   }, []);
 

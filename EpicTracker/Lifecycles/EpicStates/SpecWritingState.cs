@@ -64,35 +64,44 @@ internal class SpecWritingState : EpicState
             return this;
         }
 
-        if (epic.AgentSwarm is null)
+        if (!epic.IsSpecListApproved)
         {
-            var specList = string.Join("\n", epic.Specs.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.SpecDocPath}"));
+            if (epic.AgentSwarm is null)
+            {
+                var specList = string.Join("\n", epic.Specs.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.SpecDocPath}"));
 
-            epic.SetEpicAgentInstruction($"""
-                Specs submitted so far:
-                {specList}
-                Raise an agent swarm to review all specs — agents should agree on the final list, adding, removing, or modifying specs until consensus.
-                Objective: "Review all submitted specs. Reach consensus on the final spec list for this epic."
-                Set toStateName to "{Name}".
-                """);
+                epic.SetEpicAgentInstruction($"""
+                    Specs submitted so far:
+                    {specList}
+                    Raise an agent swarm to review all specs — agents should agree on the final list, adding, removing, or modifying specs until consensus.
+                    Objective: "Review all submitted specs. Reach consensus on the final spec list for this epic."
+                    Set toStateName to "{Name}".
+                    """);
 
-            return this;
+                return this;
+            }
+
+            if (!epic.AgentSwarm.HasConsensus)
+            {
+                return new AgentSwarmState();
+            }
+
+            epic.IsSpecListApproved = true;
+
+            epic.HumanInLoop = new HumanInLoop
+            {
+                Questions = $"Agents have reached consensus on the spec list. Please review and approve to proceed to development.\n\nSpecs:\n{string.Join("\n", epic.Specs.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.SpecDocPath}"))}",
+                ApproveToStateName = new ImplementationState().Name,
+                RejectToStateName = Name
+            };
+
+            epic.SetEpicAgentInstruction("Specs approved by agents. Raised HumanInLoop for final sign-off. Call Advance to enter human_in_loop state.");
+
+            return new HumanInLoopState();
         }
 
-        if (!epic.AgentSwarm.HasConsensus)
-        {
-            return new AgentSwarmState();
-        }
+        epic.SetEpicAgentInstruction("Spec list was previously approved. Proceeding to implementation.");
 
-        epic.HumanInLoop = new HumanInLoop
-        {
-            Questions = $"Agents have reached consensus on the spec list. Please review and approve to proceed to development.\n\nSpecs:\n{string.Join("\n", epic.Specs.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.SpecDocPath}"))}",
-            ApproveToStateName = new ImplementationState().Name,
-            RejectToStateName = Name
-        };
-
-        epic.SetEpicAgentInstruction("Specs approved by agents. Raised HumanInLoop for final sign-off. Call Advance to enter human_in_loop state.");
-
-        return new HumanInLoopState();
+        return new ImplementationState();
     }
 }

@@ -16,15 +16,13 @@ public class EpicMapperTests
             Id = "epic-1",
             Name = "Test Epic",
             EpicAgent = "agent-1",
-            Description = "A description",
-            EpicDocumentPath = "/doc.md",
-            EpicGovernancePath = "/gov.md",
             NeedsMockup = true,
             IsDocDrafted = true,
             MockupPath = "/mockup",
             IsMockupDone = true,
             CodingAgents = "[\"ca-1\",\"ca-2\"]",
             CurrentStateName = "drafting",
+            Slug = "epic-1",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -34,9 +32,6 @@ public class EpicMapperTests
         Assert.Equal("epic-1", epic.Id);
         Assert.Equal("Test Epic", epic.Name);
         Assert.Equal("agent-1", epic.EpicAgent);
-        Assert.Equal("A description", epic.Description);
-        Assert.Equal("/doc.md", epic.EpicDocumentPath);
-        Assert.Equal("/gov.md", epic.EpicGovernancePath);
         Assert.True(epic.NeedsMockup);
         Assert.True(epic.IsDocDrafted);
         Assert.Equal("/mockup", epic.MockupPath);
@@ -60,10 +55,8 @@ public class EpicMapperTests
             Id = "epic-2",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-2",
             CodingAgents = "[]",
-
             CurrentStateName = "human_in_loop",
             HumanInLoop = JsonSerializer.Serialize(hil),
             CreatedAt = DateTime.UtcNow,
@@ -96,10 +89,8 @@ public class EpicMapperTests
             Id = "epic-3",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-3",
             CodingAgents = "[]",
-
             CurrentStateName = "waterproofing",
             AgentSwarm = JsonSerializer.Serialize(swarm),
             CreatedAt = DateTime.UtcNow,
@@ -146,10 +137,8 @@ public class EpicMapperTests
             Id = "epic-4",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-4",
             CodingAgents = "[]",
-
             CurrentStateName = "implementation",
             CreatedAt = now,
             UpdatedAt = now,
@@ -245,8 +234,7 @@ public class EpicMapperTests
             Id = "epic-x",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-x",
             CurrentStateName = "human_in_loop",
             HumanInLoop = new HumanInLoop
             {
@@ -261,10 +249,8 @@ public class EpicMapperTests
             Id = "epic-x",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-x",
             CodingAgents = "[]",
-
             CurrentStateName = "human_in_loop",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -289,8 +275,7 @@ public class EpicMapperTests
             Id = "epic-y",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-y",
             CurrentStateName = "drafting",
             HumanInLoop = null
         };
@@ -300,10 +285,8 @@ public class EpicMapperTests
             Id = "epic-y",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-y",
             CodingAgents = "[]",
-
             CurrentStateName = "drafting",
             HumanInLoop = "{\"Questions\":\"old\"}",
             CreatedAt = DateTime.UtcNow,
@@ -323,8 +306,7 @@ public class EpicMapperTests
             Id = "epic-z",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-z",
             CurrentStateName = "waterproofing",
             AgentSwarm = new AgentSwarm
             {
@@ -339,10 +321,8 @@ public class EpicMapperTests
             Id = "epic-z",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-z",
             CodingAgents = "[]",
-
             CurrentStateName = "waterproofing",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -413,8 +393,7 @@ public class EpicMapperTests
             Id = "epic-audit",
             Name = "Epic",
             EpicAgent = "agent-1",
-            EpicDocumentPath = "/d",
-            EpicGovernancePath = "/g",
+            Slug = "epic-audit",
             CurrentStateName = "waterproofing"
         };
 

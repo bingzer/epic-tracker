@@ -13,9 +13,12 @@ public class Epic
     public bool IsDocDrafted { get; set; }
     public string? MockupPath { get; set; }
     public bool IsMockupDone { get; set; }
+    public bool IsSpecListApproved { get; set; }
+    public string? ReviewerAgentId { get; set; }
     public List<string> CodingAgents { get; set; } = [];
     public List<Spec> Specs { get; set; } = [];
 
+    public DateTime CreatedAt { get; set; }
     public string CurrentStateName { get; set; } = default!;
     public string? EpicAgentInstruction { get; private set; }
     public HumanInLoop? HumanInLoop { get; set; }

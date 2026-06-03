@@ -57,7 +57,9 @@ internal class AgentSwarmState : EpicState
 
             Agents: {agentList}
 
-            Instruct each agent to review the objective and submit their agreement or disagreement with notes via the AgreementTable.
+            For each agent, send them a tmux-broker message asking them to review the objective and reply with either AGREE or DISAGREE and a brief note explaining their scope or concern.
+            Coding agents do NOT have MCP access — you are their proxy. Once you have collected a response from each agent, call submit_agreement for each one on their behalf, then call advance.
+            Do not ask the user. Do not wait indefinitely — if an agent does not respond, submit a disagreement with a note that they were unreachable.
             """;
 
         if (!string.IsNullOrWhiteSpace(swarm.HumanInput))

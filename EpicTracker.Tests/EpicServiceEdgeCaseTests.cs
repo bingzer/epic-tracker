@@ -2,6 +2,7 @@ using EpicTracker.Contracts;
 using EpicTracker.Data;
 using EpicTracker.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EpicTracker.Tests;
 
@@ -20,7 +21,7 @@ public class EpicServiceEdgeCaseTests : IDisposable
         _db.Database.OpenConnection();
         _db.Database.EnsureCreated();
 
-        _svc = new EpicService(_db);
+        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance));
     }
 
     public void Dispose()
@@ -31,14 +32,13 @@ public class EpicServiceEdgeCaseTests : IDisposable
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private async Task<Epic> CreateEpic() => await _svc.CreateEpic(new Epic
-    {
-        Name = "Edge Case Epic",
-        EpicAgent = "epic-agent-1",
-        EpicDocumentPath = "/epics/e.md",
-        EpicGovernancePath = "/epics/g.md",
-        CodingAgents = ["ca-1", "ca-2"]
-    });
+    private async Task<Epic> CreateEpic() => await _svc.CreateEpic(new CreateEpicRequest(
+        EpicAgent: "epic-agent-1",
+        Brief: "Edge case test",
+        Name: "Edge Case Epic",
+        CodingAgents: ["ca-1", "ca-2"],
+        NeedsMockup: false,
+        ReviewerAgentId: null));
 
     private async Task<Spec> CreateSpec(string epicId) =>
         await _svc.CreateSpec(epicId, new CreateSpecRequest("ca-1", "/specs/s.md", false, null));

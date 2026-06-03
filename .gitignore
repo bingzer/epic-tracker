@@ -25,3 +25,5 @@ epics/
 
 ## Misc
 .DS_Store
+
+tmux-broker-message-protocol.md

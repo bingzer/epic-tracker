@@ -12,7 +12,6 @@ internal class ImplementationState : EpicState
     {
         await Task.CompletedTask;
 
-        // TODO: spec mutations here are not persisted — Advance only syncs the epic entity, not specs
         foreach (var spec in epic.Specs)
         {
             spec.IsSpecApproved = true;
@@ -22,12 +21,11 @@ internal class ImplementationState : EpicState
 
         if (drafting.Count > 0)
         {
-            var instructions = string.Join("\n", 
-                drafting.Select(s => $"""
-                    Tell coding agent {s.AssignedAgentId} to start spec at {s.SpecDocPath} and call AdvanceSpec({s.Id}) to begin coding.
-                    """));
+            var instructions = string.Join("\n",
+                drafting.Select(s => $"- Send {s.AssignedAgentId} the spec at {s.SpecDocPath} and tell them to implement it and report back when done."));
 
             epic.SetEpicAgentInstruction($"""
+                Instruct each coding agent to begin implementation. Once they confirm done, call advance_spec on their behalf, then call advance.
                 {instructions}
                 """);
 

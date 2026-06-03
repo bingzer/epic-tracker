@@ -11,8 +11,7 @@ public class EpicStateTests
         Id = "epic-1",
         Name = "My Epic",
         EpicAgent = "epic-agent-1",
-        EpicDocumentPath = "/epics/epic.md",
-        EpicGovernancePath = "/epics/governance.md",
+        Slug = "epic-1",
         CodingAgents = ["agent-1", "agent-2"]
     };
 

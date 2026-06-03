@@ -2,6 +2,7 @@ using EpicTracker.Contracts;
 using EpicTracker.Data;
 using EpicTracker.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EpicTracker.Tests;
 
@@ -20,7 +21,7 @@ public class HappyPathTests : IDisposable
         _db.Database.OpenConnection();
         _db.Database.EnsureCreated();
 
-        _svc = new EpicService(_db);
+        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance));
     }
 
     public void Dispose()
@@ -51,20 +52,18 @@ public class HappyPathTests : IDisposable
     public async Task FullEpicLifecycle_NominalPath()
     {
         // 1. Create epic (no mockup, no code review)
-        var epic = await _svc.CreateEpic(new Epic
-        {
-            Name = "Full Lifecycle Epic",
-            EpicAgent = "epic-agent-1",
-            Description = "Integration test",
-            EpicDocumentPath = "/epics/full.md",
-            EpicGovernancePath = "/epics/gov.md",
-            CodingAgents = ["ca-1"]
-        });
+        var epic = await _svc.CreateEpic(new CreateEpicRequest(
+            EpicAgent: "epic-agent-1",
+            Brief: "Integration test",
+            Name: "Full Lifecycle Epic",
+            CodingAgents: ["ca-1"],
+            NeedsMockup: false,
+            ReviewerAgentId: null));
 
         Assert.Equal("drafting", epic.CurrentStateName);
 
-        // 2. SetEpicFlags — IsDocDrafted = true
-        await _svc.SetEpicFlags(epic.Id, isDocDrafted: true, isMockupDone: null, mockupPath: null, epicDocumentPath: null, epicGovernancePath: null);
+        // 2. Set IsDocDrafted = true
+        await _svc.UpdateEpicField(epic.Id, "IsDocDrafted", "true");
 
         // 3. Advance → waterproofing
         var afterDrafting = await Advance(epic.Id);

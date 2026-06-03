@@ -17,8 +17,8 @@ internal class DraftingSpecState : SpecState
         }
 
         spec.SetEpicAgentInstruction($"""
-            Hand off spec {spec.Id} to coding agent {spec.AssignedAgentId} to implement the spec at {spec.SpecDocPath}.
-            Tell {spec.AssignedAgentId} to report back to you when done, then call UpdateSpec to set IsCodeDone = true and call AdvanceSpec.
+            Send {spec.AssignedAgentId} the spec at {spec.SpecDocPath} and tell them to implement it and report back when done.
+            Once they confirm, call update_spec({spec.Id}, IsCodeDone, true) and then advance_spec({spec.Id}) on their behalf.
             """);
 
         return new CodingSpecState();

@@ -103,9 +103,9 @@ export default function EpicDetailPage() {
     if (tab === 'audit') loadAudit();
   }, [tab, loadAudit]);
 
-  async function handleApproveSpecHumanInLoop(specId: string, isApproved: boolean) {
+  async function handleApproveSpecHumanInLoop(specId: string, isApproved: boolean, feedback: string | null) {
     try {
-      await SpecApi.approveHumanInLoop(specId, isApproved, null);
+      await SpecApi.approveHumanInLoop(specId, isApproved, feedback);
       load();
     } catch (e) {
       alert(String(e));

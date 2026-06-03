@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace EpicTracker.Lifecycles.EpicStates;
 
@@ -45,7 +46,22 @@ internal abstract class EpicState
 {
     public abstract string Name { get; }
 
-    public abstract Task<EpicState> MoveNext(Epic epic, CancellationToken cancellationToken = default);
+    protected abstract Task<EpicState> Next(Epic epic, ILogger logger, CancellationToken cancellationToken = default);
+
+    public async Task<EpicState> MoveNext(Epic epic, ILogger logger, CancellationToken cancellationToken = default)
+    {
+        var next = await Next(epic, logger, cancellationToken);
+
+        logger.LogInformation(
+            "[Epic {EpicId}] {FromState} → {ToState} | {Instruction}",
+            epic.Id,
+            Name,
+            next.Name,
+            epic.EpicAgentInstruction
+        );
+
+        return next;
+    }
 
     private static readonly Dictionary<string, Func<EpicState>> Factories = Assembly
         .GetExecutingAssembly()

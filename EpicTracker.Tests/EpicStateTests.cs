@@ -1,5 +1,7 @@
 using EpicTracker.Contracts;
 using EpicTracker.Lifecycles.EpicStates;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace EpicTracker.Tests;
@@ -32,7 +34,7 @@ public class EpicStateTests
         var epic = new Epic { Id = "e", EpicAgent = "a", CodingAgents = [] };
         var state = new DraftingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("drafting", next.Name);
         Assert.NotNull(epic.EpicAgentInstruction);
@@ -44,7 +46,7 @@ public class EpicStateTests
         var epic = BaseEpic();
         var state = new DraftingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("drafting", next.Name);
         Assert.Contains("Draft the epic document", epic.EpicAgentInstruction);
@@ -57,7 +59,7 @@ public class EpicStateTests
         epic.IsDocDrafted = true;
         var state = new DraftingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("waterproofing", next.Name);
         Assert.NotNull(epic.EpicAgentInstruction);
@@ -72,7 +74,7 @@ public class EpicStateTests
         epic.NeedsMockup = true;
         var state = new WaterproofingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("mockup", next.Name);
         Assert.NotNull(epic.EpicAgentInstruction);
@@ -86,7 +88,7 @@ public class EpicStateTests
         epic.IsMockupDone = true;
         var state = new WaterproofingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.NotEqual("mockup", next.Name);
     }
@@ -97,7 +99,7 @@ public class EpicStateTests
         var epic = BaseEpic();
         var state = new WaterproofingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("agent_swarm", next.Name);
         Assert.NotNull(epic.AgentSwarm);
@@ -116,7 +118,7 @@ public class EpicStateTests
         };
         var state = new WaterproofingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("spec_writing", next.Name);
         Assert.Null(epic.AgentSwarm);
@@ -129,7 +131,7 @@ public class EpicStateTests
         epic.AgentSwarm = ConsensusSwarm("spec_writing", epic.CodingAgents);
         var state = new WaterproofingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("spec_writing", next.Name);
         Assert.Null(epic.AgentSwarm);
@@ -144,7 +146,7 @@ public class EpicStateTests
         var epic = BaseEpic();
         var state = new MockupState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("mockup", next.Name);
         Assert.Contains("mockup folder path", epic.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
@@ -157,7 +159,7 @@ public class EpicStateTests
         epic.MockupPath = "/mockups";
         var state = new MockupState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("mockup", next.Name);
         Assert.Contains("mockup files", epic.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
@@ -171,7 +173,7 @@ public class EpicStateTests
         epic.IsMockupDone = true;
         var state = new MockupState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("human_in_loop", next.Name);
         Assert.NotNull(epic.HumanInLoop);
@@ -187,7 +189,7 @@ public class EpicStateTests
         epic.HumanInLoop = new HumanInLoop { IsApproved = false };
         var state = new MockupState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("mockup", next.Name);
         Assert.False(epic.IsMockupDone);
@@ -203,7 +205,7 @@ public class EpicStateTests
         epic.HumanInLoop = new HumanInLoop { IsApproved = true };
         var state = new MockupState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("waterproofing", next.Name);
     }
@@ -216,7 +218,7 @@ public class EpicStateTests
         var epic = BaseEpic();
         var state = new AgentSwarmState();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => state.MoveNext(epic));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => state.MoveNext(epic, NullLogger.Instance));
     }
 
     [Fact]
@@ -226,7 +228,7 @@ public class EpicStateTests
         epic.AgentSwarm = ConsensusSwarm("spec_writing", epic.CodingAgents);
         var state = new AgentSwarmState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("spec_writing", next.Name);
     }
@@ -244,7 +246,7 @@ public class EpicStateTests
         };
         var state = new AgentSwarmState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("agent_swarm", next.Name);
         Assert.Equal(1, epic.AgentSwarm.Iteration);
@@ -264,7 +266,7 @@ public class EpicStateTests
         };
         var state = new AgentSwarmState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("human_in_loop", next.Name);
         Assert.NotNull(epic.HumanInLoop);
@@ -278,7 +280,7 @@ public class EpicStateTests
         var epic = BaseEpic();
         var state = new HumanInLoopState();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => state.MoveNext(epic));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => state.MoveNext(epic, NullLogger.Instance));
     }
 
     [Fact]
@@ -293,7 +295,7 @@ public class EpicStateTests
         };
         var state = new HumanInLoopState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("human_in_loop", next.Name);
         Assert.Contains("Waiting for human response", epic.EpicAgentInstruction);
@@ -311,7 +313,7 @@ public class EpicStateTests
         };
         var state = new HumanInLoopState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("implementation", next.Name);
     }
@@ -328,7 +330,7 @@ public class EpicStateTests
         };
         var state = new HumanInLoopState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("spec_writing", next.Name);
     }
@@ -341,7 +343,7 @@ public class EpicStateTests
         var epic = BaseEpic();
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("spec_writing", next.Name);
         Assert.Contains("coding agent", epic.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
@@ -354,7 +356,7 @@ public class EpicStateTests
         epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting" });
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("agent_swarm", next.Name);
         Assert.NotNull(epic.AgentSwarm);
@@ -374,7 +376,7 @@ public class EpicStateTests
         };
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("human_in_loop", next.Name);
         Assert.NotNull(epic.HumanInLoop);
@@ -388,7 +390,7 @@ public class EpicStateTests
         epic.AgentSwarm = ConsensusSwarm("spec_writing", epic.CodingAgents);
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("human_in_loop", next.Name);
         Assert.NotNull(epic.HumanInLoop);
@@ -404,7 +406,7 @@ public class EpicStateTests
         epic.HumanInLoop = new HumanInLoop { IsApproved = false, ApproveToStateName = "implementation", RejectToStateName = "spec_writing" };
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("spec_writing", next.Name);
         Assert.True(spec.IsAbandoned);
@@ -421,7 +423,7 @@ public class EpicStateTests
         epic.HumanInLoop = new HumanInLoop { IsApproved = true, ApproveToStateName = "implementation", RejectToStateName = "spec_writing" };
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("implementation", next.Name);
     }
@@ -434,7 +436,7 @@ public class EpicStateTests
         epic.Specs.Add(new Spec { Id = "s2", AssignedAgentId = "agent-2", CurrentStateName = "spec_drafting", IsAbandoned = true });
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("spec_writing", next.Name);
         Assert.Contains("coding agent", epic.EpicAgentInstruction, StringComparison.OrdinalIgnoreCase);
@@ -449,7 +451,7 @@ public class EpicStateTests
         epic.AgentSwarm = ConsensusSwarm("spec_writing", epic.CodingAgents);
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("human_in_loop", next.Name);
         Assert.True(spec.IsSpecApproved);
@@ -464,7 +466,7 @@ public class EpicStateTests
         epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting", SpecDocPath = "/s1.md", IsSpecApproved = true });
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("human_in_loop", next.Name);
         Assert.NotNull(epic.HumanInLoop);
@@ -480,7 +482,7 @@ public class EpicStateTests
         epic.HumanInLoop = new HumanInLoop { IsApproved = true, ApproveToStateName = "implementation", RejectToStateName = "spec_writing" };
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("implementation", next.Name);
     }
@@ -494,7 +496,7 @@ public class EpicStateTests
         epic.HumanInLoop = new HumanInLoop { IsApproved = false, ApproveToStateName = "implementation", RejectToStateName = "spec_writing" };
         var state = new SpecWritingState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("spec_writing", next.Name);
         Assert.True(spec.IsAbandoned);
@@ -512,7 +514,7 @@ public class EpicStateTests
         epic.Specs.Add(spec);
         var state = new ImplementationState();
 
-        await state.MoveNext(epic);
+        await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.True(spec.IsSpecApproved);
     }
@@ -524,7 +526,7 @@ public class EpicStateTests
         epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "spec_drafting", SpecDocPath = "/s1.md" });
         var state = new ImplementationState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("implementation", next.Name);
         Assert.NotNull(epic.EpicAgentInstruction);
@@ -537,7 +539,7 @@ public class EpicStateTests
         epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "coding" });
         var state = new ImplementationState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("implementation", next.Name);
         Assert.Contains("Ping", epic.EpicAgentInstruction);
@@ -550,7 +552,7 @@ public class EpicStateTests
         epic.Specs.Add(new Spec { Id = "s1", AssignedAgentId = "agent-1", CurrentStateName = "done", SpecDocPath = "/s1.md" });
         var state = new ImplementationState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("human_in_loop", next.Name);
         Assert.NotNull(epic.HumanInLoop);
@@ -566,7 +568,7 @@ public class EpicStateTests
         var epic = BaseEpic();
         var state = new ClosedState();
 
-        var next = await state.MoveNext(epic);
+        var next = await state.MoveNext(epic, NullLogger.Instance);
 
         Assert.Equal("closed", next.Name);
     }

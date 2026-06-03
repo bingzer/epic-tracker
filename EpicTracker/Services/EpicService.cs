@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using EpicTracker.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace EpicTracker.Services;
 
@@ -34,7 +35,7 @@ namespace EpicTracker.Services;
 /// </list>
 /// </para>
 /// </remarks>
-public class EpicService(EpicTrackerDbContext db, TmuxService tmux)
+public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger)
 {
     /// <summary>
     /// Creates a new epic and seeds it at the "drafting" state.
@@ -401,7 +402,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux)
 
         var currentState = EpicState.Create(epic.CurrentStateName);
 
-        var nextState = await currentState.MoveNext(epic, cancellationToken);
+        var nextState = await currentState.MoveNext(epic, logger, cancellationToken);
 
         epic.CurrentStateName = nextState.Name;
 
@@ -523,7 +524,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux)
 
         var currentState = SpecState.Create(spec.CurrentStateName);
 
-        var nextState = await currentState.MoveNext(spec, cancellationToken);
+        var nextState = await currentState.MoveNext(spec, logger, cancellationToken);
 
         spec.CurrentStateName = nextState.Name;
 

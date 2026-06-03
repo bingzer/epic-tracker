@@ -1,5 +1,7 @@
 using EpicTracker.Contracts;
 using EpicTracker.Lifecycles.SpecStates;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace EpicTracker.Tests;
@@ -26,7 +28,7 @@ public class SpecStateTests
         spec.IsSpecApproved = false;
         var state = new DraftingSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("spec_drafting", next.Name);
         Assert.Null(spec.EpicAgentInstruction);
@@ -39,7 +41,7 @@ public class SpecStateTests
         spec.IsSpecApproved = true;
         var state = new DraftingSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("coding", next.Name);
         Assert.NotNull(spec.EpicAgentInstruction);
@@ -55,7 +57,7 @@ public class SpecStateTests
         spec.IsCodeDone = false;
         var state = new CodingSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("coding", next.Name);
         Assert.NotNull(spec.EpicAgentInstruction);
@@ -68,7 +70,7 @@ public class SpecStateTests
         spec.IsCodeDone = true;
         var state = new CodingSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("ac", next.Name);
         Assert.NotNull(spec.EpicAgentInstruction);
@@ -81,7 +83,7 @@ public class SpecStateTests
         spec.IsCodeDone = true;
         var state = new CodingSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("code_review", next.Name);
         Assert.NotNull(spec.EpicAgentInstruction);
@@ -96,7 +98,7 @@ public class SpecStateTests
         spec.IsCodeReviewApproved = null;
         var state = new CodeReviewSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("code_review", next.Name);
         Assert.Contains("reviewer-1", spec.EpicAgentInstruction);
@@ -109,7 +111,7 @@ public class SpecStateTests
         spec.IsCodeReviewApproved = true;
         var state = new CodeReviewSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("ac", next.Name);
         Assert.NotNull(spec.EpicAgentInstruction);
@@ -123,7 +125,7 @@ public class SpecStateTests
         spec.IsCodeReviewApproved = false;
         var state = new CodeReviewSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("coding", next.Name);
         Assert.False(spec.IsCodeDone);
@@ -139,7 +141,7 @@ public class SpecStateTests
         spec.IsAcPassed = null;
         var state = new AcSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("ac", next.Name);
         Assert.Contains("coding-agent-1", spec.EpicAgentInstruction);
@@ -153,7 +155,7 @@ public class SpecStateTests
         spec.IsAcPassed = false;
         var state = new AcSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("coding", next.Name);
         Assert.False(spec.IsCodeDone);
@@ -167,7 +169,7 @@ public class SpecStateTests
         spec.IsAcPassed = true;
         var state = new AcSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("spec_human_in_loop", next.Name);
         Assert.NotNull(spec.HumanInLoop);
@@ -189,7 +191,7 @@ public class SpecStateTests
         };
         var state = new AcSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("coding", next.Name);
         Assert.False(spec.IsCodeDone);
@@ -210,7 +212,7 @@ public class SpecStateTests
         };
         var state = new AcSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("done", next.Name);
         Assert.Null(spec.HumanInLoop);
@@ -225,7 +227,7 @@ public class SpecStateTests
         var spec = BaseSpec();
         var state = new HumanInLoopSpecState();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => state.MoveNext(spec));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => state.MoveNext(spec, NullLogger.Instance));
     }
 
     [Fact]
@@ -240,7 +242,7 @@ public class SpecStateTests
         };
         var state = new HumanInLoopSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("spec_human_in_loop", next.Name);
         Assert.Contains("Waiting for human response", spec.EpicAgentInstruction);
@@ -258,7 +260,7 @@ public class SpecStateTests
         };
         var state = new HumanInLoopSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("done", next.Name);
         Assert.Null(spec.HumanInLoop);
@@ -276,7 +278,7 @@ public class SpecStateTests
         };
         var state = new HumanInLoopSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("coding", next.Name);
         Assert.Null(spec.HumanInLoop);
@@ -290,7 +292,7 @@ public class SpecStateTests
         var spec = BaseSpec();
         var state = new DoneSpecState();
 
-        var next = await state.MoveNext(spec);
+        var next = await state.MoveNext(spec, NullLogger.Instance);
 
         Assert.Equal("done", next.Name);
     }

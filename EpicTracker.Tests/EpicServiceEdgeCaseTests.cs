@@ -21,7 +21,7 @@ public class EpicServiceEdgeCaseTests : IDisposable
         _db.Database.OpenConnection();
         _db.Database.EnsureCreated();
 
-        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance));
+        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance), NullLogger<EpicService>.Instance);
     }
 
     public void Dispose()

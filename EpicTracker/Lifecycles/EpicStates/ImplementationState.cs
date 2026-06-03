@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace EpicTracker.Lifecycles.EpicStates;
 
 /// <summary>
@@ -8,7 +10,7 @@ internal class ImplementationState : EpicState
 {
     public override string Name => "implementation";
 
-    public override async Task<EpicState> MoveNext(Epic epic, CancellationToken cancellationToken = default)
+    protected override async Task<EpicState> Next(Epic epic, ILogger logger, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
 

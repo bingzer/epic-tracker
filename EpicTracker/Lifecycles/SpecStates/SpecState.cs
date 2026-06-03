@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace EpicTracker.Lifecycles.SpecStates;
 
@@ -13,7 +14,22 @@ internal abstract class SpecState
 {
     public abstract string Name { get; }
 
-    public abstract Task<SpecState> MoveNext(Spec spec, CancellationToken cancellationToken = default);
+    protected abstract Task<SpecState> Next(Spec spec, ILogger logger, CancellationToken cancellationToken = default);
+
+    public async Task<SpecState> MoveNext(Spec spec, ILogger logger, CancellationToken cancellationToken = default)
+    {
+        var next = await Next(spec, logger, cancellationToken);
+
+        logger.LogInformation(
+            "[Spec {SpecId}] {FromState} → {ToState} | {Instruction}",
+            spec.Id,
+            Name,
+            next.Name,
+            spec.EpicAgentInstruction
+        );
+
+        return next;
+    }
 
     private static readonly Dictionary<string, Func<SpecState>> Factories = Assembly
         .GetExecutingAssembly()

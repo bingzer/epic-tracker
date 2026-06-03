@@ -1,10 +1,12 @@
+using Microsoft.Extensions.Logging;
+
 namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class HumanInLoopState : EpicState
 {
     public override string Name => "human_in_loop";
 
-    public override async Task<EpicState> MoveNext(Epic epic, CancellationToken cancellationToken = default)
+    protected override async Task<EpicState> Next(Epic epic, ILogger logger, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
 

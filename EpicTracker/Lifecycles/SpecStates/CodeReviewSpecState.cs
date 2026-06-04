@@ -17,9 +17,10 @@ internal class CodeReviewSpecState : SpecState
         if (spec.IsCodeReviewApproved is null)
         {
             spec.SetEpicAgentInstruction($"""
-                Hand off spec {spec.Id} to reviewer agent {spec.ReviewerAgentId} for code review.
-                Tell {spec.ReviewerAgentId} to review the implementation by {spec.AssignedAgentId} at {spec.SpecDocPath} and report back to you when done.
-                You are handing off — do not follow up. Wait for {spec.ReviewerAgentId} to report back, then call UpdateSpec to set IsCodeReviewApproved = true or false, then call AdvanceSpec.
+                Coordinate a direct code review between the coding agent and reviewer — do not relay messages.
+                1. Tell {spec.AssignedAgentId} to send their deliverables and spec context directly to {spec.ReviewerAgentId} via tmux-broker.
+                2. Tell {spec.ReviewerAgentId} to review the implementation at {spec.SpecDocPath} and send their verdict (APPROVED or REJECTED with notes) directly back to you (the PM) via tmux-broker — not to the coding agent.
+                Wait for {spec.ReviewerAgentId}'s verdict, then call update_spec(IsCodeReviewApproved, true/false) and advance_spec.
                 """);
 
             return this;

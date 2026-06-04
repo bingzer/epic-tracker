@@ -5,12 +5,21 @@ using ModelContextProtocol.Server;
 
 namespace EpicTracker.Api.Mcp;
 
+public record EpicSummary(string Id, string Name, string Slug, string CurrentStateName, string EpicAgent);
+public record AdvanceEpicResult(string Id, string CurrentStateName, string? EpicAgentInstruction, HumanInLoop? HumanInLoop);
+public record AdvanceSpecResult(string Id, string CurrentStateName, string? EpicAgentInstruction);
+public record CreateSpecResult(string Id, string CurrentStateName);
+public record UpdateSpecResult(bool Ok);
+
 [McpServerToolType]
 public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubContext)
 {
-    [McpServerTool(Name = "list_epics"), Description("Returns all epics with their current state. Use this to discover active epics or find the epicId you need before calling other tools.")]
-    public Task<List<Epic>> ListEpics(CancellationToken cancellationToken = default)
-        => service.ListEpics(cancellationToken);
+    [McpServerTool(Name = "list_epics"), Description("Returns slim summaries of all epics. Use this to discover active epics or find the epicId you need. Call get_epic for full detail.")]
+    public async Task<List<EpicSummary>> ListEpics(CancellationToken cancellationToken = default)
+    {
+        var epics = await service.ListEpics(cancellationToken);
+        return epics.Select(e => new EpicSummary(e.Id, e.Name, e.Slug, e.CurrentStateName, e.EpicAgent)).ToList();
+    }
 
     [McpServerTool(Name = "get_epic"), Description("Gets the current state of an epic, including its state name, agent instruction, typed flag fields, and all specs.")]
     public async Task<Epic> GetEpic(
@@ -33,14 +42,14 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         => service.GetEpicHistory(epicId, cancellationToken);
 
     [McpServerTool(Name = "advance"), Description("Advances the epic state machine one step. Call this after completing the current EpicAgentInstruction. Returns the same state (with a new instruction) when blocked waiting for external input — keep calling after acting on each instruction. Throws if epicAgentId does not match the epic's assigned agent.")]
-    public async Task<Epic> Advance(
+    public async Task<AdvanceEpicResult> Advance(
         [Description("The ID of the epic to advance.")] string epicId,
         [Description("The ID of the epic agent making the call.")] string epicAgentId,
         CancellationToken cancellationToken = default)
     {
         var result = await service.Advance(epicId, new AdvanceEpicRequest(epicAgentId), cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicUpdated", result, cancellationToken);
-        return result;
+        return new AdvanceEpicResult(result.Id, result.CurrentStateName, result.EpicAgentInstruction, result.HumanInLoop);
     }
 
     [McpServerTool(Name = "raise_agent_swarm"), Description("Raises an agent swarm event on the epic, signalling that a group of coding agents should be spawned to work toward an objective. Call advance after this to transition into the swarm-waiting state.")]
@@ -82,7 +91,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
     }
 
     [McpServerTool(Name = "create_spec"), Description("Creates a new spec (unit of work) under the given epic and assigns it to a coding agent.")]
-    public async Task<Spec> CreateSpec(
+    public async Task<CreateSpecResult> CreateSpec(
         [Description("The ID of the epic this spec belongs to.")] string epicId,
         [Description("A short human-readable name for this spec (e.g. 'auth-flow', 'user-profile'). Used to generate the spec ID.")] string specName,
         [Description("The ID of the coding agent assigned to implement this spec.")] string assignedAgentId,
@@ -94,7 +103,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         var result = await service.CreateSpec(epicId, new CreateSpecRequest(specName, assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentId), cancellationToken);
         var epic = await service.GetEpic(epicId, cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicUpdated", epic, cancellationToken);
-        return result;
+        return new CreateSpecResult(result.Id, result.CurrentStateName);
     }
 
     [McpServerTool(Name = "get_spec"), Description("Gets the current state of a spec, including its state name and assigned agent.")]
@@ -104,13 +113,13 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         => service.GetSpec(specId, cancellationToken);
 
     [McpServerTool(Name = "advance_spec"), Description("Advances the spec state machine one step. Call this when the coding agent has completed the current step.")]
-    public async Task<Spec> AdvanceSpec(
+    public async Task<AdvanceSpecResult> AdvanceSpec(
         [Description("The ID of the spec to advance.")] string specId,
         CancellationToken cancellationToken = default)
     {
         var result = await service.AdvanceSpec(specId, cancellationToken);
         await hubContext.Clients.All.SendAsync("SpecUpdated", result, cancellationToken);
-        return result;
+        return new AdvanceSpecResult(result.Id, result.CurrentStateName, result.EpicAgentInstruction);
     }
 
     [McpServerTool(Name = "update_epic"), Description("Sets a single field on an epic. Available fields: Name (string), Brief (string), EpicAgent (string), CodingAgents (comma-separated string), NeedsMockup (bool), IsDocDrafted (bool), IsMockupDone (bool), MockupPath (string).")]
@@ -126,7 +135,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
     }
 
     [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentId (string), ReviewerAgentId (string), SpecDocPath (string), CodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
-    public async Task<Spec> UpdateSpec(
+    public async Task<UpdateSpecResult> UpdateSpec(
         [Description("The ID of the spec to update.")] string specId,
         [Description("The name of the field to set.")] string fieldName,
         [Description("The string value to set. Booleans should be 'true' or 'false'.")] string value,
@@ -134,7 +143,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
     {
         var result = await service.UpdateSpecField(specId, fieldName, value, cancellationToken);
         await hubContext.Clients.All.SendAsync("SpecUpdated", result, cancellationToken);
-        return result;
+        return new UpdateSpecResult(true);
     }
 
 }

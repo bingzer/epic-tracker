@@ -18,6 +18,7 @@ internal class SpecWritingState : EpicState
                 Read the epic document at {epic.EpicDocumentPath}.
                 Instruct each coding agent (via tmux) to write a spec document under the epic path, following the governance format at {epic.EpicGovernancePath}, and send you the path and a short spec name (e.g. 'auth-flow') when done.
                 Agents: {agentList}
+                Tell each agent: specs should be Goldilocks-sized — not too big (one spec per concern, not one giant spec for everything), not too small (don't split trivial changes into many specs). A good spec covers one cohesive unit of work that can be implemented and reviewed independently.
                 For each agent that responds, call create_spec with their spec name, path, and agent ID to register it.
                 Once all agents have responded, call Advance.
                 Do NOT dispatch any coding work yet — this is the spec writing phase only.

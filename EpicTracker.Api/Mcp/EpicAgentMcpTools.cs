@@ -18,7 +18,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
     public async Task<List<EpicSummary>> ListEpics(CancellationToken cancellationToken = default)
     {
         var epics = await service.ListEpics(cancellationToken);
-        return epics.Select(e => new EpicSummary(e.Id, e.Name, e.Slug, e.CurrentStateName, e.EpicAgent)).ToList();
+        return epics.Select(e => new EpicSummary(e.Id, e.Name ?? string.Empty, e.Slug ?? string.Empty, e.CurrentStateName, e.EpicAgent)).ToList();
     }
 
     [McpServerTool(Name = "get_epic"), Description("Gets the current state of an epic, including its state name, agent instruction, typed flag fields, and all specs.")]

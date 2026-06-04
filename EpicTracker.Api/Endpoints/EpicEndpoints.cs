@@ -18,6 +18,7 @@ public class EpicEndpoints : ICarterModule
         app.MapPost("/epics/{id}/raise-agent-swarm", RaiseAgentSwarm);
         app.MapPost("/epics/{id}/raise-human-in-loop", RaiseHumanInLoop);
         app.MapPost("/epics/{id}/submit-agreement", SubmitAgreement);
+        app.MapPost("/epics/{id}/wake-agent", WakeAgent);
     }
 
     private static async Task<IResult> ListEpics(
@@ -118,6 +119,15 @@ public class EpicEndpoints : ICarterModule
         var result = await service.GetEpic(id, cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicUpdated", result, cancellationToken);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> WakeAgent(
+        string id,
+        EpicService service,
+        CancellationToken cancellationToken)
+    {
+        await service.WakeAgent(id, cancellationToken);
+        return Results.Ok();
     }
 
     private static async Task<IResult> SubmitAgreement(

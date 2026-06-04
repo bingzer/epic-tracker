@@ -36,6 +36,8 @@ export const EpicApi = {
   submitAgreement: (epicId: string, agentId: string, hasAgreed: boolean, note: string | null) =>
     api.post<void>(`/api/epics/${epicId}/submit-agreement`, { agentId, hasAgreed, note }),
 
+  wakeAgent: (epicId: string) => api.post<void>(`/api/epics/${epicId}/wake-agent`),
+
   createSpec: (epicId: string, assignedAgentId: string, specDocPath: string | null, codeReviewRequired: boolean, reviewerAgentId: string | null) =>
     api.post<Spec>(`/api/epics/${epicId}/specs`, { assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentId }),
 };

@@ -7,9 +7,17 @@ public class TmuxService(ILogger<TmuxService> logger)
 {
     public async Task SendKeys(string sessionName, string message, CancellationToken cancellationToken = default)
     {
-        var escaped = EscapeForTmux(message);
-        var args = $"send-keys -t {sessionName} {escaped} C-m Enter";
+        var escaped = EscapeForTmux(message.TrimEnd());
 
+        await RunTmux($"send-keys -t {sessionName} {escaped} C-m", sessionName, cancellationToken);
+
+        await Task.Delay(100, cancellationToken);
+
+        await RunTmux($"send-keys -t {sessionName} C-m", sessionName, cancellationToken);
+    }
+
+    private async Task RunTmux(string args, string sessionName, CancellationToken cancellationToken)
+    {
         var psi = new ProcessStartInfo("tmux", args)
         {
             RedirectStandardOutput = true,

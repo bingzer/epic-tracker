@@ -103,6 +103,15 @@ export default function EpicDetailPage() {
     if (tab === 'audit') loadAudit();
   }, [tab, loadAudit]);
 
+  async function handleWakeAgent() {
+    if (!epicId) return;
+    try {
+      await EpicApi.wakeAgent(epicId);
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+
   async function handleApproveSpecHumanInLoop(specId: string, isApproved: boolean, feedback: string | null) {
     try {
       await SpecApi.approveHumanInLoop(specId, isApproved, feedback);
@@ -133,6 +142,14 @@ export default function EpicDetailPage() {
           </span>
         )}
         <span className="text-xs text-gray-400 dark:text-zinc-600 font-mono ml-1">{epic.id}</span>
+        {epic.currentStateName === 'drafting' && (
+          <button
+            onClick={handleWakeAgent}
+            className="ml-auto text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          >
+            Let's work on {epic.name}
+          </button>
+        )}
       </div>
 
       <StateBreadcrumb state={epic.currentStateName} type="epic" />

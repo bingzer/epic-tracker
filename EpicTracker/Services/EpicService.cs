@@ -385,6 +385,12 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task WakeAgent(string epicId, CancellationToken cancellationToken = default)
+    {
+        var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
+        await tmux.SendKeys(entity.EpicAgent, $"Let's work on {entity.Name}. Call get_epic then advance.", cancellationToken);
+    }
+
     /// <summary>
     /// Advances the epic lifecycle one step. Called by the Epic Agent via MCP.
     /// </summary>

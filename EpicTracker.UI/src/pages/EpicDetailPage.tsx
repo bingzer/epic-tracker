@@ -10,7 +10,7 @@ import { AuditLogPanel } from '../components/AuditLogPanel';
 import { EscalationPanel } from '../components/EscalationPanel';
 import { useSignalR } from '../hooks/useSignalR';
 
-type Tab = 'board' | 'audit';
+type Tab = 'details' | 'board' | 'audit' | 'agent';
 
 const TRANSIENT_STATES = new Set(['agent_swarm', 'human_in_loop', 'spec_human_in_loop']);
 
@@ -119,7 +119,7 @@ export default function EpicDetailPage() {
   const [epic, setEpic] = useState<Epic | null>(null);
   const [auditLog, setAuditLog] = useState<EpicAudit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>('board');
+  const [tab, setTab] = useState<Tab>('details');
   const [error, setError] = useState<string | null>(null);
   const [agentInput, setAgentInput] = useState('');
   const [reviewerInput, setReviewerInput] = useState<string>('');
@@ -282,168 +282,160 @@ export default function EpicDetailPage() {
 
       <EscalationPanel key={epic.humanInLoop?.questions ?? 'none'} epic={epic} onUpdated={setEpic} />
 
-      <AgentSwarmPanel epic={epic} />
-
-      {epic.epicAgentInstruction && (
-        <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
-          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1">
-            Epic Agent Instruction
-          </span>
-          <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{epic.epicAgentInstruction}</p>
-        </div>
-      )}
-
-      {/* Metadata panel */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <div className="space-y-2">
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Slug</span>
-            <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs">{epic.slug}</span>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Created</span>
-            <span className="text-gray-800 dark:text-zinc-200 text-xs">{new Date(epic.createdAt).toLocaleString()}</span>
-          </div>
-          {epic.brief && (
-            <div>
-              <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Brief</span>
-              <span className="text-gray-800 dark:text-zinc-200">{epic.brief}</span>
-            </div>
-          )}
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Epic Agent</span>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-800 dark:text-zinc-200 font-mono text-sm">{epic.epicAgent}</span>
-              <a href={`openterm:${epic.epicAgent}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Open chat</a>
-            </div>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Needs Mockup</span>
-            <span className="text-gray-800 dark:text-zinc-200">{epic.needsMockup ? 'Yes' : 'No'}</span>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Doc Drafted</span>
-            <span className="text-gray-800 dark:text-zinc-200">{epic.isDocDrafted ? 'Yes' : 'No'}</span>
-          </div>
-          {epic.needsMockup && (
-            <>
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Mockup Done</span>
-                <span className="text-gray-800 dark:text-zinc-200">{epic.isMockupDone ? 'Yes' : 'No'}</span>
-              </div>
-              {epic.mockupPath && (
-                <div>
-                  <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Mockup Path</span>
-                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs break-all">{epic.mockupPath}</span>
-                </div>
-              )}
-            </>
-          )}
-          {epic.humanInLoop && (
-            <details>
-              <summary className="text-xs font-medium text-gray-500 dark:text-zinc-400 cursor-pointer">HumanInLoop</summary>
-              <pre className="text-xs bg-gray-50 dark:bg-zinc-800 rounded p-2 mt-1 overflow-auto">{JSON.stringify(epic.humanInLoop, null, 2)}</pre>
-            </details>
-          )}
-          {epic.agentSwarm && (
-            <details>
-              <summary className="text-xs font-medium text-gray-500 dark:text-zinc-400 cursor-pointer">AgentSwarm</summary>
-              <pre className="text-xs bg-gray-50 dark:bg-zinc-800 rounded p-2 mt-1 overflow-auto">{JSON.stringify(epic.agentSwarm, null, 2)}</pre>
-            </details>
-          )}
-        </div>
-        <div className="space-y-2">
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Epic Document</span>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs break-all">{epic.epicDocumentPath || '—'}</span>
-              {epic.epicDocumentPath && (
-                <button
-                  onClick={() => setDrawerPath(epic.epicDocumentPath)}
-                  className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 shrink-0"
-                >
-                  View
-                </button>
-              )}
-            </div>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Governance Path</span>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs break-all">{epic.epicGovernancePath || '—'}</span>
-              {epic.epicGovernancePath && (
-                <button
-                  onClick={() => setDrawerPath(epic.epicGovernancePath)}
-                  className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 shrink-0"
-                >
-                  View
-                </button>
-              )}
-            </div>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Coding Agents</span>
-            <div className="flex flex-wrap gap-1 mb-1">
-              {epic.codingAgents.map(a => (
-                <span key={a} className="inline-flex items-center gap-1 text-xs font-mono bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-1.5 py-0.5 rounded">
-                  {a}
-                  <a href={`openterm:${a}`} className="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 leading-none" title="Open chat">↗</a>
-                  <button
-                    onClick={() => handleRemoveCodingAgent(a)}
-                    className="text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 leading-none"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-1.5">
-              <input
-                value={agentInput}
-                onChange={e => setAgentInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCodingAgent(); } }}
-                placeholder="agent-id"
-                className="text-xs rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
-              />
-              <button
-                type="button"
-                onClick={handleAddCodingAgent}
-                className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 shrink-0"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Reviewer</span>
-            {epic.reviewerAgentId && (
-              <a href={`openterm:${epic.reviewerAgentId}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-mono mr-2">{epic.reviewerAgentId} ↗</a>
-            )}
-            <div className="flex gap-1.5 mt-1">
-              <input
-                value={reviewerInput}
-                onChange={e => setReviewerInput(e.target.value)}
-                placeholder="reviewer-agent-id"
-                className="text-xs rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
-              />
-              <button
-                type="button"
-                onClick={handleSaveReviewer}
-                className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 shrink-0"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-1">
+      <div className="flex gap-1 border-b border-gray-200 dark:border-zinc-800 -mb-2">
+        <button className={tabCls('details')} onClick={() => setTab('details')}>Epic Details</button>
         <button className={tabCls('board')} onClick={() => setTab('board')}>Epic Board</button>
         <button className={tabCls('audit')} onClick={() => setTab('audit')}>Audit Log</button>
+        <button className={tabCls('agent')} onClick={() => setTab('agent')}>Agent</button>
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 shadow-sm">
+        {tab === 'details' && (
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Slug</span>
+                <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs">{epic.slug}</span>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Created</span>
+                <span className="text-gray-800 dark:text-zinc-200 text-xs">{new Date(epic.createdAt).toLocaleString()}</span>
+              </div>
+              {epic.brief && (
+                <div>
+                  <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Brief</span>
+                  <span className="text-gray-800 dark:text-zinc-200">{epic.brief}</span>
+                </div>
+              )}
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Epic Agent</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-sm">{epic.epicAgent}</span>
+                  <a href={`openterm:${epic.epicAgent}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Open chat</a>
+                </div>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Needs Mockup</span>
+                <span className="text-gray-800 dark:text-zinc-200">{epic.needsMockup ? 'Yes' : 'No'}</span>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Doc Drafted</span>
+                <span className="text-gray-800 dark:text-zinc-200">{epic.isDocDrafted ? 'Yes' : 'No'}</span>
+              </div>
+              {epic.needsMockup && (
+                <>
+                  <div>
+                    <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Mockup Done</span>
+                    <span className="text-gray-800 dark:text-zinc-200">{epic.isMockupDone ? 'Yes' : 'No'}</span>
+                  </div>
+                  {epic.mockupPath && (
+                    <div>
+                      <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Mockup Path</span>
+                      <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs break-all">{epic.mockupPath}</span>
+                    </div>
+                  )}
+                </>
+              )}
+              {epic.humanInLoop && (
+                <details>
+                  <summary className="text-xs font-medium text-gray-500 dark:text-zinc-400 cursor-pointer">HumanInLoop</summary>
+                  <pre className="text-xs bg-gray-50 dark:bg-zinc-800 rounded p-2 mt-1 overflow-auto">{JSON.stringify(epic.humanInLoop, null, 2)}</pre>
+                </details>
+              )}
+              {epic.agentSwarm && (
+                <details>
+                  <summary className="text-xs font-medium text-gray-500 dark:text-zinc-400 cursor-pointer">AgentSwarm</summary>
+                  <pre className="text-xs bg-gray-50 dark:bg-zinc-800 rounded p-2 mt-1 overflow-auto">{JSON.stringify(epic.agentSwarm, null, 2)}</pre>
+                </details>
+              )}
+            </div>
+            <div className="space-y-2">
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Epic Document</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs break-all">{epic.epicDocumentPath || '—'}</span>
+                  {epic.epicDocumentPath && (
+                    <button
+                      onClick={() => setDrawerPath(epic.epicDocumentPath)}
+                      className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 shrink-0"
+                    >
+                      View
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Governance Path</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs break-all">{epic.epicGovernancePath || '—'}</span>
+                  {epic.epicGovernancePath && (
+                    <button
+                      onClick={() => setDrawerPath(epic.epicGovernancePath)}
+                      className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 shrink-0"
+                    >
+                      View
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Coding Agents</span>
+                <div className="flex flex-wrap gap-1 mb-1">
+                  {epic.codingAgents.map(a => (
+                    <span key={a} className="inline-flex items-center gap-1 text-xs font-mono bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-1.5 py-0.5 rounded">
+                      {a}
+                      <a href={`openterm:${a}`} className="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 leading-none" title="Open chat">↗</a>
+                      <button
+                        onClick={() => handleRemoveCodingAgent(a)}
+                        className="text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 leading-none"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-1.5">
+                  <input
+                    value={agentInput}
+                    onChange={e => setAgentInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCodingAgent(); } }}
+                    placeholder="agent-id"
+                    className="text-xs rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCodingAgent}
+                    className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 shrink-0"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Reviewer</span>
+                {epic.reviewerAgentId && (
+                  <a href={`openterm:${epic.reviewerAgentId}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-mono mr-2">{epic.reviewerAgentId} ↗</a>
+                )}
+                <div className="flex gap-1.5 mt-1">
+                  <input
+                    value={reviewerInput}
+                    onChange={e => setReviewerInput(e.target.value)}
+                    placeholder="reviewer-agent-id"
+                    className="text-xs rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveReviewer}
+                    className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 shrink-0"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {tab === 'board' && (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -472,6 +464,22 @@ export default function EpicDetailPage() {
         {tab === 'audit' && (
           <div className="p-4">
             <AuditLogPanel entries={auditLog} />
+          </div>
+        )}
+
+        {tab === 'agent' && (
+          <div className="p-4 space-y-4">
+            <AgentSwarmPanel epic={epic} />
+            {epic.epicAgentInstruction ? (
+              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
+                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1">
+                  Epic Agent Instruction
+                </span>
+                <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{epic.epicAgentInstruction}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 dark:text-zinc-500">No active agent instruction.</p>
+            )}
           </div>
         )}
       </div>

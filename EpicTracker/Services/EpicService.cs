@@ -376,7 +376,13 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         if (agreement is null)
         {
-            throw new InvalidOperationException($"Agent {request.AgentId} is not part of the swarm for epic {epicId}.");
+            if (!epic.CodingAgents.Contains(request.AgentId) && epic.EpicAgent != request.AgentId)
+            {
+                throw new InvalidOperationException($"Agent {request.AgentId} is not part of the swarm or codingAgents for epic {epicId}.");
+            }
+
+            agreement = new AgentAgreement { AgentId = request.AgentId };
+            epic.AgentSwarm.Agreements.Add(agreement);
         }
 
         agreement.HasAgreed = request.HasAgreed;

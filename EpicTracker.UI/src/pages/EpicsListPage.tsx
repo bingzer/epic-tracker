@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { EpicApi, type CreateEpicPayload } from '../epicApi';
 import type { Epic } from '../types';
 import { StateBadge } from '../components/StateBadge';
+import { useSignalR } from '../hooks/useSignalR';
 
 function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
   const [open, setOpen] = useState(false);
@@ -194,15 +195,36 @@ function EpicRow({ epic }: { epic: Epic }) {
   );
 }
 
+function sortByCreatedDesc(list: Epic[]): Epic[] {
+  return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
 export default function EpicsListPage() {
   const [epics, setEpics] = useState<Epic[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     EpicApi.list()
-      .then(epics => setEpics([...epics].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
+      .then(list => setEpics(sortByCreatedDesc(list)))
       .finally(() => setLoading(false));
   }, []);
+
+  useSignalR('/hubs/epic', {
+    EpicUpdated: (...args: unknown[]) => {
+      const updated = args[0] as Epic;
+      setEpics(prev => {
+        const exists = prev.some(e => e.id === updated.id);
+        if (exists) {
+          return sortByCreatedDesc(prev.map(e => e.id === updated.id ? updated : e));
+        }
+        return sortByCreatedDesc([updated, ...prev]);
+      });
+    },
+    EpicDeleted: (...args: unknown[]) => {
+      const deletedId = args[0] as string;
+      setEpics(prev => prev.filter(e => e.id !== deletedId));
+    },
+  });
 
   if (loading) return <div className="p-6 text-sm text-gray-400 dark:text-zinc-500">Loading…</div>;
 
@@ -213,7 +235,7 @@ export default function EpicsListPage() {
       </div>
 
       <div className="space-y-2 mb-4">
-        <CreateEpicForm onCreated={epic => setEpics(prev => [...prev, epic])} />
+        <CreateEpicForm onCreated={epic => setEpics(prev => sortByCreatedDesc([epic, ...prev]))} />
       </div>
 
       {epics.length === 0 ? (

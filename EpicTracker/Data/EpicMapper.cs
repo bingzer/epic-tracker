@@ -5,7 +5,7 @@ namespace EpicTracker.Data;
 
 internal static class EpicMapper
 {
-    internal static Epic ToEpic(EpicEntity entity)
+    internal static Epic ToEpic(EpicEntity entity, string basePath = "")
     {
         var epic = new Epic
         {
@@ -14,6 +14,7 @@ internal static class EpicMapper
             EpicAgent = entity.EpicAgent,
             Brief = entity.Brief,
             Slug = entity.Slug,
+            BasePath = basePath,
             NeedsMockup = entity.NeedsMockup,
             IsDocDrafted = entity.IsDocDrafted,
             MockupPath = entity.MockupPath,

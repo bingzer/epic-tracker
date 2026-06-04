@@ -19,6 +19,7 @@ public class EpicEndpoints : ICarterModule
         app.MapPost("/epics/{id}/raise-human-in-loop", RaiseHumanInLoop);
         app.MapPost("/epics/{id}/submit-agreement", SubmitAgreement);
         app.MapPost("/epics/{id}/wake-agent", WakeAgent);
+        app.MapDelete("/epics/{id}", DeleteEpic);
     }
 
     private static async Task<IResult> ListEpics(
@@ -128,6 +129,17 @@ public class EpicEndpoints : ICarterModule
     {
         await service.WakeAgent(id, cancellationToken);
         return Results.Ok();
+    }
+
+    private static async Task<IResult> DeleteEpic(
+        string id,
+        EpicService service,
+        IHubContext<EpicHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        await service.DeleteEpic(id, cancellationToken);
+        await hubContext.Clients.All.SendAsync("EpicDeleted", id, cancellationToken);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> SubmitAgreement(

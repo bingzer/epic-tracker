@@ -13,6 +13,7 @@ public class SpecEndpoints : ICarterModule
         app.MapPut("/specs/{id}", UpdateSpec);
         app.MapPost("/specs/{id}/advance", AdvanceSpec);
         app.MapPost("/specs/{id}/approve-human-in-loop", ApproveHumanInLoop);
+        app.MapPost("/specs/{id}/force-state", ForceState);
     }
 
     private static async Task<IResult> CreateSpec(
@@ -55,6 +56,18 @@ public class SpecEndpoints : ICarterModule
         CancellationToken cancellationToken)
     {
         var result = await service.AdvanceSpec(id, cancellationToken);
+        await hubContext.Clients.All.SendAsync("SpecUpdated", result, cancellationToken);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ForceState(
+        string id,
+        ForceSpecStateRequest body,
+        EpicService service,
+        IHubContext<EpicHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.ForceSpecState(id, body.StateName, cancellationToken);
         await hubContext.Clients.All.SendAsync("SpecUpdated", result, cancellationToken);
         return Results.Ok(result);
     }

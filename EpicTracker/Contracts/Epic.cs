@@ -7,8 +7,9 @@ public class Epic
     public string EpicAgent { get; set; } = default!;
     public string? Brief { get; set; }
     public string Slug { get; set; } = default!;
-    public string EpicDocumentPath => $"epics/{Slug}/epic.md";
-    public string EpicGovernancePath => $"epics/{Slug}/governance.md";
+    public string BasePath { get; set; } = default!;
+    public string EpicDocumentPath => Path.Combine(BasePath, "epics", Slug, "epic.md");
+    public string EpicGovernancePath => Path.Combine(BasePath, "epics", Slug, "governance.md");
     public bool NeedsMockup { get; set; }
     public bool IsDocDrafted { get; set; }
     public string? MockupPath { get; set; }

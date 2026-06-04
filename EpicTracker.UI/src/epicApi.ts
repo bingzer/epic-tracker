@@ -38,8 +38,14 @@ export const EpicApi = {
 
   wakeAgent: (epicId: string) => api.post<void>(`/api/epics/${epicId}/wake-agent`),
 
+  delete: (epicId: string) => api.delete(`/api/epics/${epicId}`),
+
   createSpec: (epicId: string, assignedAgentId: string, specDocPath: string | null, codeReviewRequired: boolean, reviewerAgentId: string | null) =>
     api.post<Spec>(`/api/epics/${epicId}/specs`, { assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentId }),
+};
+
+export const DocApi = {
+  get: (path: string) => api.getText(`/api/docs?path=${encodeURIComponent(path)}`),
 };
 
 export const SpecApi = {
@@ -51,4 +57,7 @@ export const SpecApi = {
 
   approveHumanInLoop: (specId: string, isApproved: boolean, humanInput: string | null) =>
     api.post<void>(`/api/specs/${specId}/approve-human-in-loop`, { isApproved, humanInput }),
+
+  forceState: (specId: string, stateName: string) =>
+    api.post<Spec>(`/api/specs/${specId}/force-state`, { stateName }),
 };

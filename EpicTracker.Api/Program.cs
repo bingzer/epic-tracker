@@ -5,9 +5,11 @@ using EpicTracker.Data;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
+var logPath = Path.Combine(AppContext.BaseDirectory, "logs", "epic-tracker-.log");
+
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/epic-tracker-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
+    .WriteTo.File(logPath, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,7 +18,7 @@ builder.Host.UseSerilog();
 
 var connectionString = builder.Configuration.GetConnectionString("Default")!;
 
-builder.Services.AddEpicTracker(connectionString);
+builder.Services.AddEpicTracker(connectionString, builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddMcpServer()
     .WithHttpTransport()

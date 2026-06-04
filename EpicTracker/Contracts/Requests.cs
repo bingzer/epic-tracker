@@ -26,3 +26,5 @@ public record CreateEpicRequest(
     List<string>? CodingAgents,
     bool NeedsMockup,
     string? ReviewerAgentId);
+
+public record ForceSpecStateRequest(string StateName);

@@ -5,6 +5,7 @@ using EpicTracker.Lifecycles.EpicStates;
 using EpicTracker.Lifecycles.SpecStates;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EpicTracker.Services;
 
@@ -37,7 +38,7 @@ namespace EpicTracker.Services;
 /// </list>
 /// </para>
 /// </remarks>
-public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger, IFileSystem fileSystem)
+public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger, IFileSystem fileSystem, IOptions<EpicTrackerOptions> options)
 {
     /// <summary>
     /// Creates a new epic and seeds it at the "drafting" state.
@@ -72,7 +73,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         db.Epics.Add(entity);
 
-        var created = EpicMapper.ToEpic(entity);
+        var created = ToEpic(entity);
 
         db.EpicAudits.Add(EpicMapper.ToAudit(entity.Id, request.EpicAgent, string.Empty, created));
 
@@ -80,6 +81,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         return created;
     }
+
+    private Epic ToEpic(EpicEntity entity) => EpicMapper.ToEpic(entity, options.Value.EpicsBasePath);
 
     private static string Slugify(string? name, string fallbackGuid)
     {
@@ -109,7 +112,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             .Include(e => e.Specs.Where(s => !s.IsAbandoned))
             .ToListAsync(cancellationToken);
 
-        return entities.Select(EpicMapper.ToEpic).ToList();
+        return entities.Select(ToEpic).ToList();
     }
 
     /// <summary>
@@ -119,7 +122,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        return EpicMapper.ToEpic(entity);
+        return ToEpic(entity);
     }
 
     /// <summary>
@@ -155,11 +158,12 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         entity.IsMockupDone = epic.IsMockupDone;
         entity.MockupPath = epic.MockupPath;
         entity.CodingAgents = JsonSerializer.Serialize(epic.CodingAgents);
+        entity.ReviewerAgentId = epic.ReviewerAgentId;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return EpicMapper.ToEpic(entity);
+        return ToEpic(entity);
     }
 
     /// <summary>
@@ -214,7 +218,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return EpicMapper.ToEpic(entity);
+        return ToEpic(entity);
     }
 
     /// <summary>
@@ -285,7 +289,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        var epic = EpicMapper.ToEpic(entity);
+        var epic = ToEpic(entity);
 
         epic.AgentSwarm = new AgentSwarm
         {
@@ -311,7 +315,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        var epic = EpicMapper.ToEpic(entity);
+        var epic = ToEpic(entity);
 
         epic.HumanInLoop = new HumanInLoop
         {
@@ -334,7 +338,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        var epic = EpicMapper.ToEpic(entity);
+        var epic = ToEpic(entity);
 
         if (epic.HumanInLoop is null)
         {
@@ -361,7 +365,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        var epic = EpicMapper.ToEpic(entity);
+        var epic = ToEpic(entity);
 
         if (epic.AgentSwarm is null)
         {
@@ -388,7 +392,19 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     public async Task WakeAgent(string epicId, CancellationToken cancellationToken = default)
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
-        await tmux.SendKeys(entity.EpicAgent, $"Let's work on {entity.Id}. Call get_epic then advance.", cancellationToken);
+
+        var message = entity.CurrentStateName == new DraftingState().Name
+            ? $"Let's work on {entity.Id}. Call get_epic then advance."
+            : $"Hey, are you still working on epic {entity.Id}? If not, please continue where you left off.";
+
+        await tmux.SendKeys(entity.EpicAgent, message, cancellationToken);
+    }
+
+    public async Task DeleteEpic(string epicId, CancellationToken cancellationToken = default)
+    {
+        var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
+        db.Epics.Remove(entity);
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -408,7 +424,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             throw new InvalidOperationException($"{request.EpicAgentId} is not the Epic Agent for epic {epicId}.");
         }
 
-        var epic = EpicMapper.ToEpic(entity);
+        var epic = ToEpic(entity);
 
         var fromState = epic.CurrentStateName;
 
@@ -539,6 +555,15 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var epicEntity = await db.FindEpicOrThrow(entity.EpicId, cancellationToken);
         await tmux.SendKeys(epicEntity.EpicAgent, $"Human {(request.IsApproved ? "approved" : "rejected")} spec {specId}. Call advance_spec then advance.", cancellationToken);
+    }
+
+    public async Task<Spec> ForceSpecState(string specId, string stateName, CancellationToken cancellationToken = default)
+    {
+        var entity = await db.FindSpecOrThrow(specId, cancellationToken);
+        entity.CurrentStateName = stateName;
+        entity.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return EpicMapper.ToSpec(entity);
     }
 
     /// <summary>

@@ -26,14 +26,7 @@ internal class HumanInLoopState : EpicState
             ? epic.HumanInLoop.ApproveToStateName
             : epic.HumanInLoop.RejectToStateName;
 
-        if (epic.HumanInLoop.IsApproved == true)
-        {
-            epic.ResetHumanApproval($"Human approved. Routing to {toStateName}.");
-        }
-        else
-        {
-            epic.SetEpicAgentInstruction($"Human rejected. Routing to {toStateName}.");
-        }
+        epic.ResetHumanApproval($"Human {(epic.HumanInLoop.IsApproved == true ? "approved" : "rejected")}. Routing to {toStateName}.");
 
         return EpicState.Create(toStateName);
     }

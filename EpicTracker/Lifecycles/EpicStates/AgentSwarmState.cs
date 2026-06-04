@@ -21,6 +21,7 @@ internal class AgentSwarmState : EpicState
 
         if (swarm.HasConsensus)
         {
+            epic.ResetAgentSwarm("Agent swarm reached consensus. Call Advance to continue.");
             return EpicState.Create(swarm.ToStateName);
         }
 

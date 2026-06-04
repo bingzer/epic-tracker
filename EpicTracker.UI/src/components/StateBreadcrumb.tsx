@@ -4,12 +4,45 @@ const SPEC_STATES = ['spec_drafting', 'coding', 'code_review', 'ac', 'done'];
 interface Props {
   state: string;
   type: 'epic' | 'spec';
+  lastRealState?: string;
 }
 
-export function StateBreadcrumb({ state, type }: Props) {
+export function StateBreadcrumb({ state, type, lastRealState }: Props) {
   const states = type === 'epic' ? EPIC_STATES : SPEC_STATES;
   const currentIdx = states.indexOf(state);
   const isOff = ['agent_swarm', 'human_in_loop', 'spec_human_in_loop'].includes(state);
+
+  if (isOff && lastRealState) {
+    const realIdx = states.indexOf(lastRealState);
+
+    return (
+      <div className="flex items-center gap-0.5 flex-wrap">
+        {states.map((s, i) => {
+          const isCurrent = s === lastRealState;
+          const isPast = realIdx >= 0 && i < realIdx;
+
+          let cls = 'text-xs px-2 py-0.5 rounded font-medium transition-colors ';
+          if (isCurrent) {
+            cls += 'bg-blue-600 text-white dark:bg-blue-500';
+          } else if (isPast) {
+            cls += 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+          } else {
+            cls += 'bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-zinc-600';
+          }
+
+          return (
+            <span key={s} className="flex items-center gap-0.5">
+              <span className={cls}>{s.replace(/_/g, ' ')}</span>
+              <span className={`text-xs ${isPast ? 'text-emerald-400 dark:text-emerald-600' : 'text-gray-300 dark:text-zinc-700'}`}>›</span>
+            </span>
+          );
+        })}
+        <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium">
+          {state.replace(/_/g, ' ')}
+        </span>
+      </div>
+    );
+  }
 
   if (isOff) {
     return (

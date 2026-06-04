@@ -16,12 +16,17 @@ internal class SpecWritingState : EpicState
 
             epic.SetEpicAgentInstruction($"""
                 Read the epic document at {epic.EpicDocumentPath}.
-                Instruct each coding agent (via tmux) to write a spec document under the epic path, following the governance format at {epic.EpicGovernancePath}, and send you the path and a short spec name (e.g. 'auth-flow') when done.
+                DO NOT write any spec documents yourself. Your job is to coordinate — message each coding agent via tmux and ask them to write their own spec doc.
+
+                Step-by-step:
+                1. Send each coding agent a tmux message asking them to write a spec document for their area of responsibility, following the governance format at {epic.EpicGovernancePath}.
+                2. Wait for each agent to reply with an absolute file path and a short spec name (e.g. 'auth-flow').
+                3. Only after receiving their reply, call create_spec with the path and agent ID they provided.
+                4. Once all agents have responded and all specs are registered, call Advance.
+
                 Agents: {agentList}
-                Tell each agent: specs should be Goldilocks-sized — not too big (one spec per concern, not one giant spec for everything), not too small (don't split trivial changes into many specs). A good spec covers one cohesive unit of work that can be implemented and reviewed independently. One spec per output file is a good heuristic.
+                Tell each agent: specs should be Goldilocks-sized — not too big (one spec per concern), not too small (don't split trivial changes). One spec per output file is a good heuristic.
                 Tell each agent: save the spec file using an absolute path and report back with the absolute path (e.g. C:\Users\... or /home/...) — relative paths will be rejected.
-                For each agent that responds, call create_spec with their spec name, path, and agent ID to register it.
-                Once all agents have responded, call Advance.
                 Do NOT dispatch any coding work yet — this is the spec writing phase only.
                 """);
 

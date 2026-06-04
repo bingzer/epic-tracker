@@ -25,6 +25,12 @@ internal class AgentSwarmState : EpicState
             return EpicState.Create(swarm.ToStateName);
         }
 
+        if (!swarm.IsComplete)
+        {
+            epic.SetEpicAgentInstruction("Not all agents have voted yet. Submit the remaining agreements via submit_agreement, then call Advance.");
+            return this;
+        }
+
         if (swarm.Iteration >= MaxIterations)
         {
             epic.RaiseHumanInLoop(
@@ -53,8 +59,15 @@ internal class AgentSwarmState : EpicState
     {
         var agentList = string.Join(", ", swarm.Agreements.Select(a => a.AgentId));
 
+        var isReVote = swarm.Iteration > 1;
+        var reVoteNote = isReVote
+            ? $"This is re-vote round {swarm.Iteration}. At least one agent disagreed in the previous round. When messaging agents, tell them this is a follow-up vote, summarise what was disputed, and ask them to reconsider with that context."
+            : "This is the first vote.";
+
         var instruction = $"""
             You are coordinating an agent swarm. This is iteration {swarm.Iteration} of {MaxIterations}.
+
+            {reVoteNote}
 
             Objective: {swarm.Objective}
 

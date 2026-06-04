@@ -97,7 +97,13 @@ internal class SpecWritingState : EpicState
                 spec.IsAbandoned = true;
             }
 
-            epic.ResetHumanApproval("Human rejected the spec list. All specs abandoned. Instruct coding agents to start fresh, then call Advance.");
+            var rejectionReason = epic.HumanInLoop?.HumanInput;
+            var rejectionNote = string.IsNullOrWhiteSpace(rejectionReason)
+                ? "No specific reason was given."
+                : $"Reason: {rejectionReason}";
+
+            epic.AgentSwarm = null;
+            epic.ResetHumanApproval($"Human rejected the spec list. All specs abandoned. {rejectionNote} Instruct coding agents to start fresh with this feedback in mind, then call Advance.");
 
             return this;
         }

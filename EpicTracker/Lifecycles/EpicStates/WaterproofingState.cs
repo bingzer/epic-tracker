@@ -21,7 +21,7 @@ internal class WaterproofingState : EpicState
         {
             epic.RaiseAgentSwarm(
                 objective: $"Read the epic document at {epic.EpicDocumentPath} and reach agreement on scope and responsibilities. Do NOT begin any implementation — this is scope alignment only.",
-                toStateName: new SpecWritingState().Name,
+                toStateName: Name,
                 instruction: $"""
                     Agent swarm raised for waterproofing alignment.
                     Use the tmux-broker MCP tools (mcp__tmux-broker__send_message / mcp__tmux-broker__get_message) to message each coding agent — do NOT spawn sub-agents.

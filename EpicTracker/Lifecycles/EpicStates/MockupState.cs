@@ -10,35 +10,14 @@ internal class MockupState : EpicState
 
         var epic = context.Epic;
 
-        var providedPath = epic.HumanInLoop?.HumanInput;
-        if (!string.IsNullOrWhiteSpace(providedPath))
+        if (!epic.NeedsMockup)
         {
-            if (!context.FileSystem.FileExists(providedPath))
-            {
-                epic.RaiseHumanInLoop(
-                    questions: $"The path '{providedPath}' does not exist. Please provide a valid folder path for mockup files.",
-                    approveToStateName: Name,
-                    rejectToStateName: Name,
-                    instruction: "Provided mockup path does not exist. Waiting for a valid path. Wait for further instruction."
-                );
-
-                return new HumanInLoopState();
-            }
-
-            epic.MockupPath = providedPath;
-            epic.ResetHumanApproval($"Mockup path set to {epic.MockupPath}. Proceeding.");
+            return new WaterproofingState();
         }
 
         if (string.IsNullOrWhiteSpace(epic.MockupPath))
         {
-            epic.RaiseHumanInLoop(
-                questions: "What folder path should mockup files be written to?",
-                approveToStateName: Name,
-                rejectToStateName: Name,
-                instruction: "Waiting for human to provide the mockup folder path. Wait for further instruction."
-            );
-
-            return new HumanInLoopState();
+            epic.MockupPath = Path.Combine(epic.BasePath, "epics", epic.Slug, "mockups");
         }
 
         if (!epic.IsMockupDone)

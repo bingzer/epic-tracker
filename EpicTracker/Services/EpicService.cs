@@ -79,6 +79,12 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
+        var epicRoot = Path.Combine(options.Value.EpicsBasePath, "epics", slug);
+        foreach (var subdir in new[] { "specs", "mockups", "output" })
+        {
+            Directory.CreateDirectory(Path.Combine(epicRoot, subdir));
+        }
+
         return created;
     }
 
@@ -284,7 +290,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return EpicMapper.ToSpec(entity);
+        return await AdvanceSpec(specId, cancellationToken);
     }
 
     /// <summary>
@@ -542,7 +548,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return EpicMapper.ToSpec(entity);
+        return await AdvanceSpec(spec.Id, cancellationToken);
     }
 
     /// <summary>

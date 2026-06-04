@@ -28,3 +28,5 @@ public record CreateEpicRequest(
     string? ReviewerAgentId);
 
 public record ForceSpecStateRequest(string StateName);
+
+public record ForceEpicStateRequest(string StateName);

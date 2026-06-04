@@ -15,6 +15,7 @@ public class EpicEndpoints : ICarterModule
         app.MapPut("/epics/{id}", UpdateEpic);
         app.MapPost("/epics/{id}/advance", Advance);
         app.MapPost("/epics/{id}/approve-human-in-loop", ApproveHumanInLoop);
+        app.MapPost("/epics/{id}/force-state", ForceState);
         app.MapPost("/epics/{id}/raise-agent-swarm", RaiseAgentSwarm);
         app.MapPost("/epics/{id}/raise-human-in-loop", RaiseHumanInLoop);
         app.MapPost("/epics/{id}/submit-agreement", SubmitAgreement);
@@ -92,6 +93,18 @@ public class EpicEndpoints : ICarterModule
     {
         await service.ApproveHumanInLoop(id, body, cancellationToken);
         var result = await service.GetEpic(id, cancellationToken);
+        await hubContext.Clients.All.SendAsync("EpicUpdated", result, cancellationToken);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ForceState(
+        string id,
+        ForceEpicStateRequest body,
+        EpicService service,
+        IHubContext<EpicHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.ForceEpicState(id, body.StateName, cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicUpdated", result, cancellationToken);
         return Results.Ok(result);
     }

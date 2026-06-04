@@ -40,6 +40,9 @@ export const EpicApi = {
 
   delete: (epicId: string) => api.delete(`/api/epics/${epicId}`),
 
+  forceState: (epicId: string, stateName: string) =>
+    api.post<Epic>(`/api/epics/${epicId}/force-state`, { stateName }),
+
   createSpec: (epicId: string, assignedAgentId: string, specDocPath: string | null, codeReviewRequired: boolean, reviewerAgentId: string | null) =>
     api.post<Spec>(`/api/epics/${epicId}/specs`, { assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentId }),
 };

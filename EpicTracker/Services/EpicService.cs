@@ -166,6 +166,15 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         return ToEpic(entity);
     }
 
+    public async Task<Epic> ForceEpicState(string epicId, string stateName, CancellationToken cancellationToken = default)
+    {
+        var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
+        entity.CurrentStateName = stateName;
+        entity.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return ToEpic(entity);
+    }
+
     /// <summary>
     /// Sets a single named field on an epic. The field name must be in the whitelist.
     /// </summary>
@@ -401,7 +410,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var message = entity.CurrentStateName == new DraftingState().Name
             ? $"Let's work on {entity.Id}. Call get_epic then advance."
-            : $"Hey, are you still working on epic {entity.Id}? If not, please continue where you left off.";
+            : $"Hey, are you still working on epic {entity.Id}? If not, please continue — call get_epic(\"{entity.Id}\") first to get the latest state, then carry on.";
 
         await tmux.SendKeys(entity.EpicAgent, message, cancellationToken);
     }

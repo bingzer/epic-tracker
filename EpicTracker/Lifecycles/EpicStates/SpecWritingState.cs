@@ -28,6 +28,11 @@ internal class SpecWritingState : EpicState
                 Tell each agent: specs should be Goldilocks-sized — not too big (one spec per concern), not too small (don't split trivial changes). One spec per output file is a good heuristic.
                 Tell each agent: save the spec file using an absolute path and report back with the absolute path (e.g. C:\Users\... or /home/...) — relative paths will be rejected.
                 Do NOT dispatch any coding work yet — this is the spec writing phase only.
+
+                After calling Advance, the state machine will:
+                - Raise an agent swarm asking all agents to review and agree on the full spec list. You will collect AGREE/DISAGREE responses and call submit_agreement for each, then Advance again.
+                - Then check that each spec document actually exists on disk. If any are missing, you will be asked to follow up with the relevant agent.
+                - Then raise a HumanInLoop for final human sign-off before implementation begins.
                 """);
 
             return this;

@@ -1,14 +1,14 @@
-using Microsoft.Extensions.Logging;
-
 namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class HumanInLoopState : EpicState
 {
     public override string Name => "human_in_loop";
 
-    protected override async Task<EpicState> Next(Epic epic, ILogger logger, CancellationToken cancellationToken = default)
+    protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
+
+        var epic = context.Epic;
 
         if (epic.HumanInLoop is null)
         {
@@ -26,7 +26,14 @@ internal class HumanInLoopState : EpicState
             ? epic.HumanInLoop.ApproveToStateName
             : epic.HumanInLoop.RejectToStateName;
 
-        epic.SetEpicAgentInstruction($"Human responded. Routing to {toStateName}.");
+        if (epic.HumanInLoop.IsApproved == true)
+        {
+            epic.ResetHumanApproval($"Human approved. Routing to {toStateName}.");
+        }
+        else
+        {
+            epic.SetEpicAgentInstruction($"Human rejected. Routing to {toStateName}.");
+        }
 
         return EpicState.Create(toStateName);
     }

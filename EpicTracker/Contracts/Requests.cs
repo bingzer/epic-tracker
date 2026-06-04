@@ -11,6 +11,7 @@ public record RaiseHumanInLoopRequest(string Questions, string ApproveToStateNam
 public record SubmitAgreementRequest(string AgentId, bool HasAgreed, string? Note);
 
 public record CreateSpecRequest(
+    string SpecName,
     string AssignedAgentId,
     string? SpecDocPath,
     bool CodeReviewRequired,

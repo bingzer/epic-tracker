@@ -13,6 +13,7 @@ public static class ServiceRegistration
 
         services.AddScoped<EpicService>();
         services.AddSingleton<TmuxService>();
+        services.AddSingleton<IFileSystem, FileSystem>();
 
         return services;
     }

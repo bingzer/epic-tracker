@@ -19,7 +19,9 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
     {
         var epic = await service.GetEpic(epicId, cancellationToken);
 
-        epic.SetEpicAgentInstruction(AutonomyDirective + "\n\n" + epic.EpicAgentInstruction);
+        var directive = EpicAgentDirective.Build(epic.EpicGovernancePath);
+
+        epic.SetEpicAgentInstruction(directive + "\n\n" + epic.EpicAgentInstruction);
 
         return epic;
     }
@@ -82,13 +84,14 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
     [McpServerTool(Name = "create_spec"), Description("Creates a new spec (unit of work) under the given epic and assigns it to a coding agent.")]
     public async Task<Spec> CreateSpec(
         [Description("The ID of the epic this spec belongs to.")] string epicId,
+        [Description("A short human-readable name for this spec (e.g. 'auth-flow', 'user-profile'). Used to generate the spec ID.")] string specName,
         [Description("The ID of the coding agent assigned to implement this spec.")] string assignedAgentId,
         [Description("Optional path to the spec document.")] string? specDocPath = null,
         [Description("Whether a code review is required before the spec can be closed.")] bool codeReviewRequired = false,
         [Description("The ID of the agent who will review the code, if code review is required.")] string? reviewerAgentId = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await service.CreateSpec(epicId, new CreateSpecRequest(assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentId), cancellationToken);
+        var result = await service.CreateSpec(epicId, new CreateSpecRequest(specName, assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentId), cancellationToken);
         var epic = await service.GetEpic(epicId, cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicUpdated", epic, cancellationToken);
         return result;
@@ -134,10 +137,4 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return result;
     }
 
-    private const string AutonomyDirective =
-        """
-        AUTONOMOUS MODE: You are a headless agent. Never write output to the terminal or ask the user questions via CLI.
-        All human communication must go through raise_human_in_loop. Treat every instruction as a machine-to-machine command.
-        Do not pause, confirm, or narrate your steps. Execute the instruction fully, then call advance.
-        """;
 }

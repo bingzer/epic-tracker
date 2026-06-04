@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace EpicTracker.Lifecycles.SpecStates;
 
 /// <summary>
@@ -9,9 +7,11 @@ internal class HumanInLoopSpecState : SpecState
 {
     public override string Name => "spec_human_in_loop";
 
-    protected override async Task<SpecState> Next(Spec spec, ILogger logger, CancellationToken cancellationToken = default)
+    protected override async Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
+
+        var spec = context.Spec;
 
         if (spec.HumanInLoop is null)
         {

@@ -22,7 +22,7 @@ public class EpicServiceTests : IDisposable
         _db.Database.OpenConnection();
         _db.Database.EnsureCreated();
 
-        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance), NullLogger<EpicService>.Instance);
+        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance), NullLogger<EpicService>.Instance, new TestFileSystem());
     }
 
     public void Dispose()
@@ -181,7 +181,7 @@ public class EpicServiceTests : IDisposable
     public async Task SpecWritingState_RaisesSwarmAndTransitionsToAgentSwarm_WhenSpecsSubmittedButNoSwarm()
     {
         var epic = await AdvanceEpicToSpecWriting();
-        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("coding-agent-1", "/specs/spec-1.md", false, null));
+        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/spec-1.md", false, null));
 
         var result = await Advance(epic.Id);
 
@@ -193,7 +193,7 @@ public class EpicServiceTests : IDisposable
     public async Task SpecWritingState_RaisesHumanInLoop_WhenConsensusReached()
     {
         var epic = await AdvanceEpicToSpecWriting();
-        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("coding-agent-1", "/specs/spec-1.md", false, null));
+        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/spec-1.md", false, null));
 
         await _svc.RaiseAgentSwarm(epic.Id, new RaiseAgentSwarmRequest("Review spec list", "spec_writing"));
         var entity = await _db.FindEpicOrThrow(epic.Id);
@@ -212,7 +212,7 @@ public class EpicServiceTests : IDisposable
     public async Task SpecWritingState_Rejection_AbandonsSpecsAndResets()
     {
         var epic = await AdvanceEpicToSpecWriting();
-        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("coding-agent-1", "/specs/spec-1.md", false, null));
+        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/spec-1.md", false, null));
 
         await _svc.RaiseAgentSwarm(epic.Id, new RaiseAgentSwarmRequest("Review spec list", "spec_writing"));
         var entity = await _db.FindEpicOrThrow(epic.Id);
@@ -411,7 +411,7 @@ public class EpicServiceTests : IDisposable
     public async Task ImplementationState_BlocksWhileOneSpecStillInProgress()
     {
         var epic = await AdvanceEpicToImplementation();
-        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("coding-agent-2", "/specs/spec-2.md", false, null));
+        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("spec-2", "coding-agent-2", "/specs/spec-2.md", false, null));
 
         await Advance(epic.Id);
 
@@ -429,7 +429,7 @@ public class EpicServiceTests : IDisposable
     public async Task ImplementationState_AdvancesToHumanInLoop_WhenAllSpecsDone()
     {
         var epic = await AdvanceEpicToImplementation();
-        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("coding-agent-2", "/specs/spec-2.md", false, null));
+        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("spec-2", "coding-agent-2", "/specs/spec-2.md", false, null));
 
         await Advance(epic.Id);
 
@@ -452,7 +452,7 @@ public class EpicServiceTests : IDisposable
     public async Task UpdateSpec_PersistsFlags()
     {
         await SeedEpicEntity("epic-flags");
-        var spec = await _svc.CreateSpec("epic-flags", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-flags", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _svc.UpdateSpec(new Spec
         {
@@ -479,7 +479,7 @@ public class EpicServiceTests : IDisposable
     public async Task CreateSpec_Throws_WhenEpicNotFound()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _svc.CreateSpec("non-existent-epic", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null)));
+            () => _svc.CreateSpec("non-existent-epic", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null)));
     }
 
     // ── done spec is terminal ─────────────────────────────────────────────────
@@ -488,7 +488,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_DoneSpec_StaysDone()
     {
         await SeedEpicEntity("epic-done");
-        var spec = await _svc.CreateSpec("epic-done", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-done", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.CurrentStateName, "done"));
@@ -505,7 +505,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_DraftingState_BlocksUntilApproved()
     {
         await SeedEpicEntity("epic-1");
-        var spec = await _svc.CreateSpec("epic-1", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-1", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         var result = await _svc.AdvanceSpec(spec.Id);
 
@@ -516,7 +516,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_DraftingState_AdvancesToCoding_WhenApproved()
     {
         await SeedEpicEntity("epic-2");
-        var spec = await _svc.CreateSpec("epic-2", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-2", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs
             .Where(s => s.Id == spec.Id)
@@ -533,7 +533,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_CodingState_BlocksUntilCodeDone()
     {
         await SeedEpicEntity("epic-3");
-        var spec = await _svc.CreateSpec("epic-3", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-3", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -550,7 +550,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_CodingState_AdvancesToAc_WhenCodeDone_NoReview()
     {
         await SeedEpicEntity("epic-4");
-        var spec = await _svc.CreateSpec("epic-4", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-4", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -568,7 +568,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_CodingState_AdvancesToCodeReview_WhenCodeDone_ReviewRequired()
     {
         await SeedEpicEntity("epic-5");
-        var spec = await _svc.CreateSpec("epic-5", new CreateSpecRequest("coding-agent-1", "/specs/s.md", true, "reviewer-1"));
+        var spec = await _svc.CreateSpec("epic-5", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", true, "reviewer-1"));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -586,7 +586,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_CodeReview_Rejection_ResetsToCodin()
     {
         await SeedEpicEntity("epic-6");
-        var spec = await _svc.CreateSpec("epic-6", new CreateSpecRequest("coding-agent-1", "/specs/s.md", true, "reviewer-1"));
+        var spec = await _svc.CreateSpec("epic-6", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", true, "reviewer-1"));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -606,7 +606,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_AcState_BlocksUntilAcPassed()
     {
         await SeedEpicEntity("epic-7");
-        var spec = await _svc.CreateSpec("epic-7", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-7", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -624,7 +624,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_AcState_Failure_ResetsToCodin()
     {
         await SeedEpicEntity("epic-8");
-        var spec = await _svc.CreateSpec("epic-8", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-8", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -644,7 +644,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_AcState_RaisesHumanInLoop_WhenAcPassed()
     {
         await SeedEpicEntity("epic-9");
-        var spec = await _svc.CreateSpec("epic-9", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-9", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -664,7 +664,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_HumanInLoop_BlocksUntilResponse()
     {
         await SeedEpicEntity("epic-10");
-        var spec = await _svc.CreateSpec("epic-10", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-10", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -686,7 +686,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_HumanInLoop_Approve_AdvancesToDone()
     {
         await SeedEpicEntity("epic-11");
-        var spec = await _svc.CreateSpec("epic-11", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-11", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -709,7 +709,7 @@ public class EpicServiceTests : IDisposable
     public async Task AdvanceSpec_HumanInLoop_Reject_ReturnsToCodin()
     {
         await SeedEpicEntity("epic-12");
-        var spec = await _svc.CreateSpec("epic-12", new CreateSpecRequest("coding-agent-1", "/specs/s.md", false, null));
+        var spec = await _svc.CreateSpec("epic-12", new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/s.md", false, null));
 
         await _db.Specs.Where(s => s.Id == spec.Id)
             .ExecuteUpdateAsync(s => s
@@ -756,7 +756,7 @@ public class EpicServiceTests : IDisposable
     {
         var epic = await AdvanceEpicToSpecWriting();
 
-        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("coding-agent-1", "/specs/spec-1.md", false, null));
+        await _svc.CreateSpec(epic.Id, new CreateSpecRequest("spec-1", "coding-agent-1", "/specs/spec-1.md", false, null));
 
         await _svc.RaiseAgentSwarm(epic.Id, new RaiseAgentSwarmRequest("Review spec list", "spec_writing"));
         var entity = await _db.FindEpicOrThrow(epic.Id);

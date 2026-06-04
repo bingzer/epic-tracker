@@ -1,14 +1,14 @@
-using Microsoft.Extensions.Logging;
-
 namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class DraftingState : EpicState
 {
     public override string Name => "drafting";
 
-    protected override async Task<EpicState> Next(Epic epic, ILogger logger, CancellationToken cancellationToken = default)
+    protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
+
+        var epic = context.Epic;
 
         if (!TryValidate(epic, out var instruction))
         {
@@ -29,9 +29,12 @@ internal class DraftingState : EpicState
             return this;
         }
 
-        epic.SetEpicAgentInstruction(
-            $"The epic document is ready at {epic.EpicDocumentPath}. " +
-            "Begin waterproofing — coordinate all agents to read it and align on scope and responsibilities.");
+        epic.SetEpicAgentInstruction($"""
+            The epic document is drafted at {epic.EpicDocumentPath}.
+            Follow governance process to write the document. Epic governance path is {epic.EpicGovernancePath}.
+            Review it for completeness and clarity. If it needs work, call raise_human_in_loop with feedback.
+            Once it's good, call advance.
+            """);
 
         return new WaterproofingState();
     }

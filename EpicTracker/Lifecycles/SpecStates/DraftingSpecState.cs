@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace EpicTracker.Lifecycles.SpecStates;
 
 /// <summary>
@@ -9,18 +7,30 @@ internal class DraftingSpecState : SpecState
 {
     public override string Name => "spec_drafting";
 
-    protected override async Task<SpecState> Next(Spec spec, ILogger logger, CancellationToken cancellationToken = default)
+    protected override async Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
+
+        var spec = context.Spec;
 
         if (!spec.IsSpecApproved)
         {
             return this;
         }
 
+        if (!context.FileSystem.FileExists(spec.SpecDocPath))
+        {
+            spec.SetEpicAgentInstruction($"""
+                Spec {spec.Id} is approved but the spec document cannot be found at {spec.SpecDocPath}.
+                Ask {spec.AssignedAgentId} to confirm the correct path, then call update_spec({spec.Id}, SpecDocPath, <corrected path>) and advance_spec({spec.Id}).
+                """);
+
+            return this;
+        }
+
         spec.SetEpicAgentInstruction($"""
-            Send {spec.AssignedAgentId} the spec at {spec.SpecDocPath} and tell them to implement it and report back when done.
-            Once they confirm, call update_spec({spec.Id}, IsCodeDone, true) and then advance_spec({spec.Id}) on their behalf.
+            Spec {spec.Id} is approved. The spec document is confirmed at {spec.SpecDocPath}.
+            Notify {spec.AssignedAgentId} that their spec is approved and they should stand by for implementation.
             """);
 
         return new CodingSpecState();

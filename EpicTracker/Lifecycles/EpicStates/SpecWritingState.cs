@@ -1,14 +1,14 @@
-using Microsoft.Extensions.Logging;
-
 namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class SpecWritingState : EpicState
 {
     public override string Name => "spec_writing";
 
-    protected override async Task<EpicState> Next(Epic epic, ILogger logger, CancellationToken cancellationToken = default)
+    protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
+
+        var epic = context.Epic;
 
         if (epic.Specs.All(s => s.IsAbandoned))
         {
@@ -16,9 +16,9 @@ internal class SpecWritingState : EpicState
 
             epic.SetEpicAgentInstruction($"""
                 Read the epic document at {epic.EpicDocumentPath}.
-                Instruct each coding agent (via tmux) to write a spec document under the epic path and send you the path when done.
+                Instruct each coding agent (via tmux) to write a spec document under the epic path, following the governance format at {epic.EpicGovernancePath}, and send you the path and a short spec name (e.g. 'auth-flow') when done.
                 Agents: {agentList}
-                For each agent that sends you a spec path, call create_spec to register it.
+                For each agent that responds, call create_spec with their spec name, path, and agent ID to register it.
                 Once all agents have responded, call Advance.
                 Do NOT dispatch any coding work yet — this is the spec writing phase only.
                 """);
@@ -90,6 +90,24 @@ internal class SpecWritingState : EpicState
             return this;
         }
 
+        // last check before advancing
+        // check for file existence to ensure specs are actually written before moving on
+        var allSpecsExist = epic.Specs.Where(s => !s.IsAbandoned).All(s => context.FileSystem.FileExists(s.SpecDocPath));
+        if (!allSpecsExist)
+        {
+            var missingSpecs = epic.Specs.Where(s => !s.IsAbandoned && !context.FileSystem.FileExists(s.SpecDocPath)).ToList();
+            var missingList = string.Join("\n", missingSpecs.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.SpecDocPath}"));
+
+            epic.SetEpicAgentInstruction($"""
+                Not all spec documents can be found. Please ensure each coding agent has written their spec and the file paths are correct.
+                Missing specs:
+                {missingList}
+                Once all specs are confirmed to exist, call Advance.
+                """);
+
+            return this;
+        }
+        
         return new ImplementationState();
     }
 }

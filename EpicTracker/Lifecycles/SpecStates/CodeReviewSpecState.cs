@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace EpicTracker.Lifecycles.SpecStates;
 
 /// <summary>
@@ -10,9 +8,11 @@ internal class CodeReviewSpecState : SpecState
 {
     public override string Name => "code_review";
 
-    protected override async Task<SpecState> Next(Spec spec, ILogger logger, CancellationToken cancellationToken = default)
+    protected override async Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
+
+        var spec = context.Spec;
 
         if (spec.IsCodeReviewApproved is null)
         {

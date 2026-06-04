@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using EpicTracker.Data;
+using EpicTracker.Lifecycles.EpicStates;
+using EpicTracker.Lifecycles.SpecStates;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +37,7 @@ namespace EpicTracker.Services;
 /// </list>
 /// </para>
 /// </remarks>
-public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger)
+public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger, IFileSystem fileSystem)
 {
     /// <summary>
     /// Creates a new epic and seeds it at the "drafting" state.
@@ -402,7 +404,9 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var currentState = EpicState.Create(epic.CurrentStateName);
 
-        var nextState = await currentState.MoveNext(epic, logger, cancellationToken);
+        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem };
+
+        var nextState = await currentState.MoveNext(epicContext, cancellationToken);
 
         epic.CurrentStateName = nextState.Name;
 
@@ -435,9 +439,18 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var now = DateTime.UtcNow;
 
+        var baseSlug = $"{epicId}-{Slugify(request.SpecName, Guid.NewGuid().ToString())}";
+        var slug = baseSlug;
+        var counter = 2;
+
+        while (await db.Specs.AnyAsync(s => s.Id == slug, cancellationToken))
+        {
+            slug = $"{baseSlug}-{counter++}";
+        }
+
         var entity = new SpecEntity
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = slug,
             EpicId = epicId,
             AssignedAgentId = request.AssignedAgentId,
             ReviewerAgentId = request.ReviewerAgentId,
@@ -524,7 +537,9 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var currentState = SpecState.Create(spec.CurrentStateName);
 
-        var nextState = await currentState.MoveNext(spec, logger, cancellationToken);
+        var specContext = new SpecContext { Spec = spec, Logger = logger, FileSystem = fileSystem };
+
+        var nextState = await currentState.MoveNext(specContext, cancellationToken);
 
         spec.CurrentStateName = nextState.Name;
 

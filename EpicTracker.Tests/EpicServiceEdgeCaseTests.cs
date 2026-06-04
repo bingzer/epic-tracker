@@ -21,7 +21,7 @@ public class EpicServiceEdgeCaseTests : IDisposable
         _db.Database.OpenConnection();
         _db.Database.EnsureCreated();
 
-        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance), NullLogger<EpicService>.Instance);
+        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance), NullLogger<EpicService>.Instance, new TestFileSystem());
     }
 
     public void Dispose()
@@ -41,7 +41,7 @@ public class EpicServiceEdgeCaseTests : IDisposable
         ReviewerAgentId: null));
 
     private async Task<Spec> CreateSpec(string epicId) =>
-        await _svc.CreateSpec(epicId, new CreateSpecRequest("ca-1", "/specs/s.md", false, null));
+        await _svc.CreateSpec(epicId, new CreateSpecRequest("spec-1", "ca-1", "/specs/s.md", false, null));
 
     // ── GetEpic not found ─────────────────────────────────────────────────────
 

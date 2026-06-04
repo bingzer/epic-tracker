@@ -1,19 +1,44 @@
-using Microsoft.Extensions.Logging;
-
 namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class MockupState : EpicState
 {
     public override string Name => "mockup";
 
-    protected override async Task<EpicState> Next(Epic epic, ILogger logger, CancellationToken cancellationToken = default)
+    protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
 
+        var epic = context.Epic;
+
+        var providedPath = epic.HumanInLoop?.HumanInput;
+        if (!string.IsNullOrWhiteSpace(providedPath))
+        {
+            if (!context.FileSystem.FileExists(providedPath))
+            {
+                epic.RaiseHumanInLoop(
+                    questions: $"The path '{providedPath}' does not exist. Please provide a valid folder path for mockup files.",
+                    approveToStateName: Name,
+                    rejectToStateName: Name,
+                    instruction: "Provided mockup path does not exist. Waiting for a valid path. Wait for further instruction."
+                );
+
+                return new HumanInLoopState();
+            }
+
+            epic.MockupPath = providedPath;
+            epic.ResetHumanApproval($"Mockup path set to {epic.MockupPath}. Proceeding.");
+        }
+
         if (string.IsNullOrWhiteSpace(epic.MockupPath))
         {
-            epic.SetEpicAgentInstruction("Ask the user for the mockup folder path where mockup files should be written.");
-            return this;
+            epic.RaiseHumanInLoop(
+                questions: "What folder path should mockup files be written to?",
+                approveToStateName: Name,
+                rejectToStateName: Name,
+                instruction: "Waiting for human to provide the mockup folder path. Wait for further instruction."
+            );
+
+            return new HumanInLoopState();
         }
 
         if (!epic.IsMockupDone)

@@ -21,7 +21,7 @@ public class HappyPathTests : IDisposable
         _db.Database.OpenConnection();
         _db.Database.EnsureCreated();
 
-        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance), NullLogger<EpicService>.Instance);
+        _svc = new EpicService(_db, new TmuxService(NullLogger<TmuxService>.Instance), NullLogger<EpicService>.Instance, new TestFileSystem());
     }
 
     public void Dispose()
@@ -76,7 +76,7 @@ public class HappyPathTests : IDisposable
         Assert.Equal("spec_writing", afterWaterproofing.CurrentStateName);
 
         // 5. CreateSpec (no code review)
-        var spec = await _svc.CreateSpec(epic.Id, new CreateSpecRequest("ca-1", "/specs/spec-1.md", false, null));
+        var spec = await _svc.CreateSpec(epic.Id, new CreateSpecRequest("spec-1", "ca-1", "/specs/spec-1.md", false, null));
 
         // 6. RaiseAgentSwarm for spec review, all agree, Advance → human_in_loop
         await _svc.RaiseAgentSwarm(epic.Id, new RaiseAgentSwarmRequest("Review spec list", "spec_writing"));

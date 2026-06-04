@@ -14,18 +14,18 @@ internal abstract class SpecState
 {
     public abstract string Name { get; }
 
-    protected abstract Task<SpecState> Next(Spec spec, ILogger logger, CancellationToken cancellationToken = default);
+    protected abstract Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default);
 
-    public async Task<SpecState> MoveNext(Spec spec, ILogger logger, CancellationToken cancellationToken = default)
+    public async Task<SpecState> MoveNext(SpecContext context, CancellationToken cancellationToken = default)
     {
-        var next = await Next(spec, logger, cancellationToken);
+        var next = await Next(context, cancellationToken);
 
-        logger.LogInformation(
+        context.Logger.LogInformation(
             "[Spec {SpecId}] {FromState} → {ToState} | {Instruction}",
-            spec.Id,
+            context.Spec.Id,
             Name,
             next.Name,
-            spec.EpicAgentInstruction
+            context.Spec.EpicAgentInstruction
         );
 
         return next;

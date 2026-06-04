@@ -45,7 +45,7 @@ internal static class EpicMapper
         entity.IsDocDrafted = epic.IsDocDrafted;
         entity.MockupPath = epic.MockupPath;
         entity.IsMockupDone = epic.IsMockupDone;
-entity.ReviewerAgentId = epic.ReviewerAgentId;
+        entity.ReviewerAgentId = epic.ReviewerAgentId;
 
         entity.HumanInLoop = epic.HumanInLoop is not null
             ? JsonSerializer.Serialize(epic.HumanInLoop)

@@ -137,7 +137,7 @@ export default function EpicDetailPage() {
 
       <StateBreadcrumb state={epic.currentStateName} type="epic" />
 
-      <EscalationPanel epic={epic} onUpdated={setEpic} />
+      <EscalationPanel key={epic.humanInLoop?.questions ?? 'none'} epic={epic} onUpdated={setEpic} />
 
       <AgentSwarmPanel epic={epic} />
 

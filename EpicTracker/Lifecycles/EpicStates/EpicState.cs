@@ -46,18 +46,18 @@ internal abstract class EpicState
 {
     public abstract string Name { get; }
 
-    protected abstract Task<EpicState> Next(Epic epic, ILogger logger, CancellationToken cancellationToken = default);
+    protected abstract Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default);
 
-    public async Task<EpicState> MoveNext(Epic epic, ILogger logger, CancellationToken cancellationToken = default)
+    public async Task<EpicState> MoveNext(EpicContext context, CancellationToken cancellationToken = default)
     {
-        var next = await Next(epic, logger, cancellationToken);
+        var next = await Next(context, cancellationToken);
 
-        logger.LogInformation(
+        context.Logger.LogInformation(
             "[Epic {EpicId}] {FromState} → {ToState} | {Instruction}",
-            epic.Id,
+            context.Epic.Id,
             Name,
             next.Name,
-            epic.EpicAgentInstruction
+            context.Epic.EpicAgentInstruction
         );
 
         return next;

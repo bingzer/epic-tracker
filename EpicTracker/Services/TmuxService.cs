@@ -8,7 +8,7 @@ public class TmuxService(ILogger<TmuxService> logger)
     public async Task SendKeys(string sessionName, string message, CancellationToken cancellationToken = default)
     {
         var escaped = EscapeForTmux(message);
-        var args = $"send-keys -t {sessionName} {escaped} C-m";
+        var args = $"send-keys -t {sessionName} {escaped} C-m Enter";
 
         var psi = new ProcessStartInfo("tmux", args)
         {

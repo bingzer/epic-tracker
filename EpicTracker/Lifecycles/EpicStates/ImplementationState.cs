@@ -16,17 +16,9 @@ internal class ImplementationState : EpicState
 
         epic.HumanInLoop = null;
 
-        var drafting = epic.Specs.Where(s => s.CurrentStateName == "spec_drafting").ToList();
-        if (drafting.Count > 0)
+        foreach (var spec in epic.Specs.Where(s => !s.IsAbandoned && s.IsSpecApproved && s.CurrentStateName == "spec_drafting"))
         {
-            var instructions = string.Join("\n", drafting.Select(s => $"- Send {s.AssignedAgentId} the spec at {s.SpecDocPath} and tell them to implement it and report back when done."));
-
-            epic.SetEpicAgentInstruction($"""
-                Instruct each coding agent to begin implementation. Once they confirm done, call advance_spec on their behalf, then call advance.
-                {instructions}
-                """);
-
-            return this;
+            spec.CurrentStateName = "coding";
         }
 
         var pending = epic.Specs.Where(s => s.CurrentStateName != "done").ToList();

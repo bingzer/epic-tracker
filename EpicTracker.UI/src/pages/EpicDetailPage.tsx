@@ -34,7 +34,7 @@ function AgentSwarmPanel({ epic }: { epic: Epic }) {
   return (
     <div className="rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-4">
       <p className="text-sm font-semibold text-violet-800 dark:text-violet-300 mb-1">
-        Agent Swarm — Iteration {swarm.iteration + 1}
+        Agent Swarm — Iteration {swarm.iteration}
       </p>
       <p className="text-sm text-violet-700 dark:text-violet-400 mb-2">{swarm.objective}</p>
       {swarm.agreements.length > 0 && (

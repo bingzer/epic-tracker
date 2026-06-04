@@ -4,7 +4,7 @@ import { StateBadge } from './StateBadge';
 import { StateBreadcrumb } from './StateBreadcrumb';
 import { SpecApi } from '../epicApi';
 
-const SPEC_STATES = ['drafting', 'coding', 'ac', 'code_review', 'human_in_loop', 'done'] as const;
+const SPEC_STATES = ['drafting', 'ready', 'coding', 'ac', 'code_review', 'human_in_loop', 'done'] as const;
 
 interface Props {
   spec: Spec;
@@ -32,6 +32,7 @@ function pillCls(active: boolean) {
 
 export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, onUpdated }: Props) {
   const [feedback, setFeedback] = useState('');
+  const [codingNow, setCodingNow] = useState(false);
   const [specDocPath, setSpecDocPath] = useState(spec.specDocPath ?? '');
   const [assignedAgentId, setAssignedAgentId] = useState(spec.assignedAgentId ?? '');
   const [reviewerAgentId, setReviewerAgentId] = useState(spec.reviewerAgentId ?? '');
@@ -55,6 +56,18 @@ export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, o
       onUpdated();
     } catch (e) {
       alert(String(e));
+    }
+  }
+
+  async function handleCodeNow() {
+    setCodingNow(true);
+    try {
+      await SpecApi.codeNow(spec.id);
+      onUpdated();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setCodingNow(false);
     }
   }
 
@@ -100,6 +113,15 @@ export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, o
         <td className="px-3 py-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <StateBadge state={spec.currentStateName} />
+            {spec.currentStateName === 'ready' && (
+              <button
+                onClick={handleCodeNow}
+                disabled={codingNow}
+                className="text-xs px-2 py-0.5 rounded-full font-medium transition-colors bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {codingNow ? '…' : '▶ Code Now'}
+              </button>
+            )}
             {needsHumanReview && (
               <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium">
                 human review

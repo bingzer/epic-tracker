@@ -30,9 +30,9 @@ internal class DraftingSpecState : SpecState
 
         spec.SetEpicAgentInstruction($"""
             Spec {spec.Id} is approved. The spec document is confirmed at {spec.SpecDocPath}.
-            Notify {spec.AssignedAgentId} that their spec is approved and they should stand by for implementation.
+            Notify {spec.AssignedAgentId} that their spec is approved and they should stand by — a human must click "Code Now" in the dashboard before coding begins.
             """);
 
-        return new CodingSpecState();
+        return new ReadySpecState();
     }
 }

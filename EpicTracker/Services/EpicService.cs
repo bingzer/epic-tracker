@@ -578,6 +578,18 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         await tmux.SendKeys(epicEntity.EpicAgent, $"Human {(request.IsApproved ? "approved" : "rejected")} spec {specId}. Call advance_spec then advance.", cancellationToken);
     }
 
+    public async Task<Spec> MarkSpecReadyToCode(string specId, CancellationToken cancellationToken = default)
+    {
+        var entity = await db.FindSpecOrThrow(specId, cancellationToken);
+
+        entity.IsReadyToCode = true;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return await AdvanceSpec(specId, cancellationToken);
+    }
+
     public async Task<Spec> ForceSpecState(string specId, string stateName, CancellationToken cancellationToken = default)
     {
         var entity = await db.FindSpecOrThrow(specId, cancellationToken);

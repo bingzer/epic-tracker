@@ -63,4 +63,6 @@ export const SpecApi = {
 
   forceState: (specId: string, stateName: string) =>
     api.post<Spec>(`/api/specs/${specId}/force-state`, { stateName }),
+
+  codeNow: (specId: string) => api.post<Spec>(`/api/specs/${specId}/ready`),
 };

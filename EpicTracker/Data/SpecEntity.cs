@@ -12,6 +12,7 @@ public class SpecEntity
     public bool IsAbandoned { get; set; }
     public bool IsSpecDrafted { get; set; }
     public bool? IsAcPassed { get; set; }
+    public bool IsReadyToCode { get; set; }
     public bool IsCodeDone { get; set; }
     public bool? IsCodeReviewApproved { get; set; }
     public string CurrentStateName { get; set; } = default!;

@@ -71,6 +71,7 @@ internal static class EpicMapper
             IsAbandoned = entity.IsAbandoned,
             IsSpecDrafted = entity.IsSpecDrafted,
             IsAcPassed = entity.IsAcPassed,
+            IsReadyToCode = entity.IsReadyToCode,
             IsCodeDone = entity.IsCodeDone,
             IsCodeReviewApproved = entity.IsCodeReviewApproved,
             CurrentStateName = entity.CurrentStateName
@@ -101,6 +102,7 @@ internal static class EpicMapper
         entity.IsSpecApproved = spec.IsSpecApproved;
         entity.IsAbandoned = spec.IsAbandoned;
         entity.IsSpecDrafted = spec.IsSpecDrafted;
+        entity.IsReadyToCode = spec.IsReadyToCode;
         entity.IsCodeDone = spec.IsCodeDone;
         entity.IsCodeReviewApproved = spec.IsCodeReviewApproved;
         entity.IsAcPassed = spec.IsAcPassed;

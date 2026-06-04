@@ -350,7 +350,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        await tmux.SendKeys(entity.EpicAgent, $"Human {(request.IsApproved ? "approved" : "rejected")} epic {epicId}. Call get_epic then advance.", cancellationToken);
+        await tmux.SendKeys(entity.EpicAgent, $"Human {(request.IsApproved ? "approved" : "rejected")} epic {epicId}. Call advance.", cancellationToken);
     }
 
     /// <summary>
@@ -388,7 +388,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     public async Task WakeAgent(string epicId, CancellationToken cancellationToken = default)
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
-        await tmux.SendKeys(entity.EpicAgent, $"Let's work on {entity.Name}. Call get_epic then advance.", cancellationToken);
+        await tmux.SendKeys(entity.EpicAgent, $"Let's work on {entity.Id}. Call get_epic then advance.", cancellationToken);
     }
 
     /// <summary>

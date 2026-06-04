@@ -21,19 +21,15 @@ internal class DraftingState : EpicState
             epic.SetEpicAgentInstruction($"""
                 Draft the epic document at {epic.EpicDocumentPath}.
                 Brief: {epic.Brief}
-                Write a structured doc with sections: Goal, Background, Scope, Out of Scope, Open Questions.
-                If anything is unclear, call raise_human_in_loop before writing.
-                Once written, call update_epic(IsDocDrafted, true) then call advance.
+                Follow the governance document at {epic.EpicGovernancePath} for the required format.
+                Once written, call update_epic(IsDocDrafted, true) then call advance("{epic.Id}").
                 """);
 
             return this;
         }
 
         epic.SetEpicAgentInstruction($"""
-            The epic document is drafted at {epic.EpicDocumentPath}.
-            Follow governance process to write the document. Epic governance path is {epic.EpicGovernancePath}.
-            Review it for completeness and clarity. If it needs work, call raise_human_in_loop with feedback.
-            Once it's good, call advance.
+            Call advance("{epic.Id}") to continue.
             """);
 
         return new WaterproofingState();
@@ -44,6 +40,36 @@ internal class DraftingState : EpicState
         if (string.IsNullOrWhiteSpace(epic.EpicAgent))
         {
             instruction = "Missing epic agent";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(epic.BasePath))
+        {
+            instruction = "Missing base path";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(epic.Slug))
+        {
+            instruction = "Missing slug";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(epic.Brief))
+        {
+            instruction = "Missing brief — update_epic with a Brief before advancing";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(epic.Name))
+        {
+            instruction = "Missing name — update_epic with a Name before advancing";
+            return false;
+        }
+
+        if (epic.CodingAgents.Count == 0)
+        {
+            instruction = "No coding agents assigned — update_epic with at least one CodingAgent before advancing";
             return false;
         }
 

@@ -18,7 +18,7 @@ builder.Host.UseSerilog();
 
 var connectionString = builder.Configuration.GetConnectionString("Default")!;
 
-builder.Services.AddEpicTracker(connectionString, builder.Configuration);
+builder.Services.AddEpicTracker(connectionString, builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddSignalR();
 builder.Services.AddMcpServer()
     .WithHttpTransport()

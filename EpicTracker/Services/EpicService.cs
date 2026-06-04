@@ -38,7 +38,7 @@ namespace EpicTracker.Services;
 /// </list>
 /// </para>
 /// </remarks>
-public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger, IFileSystem fileSystem, IOptions<EpicTrackerOptions> options)
+public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger, IFileSystem fileSystem, IOptions<EpicTrackerOptions> options, EpicScaffolding scaffolding)
 {
     /// <summary>
     /// Creates a new epic and seeds it at the "drafting" state.
@@ -79,11 +79,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        var epicRoot = Path.Combine(options.Value.EpicsBasePath, "epics", slug);
-        foreach (var subdir in new[] { "specs", "mockups", "output" })
-        {
-            Directory.CreateDirectory(Path.Combine(epicRoot, subdir));
-        }
+        scaffolding.Scaffold(created, options.Value.GovernanceTemplatePath);
 
         return created;
     }

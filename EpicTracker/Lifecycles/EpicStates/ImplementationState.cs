@@ -16,7 +16,7 @@ internal class ImplementationState : EpicState
 
         epic.HumanInLoop = null;
 
-        foreach (var spec in epic.Specs.Where(s => !s.IsAbandoned && s.IsSpecApproved && s.CurrentStateName == "spec_drafting"))
+        foreach (var spec in epic.Specs.Where(s => !s.IsAbandoned && s.CurrentStateName == "spec_drafting"))
         {
             spec.CurrentStateName = "coding";
         }

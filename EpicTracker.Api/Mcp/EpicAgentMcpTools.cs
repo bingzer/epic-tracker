@@ -86,7 +86,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         [Description("The ID of the epic this spec belongs to.")] string epicId,
         [Description("A short human-readable name for this spec (e.g. 'auth-flow', 'user-profile'). Used to generate the spec ID.")] string specName,
         [Description("The ID of the coding agent assigned to implement this spec.")] string assignedAgentId,
-        [Description("Optional path to the spec document.")] string? specDocPath = null,
+        [Description("Optional absolute path to the spec document. Must be an absolute path (e.g. C:\\Users\\... or /home/...) — relative paths will be rejected.")] string? specDocPath = null,
         [Description("Whether a code review is required before the spec can be closed.")] bool codeReviewRequired = false,
         [Description("The ID of the agent who will review the code, if code review is required.")] string? reviewerAgentId = null,
         CancellationToken cancellationToken = default)

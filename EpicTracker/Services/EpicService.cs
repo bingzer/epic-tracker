@@ -235,6 +235,10 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
                 break;
 
             case "SpecDocPath":
+                if (!Path.IsPathRooted(value))
+                {
+                    throw new InvalidOperationException($"SpecDocPath must be an absolute path. Got: '{value}'");
+                }
                 entity.SpecDocPath = value;
                 break;
 
@@ -435,6 +439,11 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     /// </summary>
     public async Task<Spec> CreateSpec(string epicId, CreateSpecRequest request, CancellationToken cancellationToken = default)
     {
+        if (!Path.IsPathRooted(request.SpecDocPath))
+        {
+            throw new InvalidOperationException($"SpecDocPath must be an absolute path. Got: '{request.SpecDocPath}'");
+        }
+
         await db.FindEpicOrThrow(epicId, cancellationToken);
 
         var now = DateTime.UtcNow;

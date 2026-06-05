@@ -226,7 +226,7 @@ export default function EpicsListPage() {
     return epics.filter(epic => {
       if (activeFilter === 'open' && epic.currentStateName === 'closed') return false;
       if (activeFilter === 'closed' && epic.currentStateName !== 'closed') return false;
-      if (q && !epic.name.toLowerCase().includes(q) && !(epic.brief ?? '').toLowerCase().includes(q)) return false;
+      if (q && !(epic.name ?? '').toLowerCase().includes(q) && !(epic.brief ?? '').toLowerCase().includes(q)) return false;
       return true;
     });
   }, [epics, search, activeFilter]);

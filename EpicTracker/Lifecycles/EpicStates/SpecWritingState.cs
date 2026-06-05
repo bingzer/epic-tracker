@@ -54,8 +54,8 @@ internal class SpecWritingState : EpicState
                 whenApprovedStateName: Name,
                 instruction: $"""
                     Agent swarm raised to review all specs.
-                    Follow the governance document at {epic.EpicGovernancePath} for swarm instructions.
-                    Call advance("{epic.Id}") after submitting all agreements.
+                    Message each coding agent via tmux asking them to reply AGREE or DISAGREE (with a note if disagreeing) — coding agents cannot call MCP tools themselves.
+                    When you have received a reply from every agent, call submit_agreement for each one on their behalf, then call advance("{epic.Id}").
                     Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told.
                     """
             );

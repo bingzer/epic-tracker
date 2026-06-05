@@ -58,9 +58,9 @@ internal class WaterproofingState : EpicState
                     2. If agents contradict each other, summarize the conflict back to the relevant agents via tmux and let them respond.
                     3. If contradiction cannot be resolved after discussion, raise_human_in_loop to settle it.
                        Use approveToStateName: "{WaterproofingState.StateName}", rejectToStateName: "{WaterproofingState.StateName}".
-                    4. Once the epic doc reflects all valid input, ask each agent to submit_agreement — AGREE if satisfied, DISAGREE with a note if not.
-                    Follow the governance document at {epic.EpicGovernancePath} for swarm instructions.
-                    Call advance("{epic.Id}") after submitting all agreements.
+                    4. Once the epic doc reflects all valid input, send each agent a tmux message asking them to reply AGREE or DISAGREE (with a note if disagreeing).
+                    5. When you have received a reply from every agent, call submit_agreement for each one on their behalf — coding agents cannot call MCP tools themselves.
+                    6. Call advance("{epic.Id}") after all agreements are submitted.
                     """
             );
         }

@@ -22,6 +22,17 @@ if (-not $isPrebuilt) {
     Write-Host "Pre-built publish folder detected — skipping build steps."
 }
 
+# Ask user where epics will live and patch appsettings.json
+$defaultEpicsPath = "$env:USERPROFILE\epic-tracker"
+$epicsInput = Read-Host "Epics base path (where epics/ folder will be created) [$defaultEpicsPath]"
+$epicsBasePath = if ($epicsInput.Trim()) { $epicsInput.Trim() } else { $defaultEpicsPath }
+
+$appSettings = Join-Path $publishDir "appsettings.json"
+$cfg = Get-Content $appSettings -Raw | ConvertFrom-Json -AsHashtable
+$cfg["EpicTracker"]["EpicsBasePath"] = $epicsBasePath
+$cfg | ConvertTo-Json -Depth 10 | Set-Content $appSettings -Encoding UTF8
+Write-Host "  EpicsBasePath: $epicsBasePath"
+
 # Register MCP — ask user where their project dir is
 & (Join-Path $root "scripts\install-mcp.ps1")
 

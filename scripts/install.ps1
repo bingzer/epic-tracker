@@ -22,8 +22,8 @@ if (-not $isPrebuilt) {
     Write-Host "Pre-built publish folder detected — skipping build steps."
 }
 
-# Patch mcpServers into ~/.claude/settings.json
-$settingsPath = "$env:USERPROFILE\.claude\settings.json"
+# Patch mcpServers into .claude/settings.json (project-level)
+$settingsPath = Join-Path $root ".claude\settings.json"
 $settings = if (Test-Path $settingsPath) {
     Get-Content $settingsPath -Raw | ConvertFrom-Json -AsHashtable
 } else {
@@ -49,7 +49,7 @@ $startupContent = "@echo off`r`nstart `"`" `"$pwsh`" -WindowStyle Hidden -File `
 Set-Content $startupScript -Value $startupContent -Encoding ASCII
 
 Write-Host "Installed successfully."
-Write-Host "  MCP:      $settingsPath"
+Write-Host "  MCP:      $settingsPath (project-level)"
 Write-Host "  Startup:  $startupScript"
 
 Write-Host ""

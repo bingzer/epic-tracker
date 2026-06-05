@@ -33,4 +33,15 @@ internal class CodeReviewSpecState : SpecState
 
         return new AcSpecState();
     }
+
+    protected override bool UpdateSpecFieldAt(SpecContext context, string fieldName, string value)
+    {
+        if (fieldName == nameof(Spec.IsCodeReviewApproved))
+        {
+            context.Spec.IsCodeReviewApproved = bool.Parse(value);
+            return true;
+        }
+
+        return false;
+    }
 }

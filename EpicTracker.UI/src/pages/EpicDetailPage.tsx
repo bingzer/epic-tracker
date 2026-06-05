@@ -101,7 +101,7 @@ function AgentSwarmPanel({ epic }: { epic: Epic }) {
   return (
     <div className="rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-4">
       <p className="text-sm font-semibold text-violet-800 dark:text-violet-300 mb-1">
-        Agent Swarm — Iteration {swarm.iteration}
+        Agent Swarm — Iteration {swarm.iteration + 1}
       </p>
       <p className="text-sm text-violet-700 dark:text-violet-400 mb-2">{swarm.objective}</p>
       {swarm.agreements.length > 0 && (
@@ -668,12 +668,12 @@ export default function EpicDetailPage() {
 
             <AgentSwarmPanel epic={epic} />
 
-            {epic.epicAgentNameInstruction ? (
+            {epic.epicAgentInstruction ? (
               <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
                 <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1">
                   Epic Agent Instruction
                 </span>
-                <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{epic.epicAgentNameInstruction}</p>
+                <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{epic.epicAgentInstruction}</p>
               </div>
             ) : (
               <p className="text-sm text-gray-400 dark:text-zinc-500">No active agent instruction.</p>

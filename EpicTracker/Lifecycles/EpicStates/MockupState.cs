@@ -57,4 +57,15 @@ internal class MockupState : EpicState
         
         return new WaterproofingState();
     }
+
+    protected override bool UpdateEpicFieldAt(EpicContext context, string fieldName, string value)
+    {
+        if (fieldName == nameof(Epic.IsMockupDone))
+        {
+            context.Epic.IsMockupDone = bool.Parse(value);
+            return true;
+        }
+
+        return false;
+    }
 }

@@ -31,6 +31,41 @@ internal abstract class SpecState
         return next;
     }
 
+    public bool UpdateSpecField(SpecContext context, string fieldName, string value)
+    {
+        if (fieldName == nameof(Spec.AssignedAgentName))
+        {
+            context.Spec.AssignedAgentName = value;
+            return true;
+        }
+        
+        if (fieldName == nameof(Spec.ReviewerAgentName))
+        {
+            context.Spec.ReviewerAgentName = value;
+            return true;
+        }
+
+        if (fieldName == nameof(Spec.CodeReviewRequired))
+        {
+            context.Spec.CodeReviewRequired = bool.Parse(value);
+            return true;
+        }
+
+        if (fieldName == nameof(Spec.SpecDocPath))
+        {
+            if (!Path.IsPathRooted(value))
+            {
+                throw new InvalidOperationException($"SpecDocPath must be an absolute path. Got: '{value}'");
+            }
+            context.Spec.SpecDocPath = value;
+            return true;
+        }
+
+        return UpdateSpecFieldAt(context, fieldName, value);
+    }
+
+    protected virtual bool UpdateSpecFieldAt(SpecContext context, string fieldName, string value) => false;
+
     protected SpecState Exit(SpecContext context, string instruction)
     {
         context.Spec.SetEpicAgentInstruction(instruction);

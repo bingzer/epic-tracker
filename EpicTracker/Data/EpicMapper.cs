@@ -41,6 +41,10 @@ internal static class EpicMapper
     // Writes live HumanInLoop, AgentSwarm, and typed flag state back to the entity after a transition.
     internal static void SyncToEntity(Epic epic, EpicEntity entity)
     {
+        entity.Name = epic.Name;
+        entity.EpicAgentName = epic.EpicAgentName;
+        entity.Brief = epic.Brief;
+        entity.CodingAgentNames = JsonSerializer.Serialize(epic.CodingAgentNames);
         entity.NeedsMockup = epic.NeedsMockup;
         entity.IsDocDrafted = epic.IsDocDrafted;
         entity.IsMockupDone = epic.IsMockupDone;

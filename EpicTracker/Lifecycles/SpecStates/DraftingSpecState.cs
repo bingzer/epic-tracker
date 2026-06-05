@@ -34,4 +34,15 @@ internal class DraftingSpecState : SpecState
         
         return new ReadySpecState();
     }
+
+    protected override bool UpdateSpecFieldAt(SpecContext context, string fieldName, string value)
+    {
+        if (fieldName == nameof(Spec.IsSpecApproved))
+        {
+            context.Spec.IsSpecApproved = bool.Parse(value);
+            return true;
+        }
+
+        return false;
+    }
 }

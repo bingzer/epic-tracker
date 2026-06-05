@@ -63,6 +63,31 @@ internal abstract class EpicState
         return next;
     }
 
+    public bool UpdateEpicField(EpicContext context, string fieldName, string value)
+    {
+        if (fieldName == nameof(Epic.Name))
+        {
+            context.Epic.Name = value;
+            return true;
+        }
+
+        if (fieldName == nameof(Epic.EpicAgentName))
+        {
+            context.Epic.EpicAgentName = value;
+            return true;
+        }
+
+        if (fieldName == nameof(Epic.CodingAgentNames))
+        {
+            context.Epic.CodingAgentNames = value.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+            return true;
+        }
+
+        return UpdateEpicFieldAt(context, fieldName, value);
+    }
+
+    protected virtual bool UpdateEpicFieldAt(EpicContext context, string fieldName, string value) => false;
+
     protected EpicState Exit(EpicContext context, string instruction)
     {
         context.Epic.SetEpicAgentInstruction(instruction);

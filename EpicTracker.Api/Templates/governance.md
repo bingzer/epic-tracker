@@ -100,14 +100,17 @@ Share this template with every coding agent when asking them to write a spec.
 
 ## Spec States
 
-| State         | Blocks until                          | Then routes to                    |
-|---------------|---------------------------------------|-----------------------------------|
-| spec_drafting | IsSpecDrafted = true + file on disk   | coding                            |
-| coding        | IsSpecDrafted = true, IsCodeDone=true | code_review or ac                 |
-| code_review   | IsCodeReviewApproved set              | ac (approved) / coding (rejected) |
-| ac            | IsAcPassed set                        | human gate (true) / coding (false)|
-| done          | Terminal                              |                                   |
+| State          | Blocks until                           | Then routes to                     |
+|----------------|----------------------------------------|------------------------------------|
+| spec_drafting  | IsSpecApproved = true + file on disk   | ready                              |
+| ready          | Human clicks "Code Now" in dashboard   | coding                             |
+| coding         | IsCodeDone = true                      | code_review or ac                  |
+| code_review    | IsCodeReviewApproved set               | ac (approved) / coding (rejected)  |
+| ac             | IsAcPassed set                         | human gate (true) / coding (false) |
+| done           | Terminal                               |                                    |
 
-`update_spec` automatically advances the spec state — you do not need to call `advance_spec` after it.
+`update_spec` automatically advances the spec state after each field update — you do not need to call `advance_spec` after it.
 
-`IsSpecDrafted` must be set to `true` before `IsCodeDone` will be honoured. Always set `IsSpecDrafted` first.
+**Do not message coding agents until `EpicAgentInstruction` explicitly tells you to.** The state machine gates coding behind a human "Code Now" click — acting before that instruction arrives bypasses the gate.
+
+`IsSpecApproved` is set by the epic agent swarm consensus in `spec_writing` — do not set it manually.

@@ -32,6 +32,29 @@ internal class DraftingState : EpicState
         return new WaterproofingState();
     }
 
+    protected override bool UpdateEpicFieldAt(EpicContext context, string fieldName, string value)
+    {
+        if (fieldName == nameof(Epic.Brief))
+        {
+            context.Epic.Brief = value;
+            return true;
+        }
+
+        if (fieldName == nameof(Epic.NeedsMockup))
+        {
+            context.Epic.NeedsMockup = bool.Parse(value);
+            return true;
+        }
+
+        if (fieldName == nameof(Epic.IsDocDrafted))
+        {
+            context.Epic.IsDocDrafted = bool.Parse(value);
+            return true;
+        }
+
+        return false;
+    }
+
     private static bool TryValidate(Epic epic, out string instruction)
     {
         if (string.IsNullOrWhiteSpace(epic.EpicAgentName))

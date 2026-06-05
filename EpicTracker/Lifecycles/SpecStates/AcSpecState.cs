@@ -54,4 +54,15 @@ internal class AcSpecState : SpecState
         spec.ResetHumanApproval();
         return new DoneSpecState();
     }
+
+    protected override bool UpdateSpecFieldAt(SpecContext context, string fieldName, string value)
+    {
+        if (fieldName == nameof(Spec.IsAcPassed))
+        {
+            context.Spec.IsAcPassed = bool.Parse(value);
+            return true;
+        }
+
+        return false;
+    }
 }

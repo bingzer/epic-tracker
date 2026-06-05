@@ -183,41 +183,20 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        switch (fieldName)
+        var epic = ToEpic(entity);
+        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem };
+        var currentState = EpicState.CreateEpicState(entity.CurrentStateName);
+
+        if (!currentState.UpdateEpicField(epicContext, fieldName, value))
         {
-            case "Name":
-                entity.Name = value;
-                entity.Slug = Slugify(value, entity.Id);
-                break;
+            throw new InvalidOperationException($"Cannot set field '{fieldName}' on epic at state '{currentState.Name}'.");
+        }
 
-            case "Brief":
-                entity.Brief = value;
-                break;
+        EpicMapper.SyncToEntity(epic, entity);
 
-            case "EpicAgentName":
-                entity.EpicAgentName = value;
-                break;
-
-            case "CodingAgentNames":
-                var agents = value.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
-                entity.CodingAgentNames = JsonSerializer.Serialize(agents);
-                break;
-
-            case "NeedsMockup":
-                entity.NeedsMockup = bool.Parse(value);
-                break;
-
-            case "IsDocDrafted":
-                entity.IsDocDrafted = bool.Parse(value);
-                break;
-
-            case "IsMockupDone":
-                entity.IsMockupDone = bool.Parse(value);
-                break;
-
-            default:
-                throw new InvalidOperationException(
-                    $"Unknown field '{fieldName}'. Valid fields: Name, Brief, EpicAgentName, CodingAgentNames, NeedsMockup, IsDocDrafted, IsMockupDone.");
+        if (fieldName == nameof(Epic.Name))
+        {
+            entity.Slug = Slugify(epic.Name, entity.Id);
         }
 
         entity.UpdatedAt = DateTime.UtcNow;
@@ -233,50 +212,17 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     public async Task<Spec> UpdateSpecField(string specId, string fieldName, string value, CancellationToken cancellationToken = default)
     {
         var entity = await db.FindSpecOrThrow(specId, cancellationToken);
+        
+        // use current state of that spec to validate and set the field value, then save and advance
+        var specContext = new SpecContext { Spec = EpicMapper.ToSpec(entity), Logger = logger, FileSystem = fileSystem };
+        var currentState = SpecState.CreateSpecState(entity.CurrentStateName);
 
-        switch (fieldName)
+        if (!currentState.UpdateSpecField(specContext, fieldName, value))
         {
-            case "AssignedAgentName":
-                entity.AssignedAgentName = value;
-                break;
-
-            case "ReviewerAgentName":
-                entity.ReviewerAgentName = value;
-                break;
-
-            case "SpecDocPath":
-                if (!Path.IsPathRooted(value))
-                {
-                    throw new InvalidOperationException($"SpecDocPath must be an absolute path. Got: '{value}'");
-                }
-                entity.SpecDocPath = value;
-                break;
-
-            case "CodeReviewRequired":
-                entity.CodeReviewRequired = bool.Parse(value);
-                break;
-
-            case "IsSpecDrafted":
-                entity.IsSpecDrafted = bool.Parse(value);
-                break;
-
-            case "IsCodeDone":
-                entity.IsCodeDone = bool.Parse(value);
-                break;
-
-            case "IsAcPassed":
-                entity.IsAcPassed = bool.Parse(value);
-                break;
-
-            case "IsCodeReviewApproved":
-                entity.IsCodeReviewApproved = bool.Parse(value);
-                break;
-
-            default:
-                throw new InvalidOperationException(
-                    $"Unknown field '{fieldName}'. Valid fields: AssignedAgentName, ReviewerAgentName, SpecDocPath, CodeReviewRequired, IsSpecDrafted, IsCodeDone, IsAcPassed, IsCodeReviewApproved.");
+            throw new InvalidOperationException($"Cannot set field '{fieldName}' on spec at state '{currentState.Name}'.");
         }
 
+        EpicMapper.SyncSpecToEntity(specContext.Spec, entity);
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -406,8 +352,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
         var message = entity.CurrentStateName == DraftingState.StateName
-            ? $"Let's work on {entity.Id}. Call get_epic then advance."
-            : $"Hey, are you still working on epic {entity.Id}? If not, please continue — call get_epic(\"{entity.Id}\") first to get the latest state, then carry on.";
+            ? $"Let's work on epic {entity.Id}. Use the epic-tracker MCP tool: call get_epic(\"{entity.Id}\") to read the current state and instruction, then call advance(\"{entity.Id}\") to begin."
+            : $"Please continue epic {entity.Id}. Use the epic-tracker MCP tool: call get_epic(\"{entity.Id}\") to read the current state and instruction, then call advance(\"{entity.Id}\") to proceed.";
 
         await tmux.SendKeys(entity.EpicAgentName, message, cancellationToken);
     }
@@ -603,13 +549,17 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var spec = EpicMapper.ToSpec(entity);
 
-        var currentState = SpecState.CreateSpecState(spec.CurrentStateName);
-
         var specContext = new SpecContext { Spec = spec, Logger = logger, FileSystem = fileSystem };
 
-        var nextState = await currentState.MoveNext(specContext, cancellationToken);
+        var currentState = SpecState.CreateSpecState(spec.CurrentStateName);
+        string previousName;
 
-        spec.CurrentStateName = nextState.Name;
+        do
+        {
+            previousName = currentState.Name;
+            currentState = await currentState.MoveNext(specContext, cancellationToken);
+            spec.CurrentStateName = currentState.Name;
+        } while (currentState.Name != previousName);
 
         EpicMapper.SyncSpecToEntity(spec, entity);
 

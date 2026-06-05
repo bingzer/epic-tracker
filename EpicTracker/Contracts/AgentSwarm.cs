@@ -18,7 +18,4 @@ public class AgentSwarm
     public bool HasConsensus => Agreements.Count > 0 && Agreements.All(a => a.HasAgreed == true);
     public bool HasDisagreement => Agreements.Any(a => a.HasAgreed == false);
     public bool IsComplete => Agreements.All(a => a.HasAgreed.HasValue);
-
-    public static string OptionalSwarmNudge =>
-        "If you need input from coding agents on their areas of expertise, raise an agent swarm before proceeding.";
 }

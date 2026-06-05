@@ -7,6 +7,8 @@ internal class AgentSwarmState : EpicState
     public const string StateName = "agent_swarm";
     public override string Name => StateName;
 
+    protected override bool UpdateEpicFieldAt(EpicContext context, string fieldName, string value) => true;
+
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;

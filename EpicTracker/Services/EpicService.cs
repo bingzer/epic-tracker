@@ -102,6 +102,11 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             return $"epic-{fallbackGuid[..8]}";
         }
 
+        if (slug.Length > 35)
+        {
+            slug = slug[..35].TrimEnd('-');
+        }
+
         return slug;
     }
 

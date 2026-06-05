@@ -7,7 +7,7 @@ import { StateBadge } from '../components/StateBadge';
 import { EscalationPanel } from '../components/EscalationPanel';
 import { useSignalR } from '../hooks/useSignalR';
 
-const PIPELINE_STATES = ['drafting', 'waterproofing', 'mockup', 'spec_writing', 'implementation', 'closed'] as const;
+const PIPELINE_STATES = ['drafting', 'mockup', 'waterproofing', 'spec_writing', 'implementation', 'closed'] as const;
 
 const ALL_EPIC_STATES = [
   'drafting', 'mockup', 'waterproofing', 'spec_writing',
@@ -107,7 +107,11 @@ function StatePipeline({ currentState, lastKnownState }: { currentState: string;
           }
 
           if (isActive) {
-            dotCls = 'w-3.5 h-3.5 rounded-full relative z-10 bg-indigo-500 border-2 border-indigo-500 shadow-[0_0_0_4px_rgba(99,102,241,0.2),0_0_16px_rgba(99,102,241,0.5)] animate-pulse';
+            if (state === 'closed') {
+              dotCls = 'w-3.5 h-3.5 rounded-full relative z-10 bg-green-500 border-2 border-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
+            } else {
+              dotCls = 'w-3.5 h-3.5 rounded-full relative z-10 bg-indigo-500 border-2 border-indigo-500 shadow-[0_0_0_4px_rgba(99,102,241,0.2),0_0_16px_rgba(99,102,241,0.5)] animate-pulse';
+            }
           }
 
           let labelCls = 'text-[10px] tracking-wider uppercase font-semibold mt-1.5 text-zinc-600 whitespace-nowrap';
@@ -117,7 +121,9 @@ function StatePipeline({ currentState, lastKnownState }: { currentState: string;
           }
 
           if (isActive) {
-            labelCls = 'text-[10px] tracking-wider uppercase font-bold mt-1.5 text-indigo-400 whitespace-nowrap';
+            labelCls = state === 'closed'
+              ? 'text-[10px] tracking-wider uppercase font-bold mt-1.5 text-green-400 whitespace-nowrap'
+              : 'text-[10px] tracking-wider uppercase font-bold mt-1.5 text-indigo-400 whitespace-nowrap';
           }
 
           return (
@@ -224,10 +230,12 @@ function EpicSummaryCard({
   epic,
   onUpdated,
   onViewDoc,
+  onForceState,
 }: {
   epic: Epic;
   onUpdated: (e: Epic) => void;
   onViewDoc: (path: string) => void;
+  onForceState: (state: string) => void;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [epicName, setEpicName] = useState(epic.name ?? '');
@@ -328,6 +336,14 @@ function EpicSummaryCard({
       <p className="text-sm font-bold text-zinc-100 mb-3 leading-snug">{epic.name}</p>
 
       <div className="space-y-3">
+        <div>
+          <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Epic Agent</p>
+          <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
+            {epic.epicAgentName}
+            <a href={`openterm:${epic.epicAgentName}`} className="text-indigo-400 hover:text-indigo-200 text-[10px] leading-none">↗</a>
+          </span>
+        </div>
+
         <div>
           <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Coding Agents</p>
           <div className="flex flex-wrap gap-1.5">
@@ -513,6 +529,20 @@ function EpicSummaryCard({
                 )}
               </div>
             </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Force State</label>
+            <select
+              defaultValue=""
+              onChange={e => { if (e.target.value) { onForceState(e.target.value); e.currentTarget.value = ''; } }}
+              className="w-full text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 px-2.5 py-1.5 focus:outline-none cursor-pointer"
+            >
+              <option value="" disabled>Select state…</option>
+              {ALL_EPIC_STATES.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
         </div>
       )}
@@ -744,6 +774,7 @@ export default function EpicDetailPage() {
   const [swarmObjective, setSwarmObjective] = useState('');
   const [swarmToState, setSwarmToState] = useState('');
   const [swarmSubmitting, setSwarmSubmitting] = useState(false);
+  const [nudgeSent, setNudgeSent] = useState(false);
 
   const load = useCallback(async () => {
     if (!epicId) return;
@@ -782,9 +813,11 @@ export default function EpicDetailPage() {
   async function handleWakeAgent() {
     if (!epicId) return;
 
+    setNudgeSent(true);
     try {
       await EpicApi.wakeAgent(epicId);
     } catch (e) {
+      setNudgeSent(false);
       alert(String(e));
     }
   }
@@ -888,23 +921,14 @@ export default function EpicDetailPage() {
           <span className="font-mono text-[10px] text-zinc-600">{epic.id}</span>
 
           <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={handleWakeAgent}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
-            >
-              {nudgeLabel}
-            </button>
-
-            <select
-              defaultValue=""
-              onChange={e => { if (e.target.value) { handleForceEpicState(e.target.value); e.target.value = ''; } }}
-              className="text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 px-2.5 py-1.5 focus:outline-none cursor-pointer"
-            >
-              <option value="" disabled>Force state →</option>
-              {ALL_EPIC_STATES.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            {!(nudgeSent && epic.currentStateName === 'drafting') && (
+              <button
+                onClick={handleWakeAgent}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+              >
+                {nudgeLabel}
+              </button>
+            )}
 
             <button
               onClick={handleDeleteEpic}
@@ -928,15 +952,15 @@ export default function EpicDetailPage() {
           {/* Left column */}
           <div className="flex flex-col gap-3.5">
 
-            <EpicSummaryCard epic={epic} onUpdated={setEpic} onViewDoc={setDrawerPath} />
-
-            <InstructionBlock instruction={epic.epicAgentInstruction} epicAgentName={epic.epicAgentName} />
-
             <EscalationPanel
               key={epic.humanInLoop?.questions ?? 'none'}
               epic={epic}
               onUpdated={setEpic}
             />
+
+            <EpicSummaryCard epic={epic} onUpdated={setEpic} onViewDoc={setDrawerPath} onForceState={handleForceEpicState} />
+
+            <InstructionBlock instruction={epic.epicAgentInstruction} epicAgentName={epic.epicAgentName} />
 
             {showSwarm && (
               <SwarmPanelBlock epic={epic} />

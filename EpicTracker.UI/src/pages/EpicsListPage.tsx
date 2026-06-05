@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EpicApi, type CreateEpicPayload } from '../epicApi';
 import type { Epic } from '../types';
@@ -168,7 +168,7 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
   );
 }
 
-function EpicRow({ epic }: { epic: Epic }) {
+function EpicRow({ epic, onDelete }: { epic: Epic; onDelete?: () => void }) {
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 shadow-sm hover:border-gray-300 dark:hover:border-zinc-600 transition-colors">
       <div className="flex items-center gap-3 flex-wrap">
@@ -182,6 +182,14 @@ function EpicRow({ epic }: { epic: Epic }) {
           </span>
         )}
         <span className="text-xs text-gray-400 dark:text-zinc-600 font-mono ml-auto">{epic.slug}</span>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="text-xs text-gray-400 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 transition-colors px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+          aria-label={`Delete ${epic.name}`}
+        >
+          Delete
+        </button>
       </div>
       {epic.brief && (
         <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400 line-clamp-2">{epic.brief}</p>
@@ -199,9 +207,29 @@ function sortByCreatedDesc(list: Epic[]): Epic[] {
   return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+type StatusFilter = 'all' | 'open' | 'closed';
+
+const filterTabs: { label: string; value: StatusFilter }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Open', value: 'open' },
+  { label: 'Closed', value: 'closed' },
+];
+
 export default function EpicsListPage() {
   const [epics, setEpics] = useState<Epic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<StatusFilter>('open');
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return epics.filter(epic => {
+      if (activeFilter === 'open' && epic.currentStateName === 'closed') return false;
+      if (activeFilter === 'closed' && epic.currentStateName !== 'closed') return false;
+      if (q && !epic.name.toLowerCase().includes(q) && !(epic.brief ?? '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [epics, search, activeFilter]);
 
   useEffect(() => {
     EpicApi.list()
@@ -238,14 +266,55 @@ export default function EpicsListPage() {
         <CreateEpicForm onCreated={epic => setEpics(prev => sortByCreatedDesc([epic, ...prev]))} />
       </div>
 
-      {epics.length === 0 ? (
+      <div className="mb-3">
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search epics…"
+          className="w-full text-sm rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-3 py-1.5 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div role="tablist" aria-label="Filter by status" className="flex gap-1 mb-4">
+        {filterTabs.map(tab => (
+          <button
+            key={tab.value}
+            role="tab"
+            aria-selected={activeFilter === tab.value}
+            onClick={() => setActiveFilter(tab.value)}
+            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+              activeFilter === tab.value
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {visible.length === 0 ? (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
-          <p className="text-sm text-gray-400 dark:text-zinc-500">No epics yet.</p>
+          <p className="text-sm text-gray-400 dark:text-zinc-500">{epics.length === 0 ? 'No epics yet.' : 'No epics match your filters.'}</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {epics.map(epic => (
-            <EpicRow key={epic.id} epic={epic} />
+          {visible.map(epic => (
+            <EpicRow
+              key={epic.id}
+              epic={epic}
+              onDelete={async () => {
+                if (!window.confirm(`Delete "${epic.name}"? This cannot be undone.`)) return;
+                try {
+                  await EpicApi.delete(epic.id);
+                  setEpics(prev => prev.filter(e => e.id !== epic.id));
+                } catch (err) {
+                  console.error('Failed to delete epic:', err);
+                  alert(err instanceof Error ? err.message : 'Delete failed');
+                }
+              }}
+            />
           ))}
         </div>
       )}

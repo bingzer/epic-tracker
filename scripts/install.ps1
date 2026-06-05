@@ -22,22 +22,8 @@ if (-not $isPrebuilt) {
     Write-Host "Pre-built publish folder detected — skipping build steps."
 }
 
-# Patch mcpServers into .claude/settings.json (project-level)
-$settingsPath = Join-Path $root ".claude\settings.json"
-$settings = if (Test-Path $settingsPath) {
-    Get-Content $settingsPath -Raw | ConvertFrom-Json -AsHashtable
-} else {
-    @{}
-}
-
-if (-not $settings.ContainsKey("mcpServers")) { $settings["mcpServers"] = @{} }
-$settings["mcpServers"]["epic-tracker"] = @{
-    type = "http"
-    url  = "http://127.0.0.1:6790/mcp"
-}
-
-New-Item -ItemType Directory -Force (Split-Path $settingsPath) | Out-Null
-$settings | ConvertTo-Json -Depth 10 | Set-Content $settingsPath -Encoding UTF8
+# Register MCP — ask user where their project dir is
+& (Join-Path $root "scripts\install-mcp.ps1")
 
 # Add to Windows startup
 $pwsh = (Get-Command pwsh).Source
@@ -49,7 +35,6 @@ $startupContent = "@echo off`r`nstart `"`" `"$pwsh`" -WindowStyle Hidden -File `
 Set-Content $startupScript -Value $startupContent -Encoding ASCII
 
 Write-Host "Installed successfully."
-Write-Host "  MCP:      $settingsPath (project-level)"
 Write-Host "  Startup:  $startupScript"
 
 Write-Host ""

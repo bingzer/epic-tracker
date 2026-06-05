@@ -10,6 +10,7 @@ internal class SpecWritingState : EpicState
         await Task.CompletedTask;
 
         var epic = context.Epic;
+        epic.LastKnownStateName = Name;
 
         if (epic.Specs.All(s => s.IsAbandoned))
         {

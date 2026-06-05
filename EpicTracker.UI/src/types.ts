@@ -63,6 +63,7 @@ export interface Epic {
   epicAgentInstruction: string | null;
   humanInLoop: HumanInLoop | null;
   agentSwarm: AgentSwarm | null;
+  lastKnownStateName: string | null;
 }
 
 export interface EpicAudit {

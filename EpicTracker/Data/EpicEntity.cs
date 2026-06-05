@@ -13,6 +13,7 @@ public class EpicEntity
     public string? ReviewerAgentName { get; set; }
     public string CodingAgentNames { get; set; } = default!;
     public string CurrentStateName { get; set; } = default!;
+    public string? LastKnownStateName { get; set; }
     public string? HumanInLoop { get; set; }
     public string? AgentSwarm { get; set; }
     public DateTime CreatedAt { get; set; }

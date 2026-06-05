@@ -10,6 +10,7 @@ internal class MockupState : EpicState
         await Task.CompletedTask;
 
         var epic = context.Epic;
+        epic.LastKnownStateName = Name;
 
         if (!epic.NeedsMockup)
         {

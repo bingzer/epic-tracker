@@ -12,6 +12,8 @@ internal class ClosedState : EpicState
     {
         await Task.CompletedTask;
 
+        context.Epic.LastKnownStateName = Name;
+
         return Exit(
             context: context,
             instruction: "This epic is already closed."

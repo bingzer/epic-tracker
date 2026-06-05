@@ -12,6 +12,7 @@ internal class ImplementationState : EpicState
         await Task.CompletedTask;
 
         var epic = context.Epic;
+        epic.LastKnownStateName = Name;
 
         epic.ResetHumanApproval();
 

@@ -12,7 +12,6 @@ import { useSignalR } from '../hooks/useSignalR';
 
 type Tab = 'details' | 'board' | 'audit' | 'agent';
 
-const TRANSIENT_STATES = new Set(['agent_swarm', 'human_in_loop', 'spec_human_in_loop']);
 
 const EPIC_STATES = [
   'drafting',
@@ -343,7 +342,7 @@ export default function EpicDetailPage() {
   if (error) return <div className="p-6 text-sm text-red-500">{error}</div>;
   if (!epic) return null;
 
-  const lastRealState = [...auditLog].reverse().find(a => !TRANSIENT_STATES.has(a.toState))?.toState;
+  const lastRealState = epic.lastKnownStateName ?? undefined;
 
   const tabCls = (t: Tab) => `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
     tab === t

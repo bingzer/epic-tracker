@@ -22,6 +22,7 @@ internal static class EpicMapper
             CreatedAt = entity.CreatedAt,
             CodingAgentNames = JsonSerializer.Deserialize<List<string>>(entity.CodingAgentNames) ?? [],
             CurrentStateName = entity.CurrentStateName,
+            LastKnownStateName = entity.LastKnownStateName,
             Specs = entity.Specs.Select(ToSpec).ToList()
         };
 
@@ -49,6 +50,8 @@ internal static class EpicMapper
         entity.IsDocDrafted = epic.IsDocDrafted;
         entity.IsMockupDone = epic.IsMockupDone;
         entity.ReviewerAgentName = epic.ReviewerAgentName;
+
+        entity.LastKnownStateName = epic.LastKnownStateName;
 
         entity.HumanInLoop = epic.HumanInLoop is not null
             ? JsonSerializer.Serialize(epic.HumanInLoop)

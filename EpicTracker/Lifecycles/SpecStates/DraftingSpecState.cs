@@ -5,7 +5,8 @@ namespace EpicTracker.Lifecycles.SpecStates;
 /// </summary>
 internal class DraftingSpecState : SpecState
 {
-    public override string Name => "spec_drafting";
+    public const string StateName = "spec_drafting";
+    public override string Name => StateName;
 
     protected override async Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default)
     {

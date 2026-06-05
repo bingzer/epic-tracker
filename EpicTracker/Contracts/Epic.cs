@@ -4,18 +4,19 @@ public class Epic
 {
     public string Id { get; set; } = default!;
     public string? Name { get; set; }
-    public string EpicAgent { get; set; } = default!;
+    public string EpicAgentName { get; set; } = default!;
     public string? Brief { get; set; }
     public string Slug { get; set; } = default!;
     public string BasePath { get; set; } = default!;
     public string EpicDocumentPath => Path.Combine(BasePath, "epics", Slug, "epic.md");
     public string EpicGovernancePath => Path.Combine(BasePath, "epics", Slug, "governance.md");
+    public string MockupDirectory => Path.Combine(BasePath, "epics", Slug, "mockups");
+    public string SpecsDirectory => Path.Combine(BasePath, "epics", Slug, "specs");
     public bool NeedsMockup { get; set; }
     public bool IsDocDrafted { get; set; }
-    public string? MockupPath { get; set; }
     public bool IsMockupDone { get; set; }
-    public string? ReviewerAgentId { get; set; }
-    public List<string> CodingAgents { get; set; } = [];
+    public string? ReviewerAgentName { get; set; }
+    public List<string> CodingAgentNames { get; set; } = [];
     public List<Spec> Specs { get; set; } = [];
 
     public DateTime CreatedAt { get; set; }
@@ -33,7 +34,7 @@ public class Epic
     public bool AgentSwarmHasConsensus() => AgentSwarm?.HasConsensus == true;
 
     /// <summary>
-    /// Raises a new agent swarm. Participants are all <see cref="CodingAgents"/> plus the <see cref="EpicAgent"/>.
+    /// Raises a new agent swarm. Participants are all <see cref="CodingAgentNames"/> plus the <see cref="EpicAgentName"/>.
     /// Sets <see cref="EpicAgentInstruction"/> to <paramref name="instruction"/> to tell the epic agent to message each
     /// participant via tmux, collect AGREE/DISAGREE responses, call <c>submit_agreement</c> for each, then call <c>advance</c>.
     /// </summary>
@@ -43,9 +44,9 @@ public class Epic
         {
             Objective = objective,
             ToStateName = toStateName,
-            Agreements = CodingAgents
+            Agreements = CodingAgentNames
                 .Select(id => new AgentAgreement { AgentId = id })
-                .Append(new AgentAgreement { AgentId = EpicAgent })
+                .Append(new AgentAgreement { AgentId = EpicAgentName })
                 .ToList()
         };
 

@@ -10,7 +10,8 @@ public class EpicScaffolding(IFileSystem fileSystem)
         var epicRoot = Path.Combine(epic.BasePath, "epics", epic.Slug);
 
         fileSystem.CreateDirectory(epicRoot);
-        fileSystem.CreateDirectory(Path.Combine(epicRoot, "specs"));
+        fileSystem.CreateDirectory(epic.SpecsDirectory);
+        fileSystem.CreateDirectory(epic.MockupDirectory);
         fileSystem.CreateDirectory(Path.Combine(epicRoot, "output"));
 
         fileSystem.CopyFile(governanceTemplatePath, epic.EpicGovernancePath, overwrite: true);

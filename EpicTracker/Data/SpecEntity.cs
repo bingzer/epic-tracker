@@ -5,7 +5,7 @@ public class SpecEntity
     public string Id { get; set; } = default!;
     public string EpicId { get; set; } = default!;
     public string AssignedAgentId { get; set; } = default!;
-    public string? ReviewerAgentId { get; set; }
+    public string? ReviewerAgentName { get; set; }
     public bool CodeReviewRequired { get; set; }
     public string? SpecDocPath { get; set; }
     public bool IsSpecApproved { get; set; }

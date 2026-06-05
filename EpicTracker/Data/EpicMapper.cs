@@ -11,17 +11,16 @@ internal static class EpicMapper
         {
             Id = entity.Id,
             Name = entity.Name,
-            EpicAgent = entity.EpicAgent,
+            EpicAgentName = entity.EpicAgentName,
             Brief = entity.Brief,
             Slug = entity.Slug,
             BasePath = basePath,
             NeedsMockup = entity.NeedsMockup,
             IsDocDrafted = entity.IsDocDrafted,
-            MockupPath = entity.MockupPath,
             IsMockupDone = entity.IsMockupDone,
-            ReviewerAgentId = entity.ReviewerAgentId,
+            ReviewerAgentName = entity.ReviewerAgentName,
             CreatedAt = entity.CreatedAt,
-            CodingAgents = JsonSerializer.Deserialize<List<string>>(entity.CodingAgents) ?? [],
+            CodingAgentNames = JsonSerializer.Deserialize<List<string>>(entity.CodingAgentNames) ?? [],
             CurrentStateName = entity.CurrentStateName,
             Specs = entity.Specs.Select(ToSpec).ToList()
         };
@@ -44,9 +43,8 @@ internal static class EpicMapper
     {
         entity.NeedsMockup = epic.NeedsMockup;
         entity.IsDocDrafted = epic.IsDocDrafted;
-        entity.MockupPath = epic.MockupPath;
         entity.IsMockupDone = epic.IsMockupDone;
-        entity.ReviewerAgentId = epic.ReviewerAgentId;
+        entity.ReviewerAgentName = epic.ReviewerAgentName;
 
         entity.HumanInLoop = epic.HumanInLoop is not null
             ? JsonSerializer.Serialize(epic.HumanInLoop)
@@ -64,7 +62,7 @@ internal static class EpicMapper
             Id = entity.Id,
             EpicId = entity.EpicId,
             AssignedAgentId = entity.AssignedAgentId,
-            ReviewerAgentId = entity.ReviewerAgentId,
+            ReviewerAgentName = entity.ReviewerAgentName,
             CodeReviewRequired = entity.CodeReviewRequired,
             SpecDocPath = entity.SpecDocPath,
             IsSpecApproved = entity.IsSpecApproved,

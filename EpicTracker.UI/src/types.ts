@@ -27,7 +27,7 @@ export interface Spec {
   id: string;
   epicId: string;
   assignedAgentId: string;
-  reviewerAgentId: string | null;
+  reviewerAgentName: string | null;
   codeReviewRequired: boolean;
   specDocPath: string | null;
   isSpecApproved: boolean;
@@ -45,18 +45,18 @@ export interface Spec {
 export interface Epic {
   id: string;
   name: string | null;
-  epicAgent: string;
+  epicAgentName: string;
   brief: string | null;
   slug: string;
   epicDocumentPath: string;
   epicGovernancePath: string;
-  codingAgents: string[];
+  codingAgentNames: string[];
   needsMockup: boolean;
   isDocDrafted: boolean;
   mockupPath: string | null;
   isMockupDone: boolean;
   isSpecListApproved: boolean;
-  reviewerAgentId: string | null;
+  reviewerAgentName: string | null;
   createdAt: string;
   specs: Spec[];
   currentStateName: string;

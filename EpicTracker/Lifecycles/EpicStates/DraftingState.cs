@@ -2,42 +2,36 @@ namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class DraftingState : EpicState
 {
-    public override string Name => "drafting";
+    public const string StateName = "drafting";
+
+    public override string Name => StateName;
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
 
-        var epic = context.Epic;
-
-        if (!TryValidate(epic, out var instruction))
+        if (!TryValidate(context.Epic, out var instruction))
         {
-            epic.SetEpicAgentInstruction(instruction);
-            return this;
+            return Exit(context, instruction);
         }
 
         if (!epic.IsDocDrafted)
         {
-            epic.SetEpicAgentInstruction($"""
+            return Exit(context, 
+                $"""
                 Draft the epic document at {epic.EpicDocumentPath}.
                 Brief: {epic.Brief}
                 Follow the governance document at {epic.EpicGovernancePath} for the required format.
-                Once written, call update_epic(IsDocDrafted, true) then call advance("{epic.Id}").
+                Once written, call update_epic(IsDocDrafted, true) then call advance({epic.Id}).
                 """);
-
-            return this;
         }
-
-        epic.SetEpicAgentInstruction($"""
-            Call advance("{epic.Id}") to continue.
-            """);
-
+        
         return new WaterproofingState();
     }
 
     private static bool TryValidate(Epic epic, out string instruction)
     {
-        if (string.IsNullOrWhiteSpace(epic.EpicAgent))
+        if (string.IsNullOrWhiteSpace(epic.EpicAgentName))
         {
             instruction = "Missing epic agent";
             return false;
@@ -67,7 +61,7 @@ internal class DraftingState : EpicState
             return false;
         }
 
-        if (epic.CodingAgents.Count == 0)
+        if (epic.CodingAgentNames.Count == 0)
         {
             instruction = "No coding agents assigned — update_epic with at least one CodingAgent before advancing";
             return false;

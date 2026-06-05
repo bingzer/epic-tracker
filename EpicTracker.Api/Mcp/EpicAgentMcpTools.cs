@@ -5,7 +5,7 @@ using ModelContextProtocol.Server;
 
 namespace EpicTracker.Api.Mcp;
 
-public record EpicSummary(string Id, string Name, string Slug, string CurrentStateName, string EpicAgent);
+public record EpicSummary(string Id, string Name, string Slug, string CurrentStateName, string EpicAgentName);
 public record AdvanceEpicResult(string Id, string CurrentStateName, string? EpicAgentInstruction, HumanInLoop? HumanInLoop);
 public record AdvanceSpecResult(string Id, string CurrentStateName, string? EpicAgentInstruction);
 public record CreateSpecResult(string Id, string CurrentStateName);
@@ -18,7 +18,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
     public async Task<List<EpicSummary>> ListEpics(CancellationToken cancellationToken = default)
     {
         var epics = await service.ListEpics(cancellationToken);
-        return epics.Select(e => new EpicSummary(e.Id, e.Name ?? string.Empty, e.Slug ?? string.Empty, e.CurrentStateName, e.EpicAgent)).ToList();
+        return epics.Select(e => new EpicSummary(e.Id, e.Name ?? string.Empty, e.Slug ?? string.Empty, e.CurrentStateName, e.EpicAgentName)).ToList();
     }
 
     [McpServerTool(Name = "get_epic"), Description("Gets the current state of an epic, including its state name, agent instruction, typed flag fields, and all specs.")]
@@ -122,7 +122,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return new AdvanceSpecResult(result.Id, result.CurrentStateName, result.EpicAgentInstruction);
     }
 
-    [McpServerTool(Name = "update_epic"), Description("Sets a single field on an epic. Available fields: Name (string), Brief (string), EpicAgent (string), CodingAgents (comma-separated string), NeedsMockup (bool), IsDocDrafted (bool), IsMockupDone (bool), MockupPath (string).")]
+    [McpServerTool(Name = "update_epic"), Description("Sets a single field on an epic. Available fields: Name (string), Brief (string), EpicAgentName (string), CodingAgentNames (comma-separated string), NeedsMockup (bool), IsDocDrafted (bool), IsMockupDone (bool).")]
     public async Task<Epic> UpdateEpic(
         [Description("The ID of the epic to update.")] string epicId,
         [Description("The name of the field to set.")] string fieldName,
@@ -134,7 +134,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return result;
     }
 
-    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentId (string), ReviewerAgentId (string), SpecDocPath (string), CodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
+    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentId (string), ReviewerAgentName (string), SpecDocPath (string), CodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
     public async Task<UpdateSpecResult> UpdateSpec(
         [Description("The ID of the spec to update.")] string specId,
         [Description("The name of the field to set.")] string fieldName,

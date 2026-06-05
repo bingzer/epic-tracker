@@ -4,7 +4,8 @@ internal class AgentSwarmState : EpicState
 {
     private const int MaxIterations = 5;
 
-    public override string Name => "agent_swarm";
+    public const string StateName = "agent_swarm";
+    public override string Name => StateName;
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {

@@ -163,7 +163,7 @@ export default function EpicDetailPage() {
     try {
       const data = await EpicApi.get(epicId);
       setEpic(data);
-      setReviewerInput(data.reviewerAgentId ?? '');
+      setReviewerInput(data.reviewerAgentName ?? '');
       setEpicName(data.name ?? '');
       setEpicBrief(data.brief ?? '');
       setEpicSlug(data.slug ?? '');
@@ -258,7 +258,7 @@ export default function EpicDetailPage() {
     if (!epic || !agentInput.trim()) return;
 
     const parts = agentInput.split(',').map(s => s.trim()).filter(Boolean);
-    const next = [...epic.codingAgents];
+    const next = [...epic.codingAgentNames];
 
     for (const p of parts) {
       if (!next.includes(p)) next.push(p);
@@ -267,7 +267,7 @@ export default function EpicDetailPage() {
     setAgentInput('');
 
     try {
-      const updated = await EpicApi.update(epic.id, { ...epic, codingAgents: next });
+      const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
       setEpic(updated);
     } catch (e) {
       alert(String(e));
@@ -277,10 +277,10 @@ export default function EpicDetailPage() {
   async function handleRemoveCodingAgent(agent: string) {
     if (!epic) return;
 
-    const next = epic.codingAgents.filter(a => a !== agent);
+    const next = epic.codingAgentNames.filter(a => a !== agent);
 
     try {
-      const updated = await EpicApi.update(epic.id, { ...epic, codingAgents: next });
+      const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
       setEpic(updated);
     } catch (e) {
       alert(String(e));
@@ -291,7 +291,7 @@ export default function EpicDetailPage() {
     if (!epic) return;
 
     try {
-      const updated = await EpicApi.update(epic.id, { ...epic, reviewerAgentId: reviewerInput.trim() || null });
+      const updated = await EpicApi.update(epic.id, { ...epic, reviewerAgentName: reviewerInput.trim() || null });
       setEpic(updated);
     } catch (e) {
       alert(String(e));
@@ -446,8 +446,8 @@ export default function EpicDetailPage() {
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Epic Agent</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-sm">{epic.epicAgent}</span>
-                  <a href={`openterm:${epic.epicAgent}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Open chat</a>
+                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-sm">{epic.epicAgentName}</span>
+                  <a href={`openterm:${epic.epicAgentName}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Open chat</a>
                 </div>
               </div>
 
@@ -534,7 +534,7 @@ export default function EpicDetailPage() {
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Coding Agents</span>
                 <div className="flex flex-wrap gap-1 mb-1">
-                  {epic.codingAgents.map(a => (
+                  {epic.codingAgentNames.map(a => (
                     <span key={a} className="inline-flex items-center gap-1 text-xs font-mono bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-1.5 py-0.5 rounded">
                       {a}
                       <a href={`openterm:${a}`} className="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 leading-none" title="Open chat">↗</a>
@@ -566,8 +566,8 @@ export default function EpicDetailPage() {
               </div>
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Reviewer</span>
-                {epic.reviewerAgentId && (
-                  <a href={`openterm:${epic.reviewerAgentId}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-mono mr-2">{epic.reviewerAgentId} ↗</a>
+                {epic.reviewerAgentName && (
+                  <a href={`openterm:${epic.reviewerAgentName}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-mono mr-2">{epic.reviewerAgentName} ↗</a>
                 )}
                 <div className="flex gap-1.5 mt-1">
                   <input
@@ -639,13 +639,13 @@ export default function EpicDetailPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
                 <tr>
-                  <td className="py-2 font-mono text-gray-800 dark:text-zinc-200">{epic.epicAgent}</td>
+                  <td className="py-2 font-mono text-gray-800 dark:text-zinc-200">{epic.epicAgentName}</td>
                   <td className="py-2 text-gray-500 dark:text-zinc-400">Epic Agent (PM)</td>
                   <td className="py-2">
-                    <a href={`openterm:${epic.epicAgent}`} className="text-xs px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Chat</a>
+                    <a href={`openterm:${epic.epicAgentName}`} className="text-xs px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Chat</a>
                   </td>
                 </tr>
-                {epic.codingAgents.map(a => (
+                {epic.codingAgentNames.map(a => (
                   <tr key={a}>
                     <td className="py-2 font-mono text-gray-800 dark:text-zinc-200">{a}</td>
                     <td className="py-2 text-gray-500 dark:text-zinc-400">Coding Agent</td>
@@ -654,12 +654,12 @@ export default function EpicDetailPage() {
                     </td>
                   </tr>
                 ))}
-                {epic.reviewerAgentId && (
+                {epic.reviewerAgentName && (
                   <tr>
-                    <td className="py-2 font-mono text-gray-800 dark:text-zinc-200">{epic.reviewerAgentId}</td>
+                    <td className="py-2 font-mono text-gray-800 dark:text-zinc-200">{epic.reviewerAgentName}</td>
                     <td className="py-2 text-gray-500 dark:text-zinc-400">Reviewer</td>
                     <td className="py-2">
-                      <a href={`openterm:${epic.reviewerAgentId}`} className="text-xs px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Chat</a>
+                      <a href={`openterm:${epic.reviewerAgentName}`} className="text-xs px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Chat</a>
                     </td>
                   </tr>
                 )}
@@ -668,12 +668,12 @@ export default function EpicDetailPage() {
 
             <AgentSwarmPanel epic={epic} />
 
-            {epic.epicAgentInstruction ? (
+            {epic.epicAgentNameInstruction ? (
               <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
                 <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1">
                   Epic Agent Instruction
                 </span>
-                <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{epic.epicAgentInstruction}</p>
+                <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{epic.epicAgentNameInstruction}</p>
               </div>
             ) : (
               <p className="text-sm text-gray-400 dark:text-zinc-500">No active agent instruction.</p>

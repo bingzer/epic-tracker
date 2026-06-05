@@ -35,7 +35,7 @@ export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, o
   const [codingNow, setCodingNow] = useState(false);
   const [specDocPath, setSpecDocPath] = useState(spec.specDocPath ?? '');
   const [assignedAgentId, setAssignedAgentId] = useState(spec.assignedAgentId ?? '');
-  const [reviewerAgentId, setReviewerAgentId] = useState(spec.reviewerAgentId ?? '');
+  const [reviewerAgentName, setReviewerAgentId] = useState(spec.reviewerAgentName ?? '');
 
   const needsHumanReview = spec.humanInLoop !== null && spec.humanInLoop.isApproved === null;
 
@@ -231,10 +231,10 @@ export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, o
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-0.5">Reviewer Agent</label>
                 <input
-                  value={reviewerAgentId}
+                  value={reviewerAgentName}
                   onChange={e => setReviewerAgentId(e.target.value)}
-                  onBlur={() => saveTextField('reviewerAgentId', reviewerAgentId)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveTextField('reviewerAgentId', reviewerAgentId); } }}
+                  onBlur={() => saveTextField('reviewerAgentName', reviewerAgentName)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveTextField('reviewerAgentName', reviewerAgentName); } }}
                   placeholder="reviewer-agent-id"
                   className="w-full text-xs rounded border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />

@@ -60,13 +60,13 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         {
             Id = slug,
             Name = request.Name,
-            EpicAgent = request.EpicAgent,
+            EpicAgentName = request.EpicAgentName,
             Brief = request.Brief,
             Slug = slug,
             NeedsMockup = request.NeedsMockup,
-            ReviewerAgentId = request.ReviewerAgentId,
-            CodingAgents = JsonSerializer.Serialize(request.CodingAgents ?? []),
-            CurrentStateName = new DraftingState().Name,
+            ReviewerAgentName = request.ReviewerAgentName,
+            CodingAgentNames = JsonSerializer.Serialize(request.CodingAgentNames ?? []),
+            CurrentStateName = DraftingState.StateName,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -75,7 +75,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var created = ToEpic(entity);
 
-        db.EpicAudits.Add(EpicMapper.ToAudit(entity.Id, request.EpicAgent, string.Empty, created));
+        db.EpicAudits.Add(EpicMapper.ToAudit(entity.Id, request.EpicAgentName, string.Empty, created));
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -158,9 +158,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         entity.NeedsMockup = epic.NeedsMockup;
         entity.IsDocDrafted = epic.IsDocDrafted;
         entity.IsMockupDone = epic.IsMockupDone;
-        entity.MockupPath = epic.MockupPath;
-        entity.CodingAgents = JsonSerializer.Serialize(epic.CodingAgents);
-        entity.ReviewerAgentId = epic.ReviewerAgentId;
+        entity.CodingAgentNames = JsonSerializer.Serialize(epic.CodingAgentNames);
+        entity.ReviewerAgentName = epic.ReviewerAgentName;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -195,13 +194,13 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
                 entity.Brief = value;
                 break;
 
-            case "EpicAgent":
-                entity.EpicAgent = value;
+            case "EpicAgentName":
+                entity.EpicAgentName = value;
                 break;
 
-            case "CodingAgents":
+            case "CodingAgentNames":
                 var agents = value.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
-                entity.CodingAgents = JsonSerializer.Serialize(agents);
+                entity.CodingAgentNames = JsonSerializer.Serialize(agents);
                 break;
 
             case "NeedsMockup":
@@ -216,13 +215,9 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
                 entity.IsMockupDone = bool.Parse(value);
                 break;
 
-            case "MockupPath":
-                entity.MockupPath = value;
-                break;
-
             default:
                 throw new InvalidOperationException(
-                    $"Unknown field '{fieldName}'. Valid fields: Name, Brief, EpicAgent, CodingAgents, NeedsMockup, IsDocDrafted, IsMockupDone, MockupPath.");
+                    $"Unknown field '{fieldName}'. Valid fields: Name, Brief, EpicAgentName, CodingAgentNames, NeedsMockup, IsDocDrafted, IsMockupDone.");
         }
 
         entity.UpdatedAt = DateTime.UtcNow;
@@ -245,8 +240,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
                 entity.AssignedAgentId = value;
                 break;
 
-            case "ReviewerAgentId":
-                entity.ReviewerAgentId = value;
+            case "ReviewerAgentName":
+                entity.ReviewerAgentName = value;
                 break;
 
             case "SpecDocPath":
@@ -279,7 +274,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
             default:
                 throw new InvalidOperationException(
-                    $"Unknown field '{fieldName}'. Valid fields: AssignedAgentId, ReviewerAgentId, SpecDocPath, CodeReviewRequired, IsSpecDrafted, IsCodeDone, IsAcPassed, IsCodeReviewApproved.");
+                    $"Unknown field '{fieldName}'. Valid fields: AssignedAgentId, ReviewerAgentName, SpecDocPath, CodeReviewRequired, IsSpecDrafted, IsCodeDone, IsAcPassed, IsCodeReviewApproved.");
         }
 
         entity.UpdatedAt = DateTime.UtcNow;
@@ -306,9 +301,9 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         {
             Objective = request.Objective,
             ToStateName = request.ToStateName,
-            Agreements = epic.CodingAgents
+            Agreements = epic.CodingAgentNames
                 .Select(id => new AgentAgreement { AgentId = id })
-                .Append(new AgentAgreement { AgentId = epic.EpicAgent })
+                .Append(new AgentAgreement { AgentId = epic.EpicAgentName })
                 .ToList()
         };
 
@@ -365,7 +360,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        await tmux.SendKeys(entity.EpicAgent, $"Human {(request.IsApproved ? "approved" : "rejected")} epic {epicId}. Call advance.", cancellationToken);
+        await tmux.SendKeys(entity.EpicAgentName, $"Human {(request.IsApproved ? "approved" : "rejected")} epic {epicId}. Call advance.", cancellationToken);
     }
 
     /// <summary>
@@ -387,7 +382,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         if (agreement is null)
         {
-            if (!epic.CodingAgents.Contains(request.AgentId) && epic.EpicAgent != request.AgentId)
+            if (!epic.CodingAgentNames.Contains(request.AgentId) && epic.EpicAgentName != request.AgentId)
             {
                 throw new InvalidOperationException($"Agent {request.AgentId} is not part of the swarm or codingAgents for epic {epicId}.");
             }
@@ -410,11 +405,11 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        var message = entity.CurrentStateName == new DraftingState().Name
+        var message = entity.CurrentStateName == DraftingState.StateName
             ? $"Let's work on {entity.Id}. Call get_epic then advance."
             : $"Hey, are you still working on epic {entity.Id}? If not, please continue — call get_epic(\"{entity.Id}\") first to get the latest state, then carry on.";
 
-        await tmux.SendKeys(entity.EpicAgent, message, cancellationToken);
+        await tmux.SendKeys(entity.EpicAgentName, message, cancellationToken);
     }
 
     public async Task DeleteEpic(string epicId, CancellationToken cancellationToken = default)
@@ -436,7 +431,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        if (entity.EpicAgent != request.EpicAgentId)
+        if (entity.EpicAgentName != request.EpicAgentId)
         {
             throw new InvalidOperationException($"{request.EpicAgentId} is not the Epic Agent for epic {epicId}.");
         }
@@ -445,13 +440,17 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var fromState = epic.CurrentStateName;
 
-        var currentState = EpicState.Create(epic.CurrentStateName);
-
         var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem };
 
-        var nextState = await currentState.MoveNext(epicContext, cancellationToken);
+        var currentState = EpicState.Create(epic.CurrentStateName);
+        string previousName;
 
-        epic.CurrentStateName = nextState.Name;
+        do
+        {
+            previousName = currentState.Name;
+            currentState = await currentState.MoveNext(epicContext, cancellationToken);
+            epic.CurrentStateName = currentState.Name;
+        } while (currentState.Name != previousName);
 
         entity.CurrentStateName = epic.CurrentStateName;
         entity.UpdatedAt = DateTime.UtcNow;
@@ -501,10 +500,10 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             Id = slug,
             EpicId = epicId,
             AssignedAgentId = request.AssignedAgentId,
-            ReviewerAgentId = request.ReviewerAgentId,
+            ReviewerAgentName = request.ReviewerAgentName,
             CodeReviewRequired = request.CodeReviewRequired,
             SpecDocPath = request.SpecDocPath,
-            CurrentStateName = new EpicTracker.Lifecycles.SpecStates.DraftingSpecState().Name,
+            CurrentStateName = DraftingSpecState.StateName,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -539,7 +538,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         entity.IsCodeReviewApproved = spec.IsCodeReviewApproved;
         entity.IsAcPassed = spec.IsAcPassed;
         entity.CodeReviewRequired = spec.CodeReviewRequired;
-        entity.ReviewerAgentId = spec.ReviewerAgentId;
+        entity.ReviewerAgentName = spec.ReviewerAgentName;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -571,7 +570,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         await db.SaveChangesAsync(cancellationToken);
 
         var epicEntity = await db.FindEpicOrThrow(entity.EpicId, cancellationToken);
-        await tmux.SendKeys(epicEntity.EpicAgent, $"Human {(request.IsApproved ? "approved" : "rejected")} spec {specId}. Call advance_spec then advance.", cancellationToken);
+        await tmux.SendKeys(epicEntity.EpicAgentName, $"Human {(request.IsApproved ? "approved" : "rejected")} spec {specId}. Call advance_spec then advance.", cancellationToken);
     }
 
     public async Task<Spec> MarkSpecReadyToCode(string specId, CancellationToken cancellationToken = default)

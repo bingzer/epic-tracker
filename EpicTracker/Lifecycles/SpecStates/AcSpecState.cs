@@ -5,7 +5,8 @@ namespace EpicTracker.Lifecycles.SpecStates;
 /// </summary>
 internal class AcSpecState : SpecState
 {
-    public override string Name => "ac";
+    public const string StateName = "ac";
+    public override string Name => StateName;
 
     protected override async Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default)
     {
@@ -42,8 +43,8 @@ internal class AcSpecState : SpecState
             spec.HumanInLoop = new HumanInLoop
             {
                 Questions = $"Spec {spec.Id} has passed AC. Please review and approve to mark as done.",
-                ApproveToStateName = new DoneSpecState().Name,
-                RejectToStateName = new CodingSpecState().Name
+                ApproveToStateName = DoneSpecState.StateName,
+                RejectToStateName = CodingSpecState.StateName
             };
 
             spec.SetEpicAgentInstruction("AC passed. Raised HumanInLoop for final sign-off.");

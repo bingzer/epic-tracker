@@ -2,7 +2,8 @@ namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class SpecWritingState : EpicState
 {
-    public override string Name => "spec_writing";
+    public const string StateName = "spec_writing";
+    public override string Name => StateName;
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
@@ -12,7 +13,7 @@ internal class SpecWritingState : EpicState
 
         if (epic.Specs.All(s => s.IsAbandoned))
         {
-            var agentList = string.Join(", ", epic.CodingAgents);
+            var agentList = string.Join(", ", epic.CodingAgentNames);
 
             epic.SetEpicAgentInstruction($"""
                 Read the epic document at {epic.EpicDocumentPath}.
@@ -82,7 +83,7 @@ internal class SpecWritingState : EpicState
 
             epic.RaiseHumanInLoop(
                 questions: $"All specs have been reviewed and approved by agents. Please review the final spec list in the dashboard and approve to proceed to implementation.\n\nSpecs:\n{specList}",
-                approveToStateName: new ImplementationState().Name,
+                approveToStateName: ImplementationState.StateName,
                 rejectToStateName: Name,
                 instruction: "All specs approved by agents. HumanInLoop raised for final human review. Wait for further instruction."
             );

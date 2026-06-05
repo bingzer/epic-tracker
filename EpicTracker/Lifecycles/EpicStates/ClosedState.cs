@@ -5,7 +5,8 @@ namespace EpicTracker.Lifecycles.EpicStates;
 /// </summary>
 internal class ClosedState : EpicState
 {
-    public override string Name => "closed";
+    public const string StateName = "closed";
+    public override string Name => StateName;
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {

@@ -2,7 +2,8 @@ namespace EpicTracker.Lifecycles.SpecStates;
 
 internal class ReadySpecState : SpecState
 {
-    public override string Name => "ready";
+    public const string StateName = "ready";
+    public override string Name => StateName;
 
     protected override async Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default)
     {

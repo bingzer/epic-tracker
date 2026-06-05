@@ -2,12 +2,12 @@ import { api } from './client';
 import type { Epic, EpicAudit, Spec } from './types';
 
 export interface CreateEpicPayload {
-  epicAgent: string;
+  epicAgentName: string;
   brief: string;
   name?: string;
-  codingAgents?: string[];
+  codingAgentNames?: string[];
   needsMockup: boolean;
-  reviewerAgentId?: string;
+  reviewerAgentName?: string;
 }
 
 export const EpicApi = {
@@ -43,8 +43,8 @@ export const EpicApi = {
   forceState: (epicId: string, stateName: string) =>
     api.post<Epic>(`/api/epics/${epicId}/force-state`, { stateName }),
 
-  createSpec: (epicId: string, assignedAgentId: string, specDocPath: string | null, codeReviewRequired: boolean, reviewerAgentId: string | null) =>
-    api.post<Spec>(`/api/epics/${epicId}/specs`, { assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentId }),
+  createSpec: (epicId: string, assignedAgentId: string, specDocPath: string | null, codeReviewRequired: boolean, reviewerAgentName: string | null) =>
+    api.post<Spec>(`/api/epics/${epicId}/specs`, { assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentName }),
 };
 
 export const DocApi = {

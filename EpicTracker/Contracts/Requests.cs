@@ -15,17 +15,17 @@ public record CreateSpecRequest(
     string AssignedAgentId,
     string? SpecDocPath,
     bool CodeReviewRequired,
-    string? ReviewerAgentId);
+    string? ReviewerAgentName);
 
 public record ApproveSpecHumanInLoopRequest(bool IsApproved, string? HumanInput);
 
 public record CreateEpicRequest(
-    string EpicAgent,
+    string EpicAgentName,
     string Brief,
     string? Name,
-    List<string>? CodingAgents,
+    List<string>? CodingAgentNames,
     bool NeedsMockup,
-    string? ReviewerAgentId);
+    string? ReviewerAgentName);
 
 public record ForceSpecStateRequest(string StateName);
 

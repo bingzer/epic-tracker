@@ -5,7 +5,8 @@ namespace EpicTracker.Lifecycles.SpecStates;
 /// </summary>
 internal class HumanInLoopSpecState : SpecState
 {
-    public override string Name => "spec_human_in_loop";
+    public const string StateName = "spec_human_in_loop";
+    public override string Name => StateName;
 
     protected override async Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default)
     {

@@ -2,7 +2,8 @@ namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class HumanInLoopState : EpicState
 {
-    public override string Name => "human_in_loop";
+    public const string StateName = "human_in_loop";
+    public override string Name => StateName;
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {

@@ -63,6 +63,13 @@ internal abstract class EpicState
         return next;
     }
 
+    protected EpicState Exit(EpicContext context, string instruction)
+    {
+        context.Epic.SetEpicAgentInstruction(instruction);
+
+        return this;
+    }
+
     private static readonly Dictionary<string, Func<EpicState>> Factories = Assembly
         .GetExecutingAssembly()
         .GetTypes()

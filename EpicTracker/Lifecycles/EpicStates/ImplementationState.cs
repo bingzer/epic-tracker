@@ -1,3 +1,5 @@
+using EpicTracker.Lifecycles.SpecStates;
+
 namespace EpicTracker.Lifecycles.EpicStates;
 
 /// <summary>
@@ -6,7 +8,8 @@ namespace EpicTracker.Lifecycles.EpicStates;
 /// </summary>
 internal class ImplementationState : EpicState
 {
-    public override string Name => "implementation";
+    public const string StateName = "implementation";
+    public override string Name => StateName;
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
@@ -16,12 +19,12 @@ internal class ImplementationState : EpicState
 
         epic.HumanInLoop = null;
 
-        foreach (var spec in epic.Specs.Where(s => !s.IsAbandoned && s.CurrentStateName == "spec_drafting"))
+        foreach (var spec in epic.Specs.Where(s => !s.IsAbandoned && s.CurrentStateName == DraftingSpecState.StateName))
         {
-            spec.CurrentStateName = "coding";
+            spec.CurrentStateName = CodingSpecState.StateName;
         }
 
-        var pending = epic.Specs.Where(s => s.CurrentStateName != "done").ToList();
+        var pending = epic.Specs.Where(s => s.CurrentStateName != DoneSpecState.StateName).ToList();
         if (pending.Count > 0)
         {
             var pendingList = string.Join("\n", pending.Select(s => $"- {s.Id} ({s.AssignedAgentId}): {s.CurrentStateName}"));
@@ -47,8 +50,8 @@ internal class ImplementationState : EpicState
                     Specs:
                     {specList}
                     """,
-                approveToStateName: new ClosedState().Name,
-                rejectToStateName: new SpecWritingState().Name,
+                approveToStateName: ClosedState.StateName,
+                rejectToStateName: SpecWritingState.StateName,
                 instruction: "All specs done. Raised HumanInLoop for final sign-off."
             );
 

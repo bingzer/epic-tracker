@@ -2,7 +2,8 @@ namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class WaterproofingState : EpicState
 {
-    public override string Name => "waterproofing";
+    public const string StateName = "waterproofing";
+    public override string Name => StateName;
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {

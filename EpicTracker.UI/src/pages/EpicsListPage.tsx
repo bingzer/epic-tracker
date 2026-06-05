@@ -8,33 +8,33 @@ import { useSignalR } from '../hooks/useSignalR';
 function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [epicAgent, setEpicAgent] = useState('');
+  const [epicAgentName, setEpicAgentName] = useState('');
   const [brief, setBrief] = useState('');
   const [agentInput, setAgentInput] = useState('');
-  const [codingAgents, setCodingAgents] = useState<string[]>([]);
+  const [codingAgentNames, setCodingAgentNames] = useState<string[]>([]);
   const [needsMockup, setNeedsMockup] = useState(false);
-  const [reviewerAgentId, setReviewerAgentId] = useState('');
+  const [reviewerAgentName, setReviewerAgentName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
     setName('');
-    setEpicAgent('');
+    setEpicAgentName('');
     setBrief('');
     setAgentInput('');
-    setCodingAgents([]);
+    setCodingAgentNames([]);
     setNeedsMockup(false);
-    setReviewerAgentId('');
+    setReviewerAgentName('');
     setError(null);
   }
 
   function handleAddAgent() {
     const parts = agentInput.split(',').map(s => s.trim()).filter(Boolean);
-    const next = [...codingAgents];
+    const next = [...codingAgentNames];
     for (const p of parts) {
       if (!next.includes(p)) next.push(p);
     }
-    setCodingAgents(next);
+    setCodingAgentNames(next);
     setAgentInput('');
   }
 
@@ -48,12 +48,12 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
     setError(null);
     try {
       const payload: CreateEpicPayload = {
-        epicAgent: epicAgent.trim(),
+        epicAgentName: epicAgentName.trim(),
         brief: brief.trim(),
         name: name.trim() || undefined,
-        codingAgents: codingAgents.length > 0 ? codingAgents : undefined,
+        codingAgentNames: codingAgentNames.length > 0 ? codingAgentNames : undefined,
         needsMockup,
-        reviewerAgentId: reviewerAgentId.trim() || undefined,
+        reviewerAgentName: reviewerAgentName.trim() || undefined,
       };
       const epic = await EpicApi.create(payload);
       onCreated(epic);
@@ -90,7 +90,7 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
         </div>
         <div>
           <label className={labelCls}>Epic Agent *</label>
-          <input required value={epicAgent} onChange={e => setEpicAgent(e.target.value)} placeholder="epic-agent-id" className={inputCls} />
+          <input required value={epicAgentName} onChange={e => setEpicAgentName(e.target.value)} placeholder="epic-agent-id" className={inputCls} />
         </div>
       </div>
       <div>
@@ -122,12 +122,12 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
             Add
           </button>
         </div>
-        {codingAgents.length > 0 && (
+        {codingAgentNames.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {codingAgents.map(a => (
+            {codingAgentNames.map(a => (
               <span key={a} className="inline-flex items-center gap-1 text-xs bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-2 py-0.5 rounded font-mono">
                 {a}
-                <button type="button" onClick={() => setCodingAgents(codingAgents.filter(x => x !== a))} className="text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 leading-none">×</button>
+                <button type="button" onClick={() => setCodingAgentNames(codingAgentNames.filter(x => x !== a))} className="text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 leading-none">×</button>
               </span>
             ))}
           </div>
@@ -135,7 +135,7 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
       </div>
       <div>
         <label className={labelCls}>Code reviewer</label>
-        <input value={reviewerAgentId} onChange={e => setReviewerAgentId(e.target.value)} placeholder="reviewer-agent-id" className={inputCls} />
+        <input value={reviewerAgentName} onChange={e => setReviewerAgentName(e.target.value)} placeholder="reviewer-agent-id" className={inputCls} />
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -188,8 +188,8 @@ function EpicRow({ epic }: { epic: Epic }) {
       )}
       <div className="mt-1.5 flex gap-3 text-xs text-gray-400 dark:text-zinc-500">
         <span>{epic.specs.length} spec{epic.specs.length !== 1 ? 's' : ''}</span>
-        {epic.codingAgents.length > 0 && <span>{epic.codingAgents.join(', ')}</span>}
-        <span>Agent: {epic.epicAgent}</span>
+        {epic.codingAgentNames.length > 0 && <span>{epic.codingAgentNames.join(', ')}</span>}
+        <span>Agent: {epic.epicAgentName}</span>
       </div>
     </div>
   );

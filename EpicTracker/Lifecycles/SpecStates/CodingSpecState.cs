@@ -5,7 +5,8 @@ namespace EpicTracker.Lifecycles.SpecStates;
 /// </summary>
 internal class CodingSpecState : SpecState
 {
-    public override string Name => "coding";
+    public const string StateName = "coding";
+    public override string Name => StateName;
 
     protected override async Task<SpecState> Next(SpecContext context, CancellationToken cancellationToken = default)
     {
@@ -26,7 +27,7 @@ internal class CodingSpecState : SpecState
 
         if (spec.CodeReviewRequired)
         {
-            spec.SetEpicAgentInstruction($"Code complete by {spec.AssignedAgentId}. Proceeding to code review by {spec.ReviewerAgentId}.");
+            spec.SetEpicAgentInstruction($"Code complete by {spec.AssignedAgentId}. Proceeding to code review by {spec.ReviewerAgentName}.");
 
             return new CodeReviewSpecState();
         }

@@ -57,7 +57,7 @@ cd EpicTracker.UI; npm run dev
 
 ## MCP registration
 
-Add to `.claude/settings.json` (project-level):
+Add to `.mcp.json` (project-level):
 
 ```json
 {

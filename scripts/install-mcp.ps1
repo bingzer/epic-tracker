@@ -13,21 +13,20 @@ if (-not (Test-Path $projectDir)) {
     exit 1
 }
 
-$settingsPath = Join-Path $projectDir ".claude\settings.json"
-$settings = if (Test-Path $settingsPath) {
-    Get-Content $settingsPath -Raw | ConvertFrom-Json -AsHashtable
+$mcpPath = Join-Path $projectDir ".mcp.json"
+$mcp = if (Test-Path $mcpPath) {
+    Get-Content $mcpPath -Raw | ConvertFrom-Json -AsHashtable
 } else {
     @{}
 }
 
-if (-not $settings.ContainsKey("mcpServers")) { $settings["mcpServers"] = @{} }
-$settings["mcpServers"]["epic-tracker"] = @{
+if (-not $mcp.ContainsKey("mcpServers")) { $mcp["mcpServers"] = @{} }
+$mcp["mcpServers"]["epic-tracker"] = @{
     type = "http"
     url  = "http://127.0.0.1:6790/mcp"
 }
 
-New-Item -ItemType Directory -Force (Split-Path $settingsPath) | Out-Null
-$settings | ConvertTo-Json -Depth 10 | Set-Content $settingsPath -Encoding UTF8
+$mcp | ConvertTo-Json -Depth 10 | Set-Content $mcpPath -Encoding UTF8
 
-Write-Host "MCP registered at: $settingsPath"
+Write-Host "MCP registered at: $mcpPath"
 Write-Host "Restart Claude Code to connect."

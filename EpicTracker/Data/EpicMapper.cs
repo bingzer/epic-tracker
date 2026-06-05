@@ -18,6 +18,10 @@ internal static class EpicMapper
             NeedsMockup = entity.NeedsMockup,
             IsDocDrafted = entity.IsDocDrafted,
             IsMockupDone = entity.IsMockupDone,
+            IsBriefRefined = entity.IsBriefRefined,
+            IsACRequired = entity.IsACRequired,
+            IsCodeReviewRequired = entity.IsCodeReviewRequired,
+            WaterproofingIterations = entity.WaterproofingIterations,
             ReviewerAgentName = entity.ReviewerAgentName,
             CreatedAt = entity.CreatedAt,
             CodingAgentNames = JsonSerializer.Deserialize<List<string>>(entity.CodingAgentNames) ?? [],
@@ -46,9 +50,13 @@ internal static class EpicMapper
         entity.EpicAgentName = epic.EpicAgentName;
         entity.Brief = epic.Brief;
         entity.CodingAgentNames = JsonSerializer.Serialize(epic.CodingAgentNames);
+        entity.IsBriefRefined = epic.IsBriefRefined;
         entity.NeedsMockup = epic.NeedsMockup;
         entity.IsDocDrafted = epic.IsDocDrafted;
         entity.IsMockupDone = epic.IsMockupDone;
+        entity.IsACRequired = epic.IsACRequired;
+        entity.IsCodeReviewRequired = epic.IsCodeReviewRequired;
+        entity.WaterproofingIterations = epic.WaterproofingIterations;
         entity.ReviewerAgentName = epic.ReviewerAgentName;
 
         entity.LastKnownStateName = epic.LastKnownStateName;
@@ -70,7 +78,8 @@ internal static class EpicMapper
             EpicId = entity.EpicId,
             AssignedAgentName = entity.AssignedAgentName,
             ReviewerAgentName = entity.ReviewerAgentName,
-            CodeReviewRequired = entity.CodeReviewRequired,
+            IsACRequired = entity.IsACRequired,
+            IsCodeReviewRequired = entity.IsCodeReviewRequired,
             SpecDocPath = entity.SpecDocPath,
             IsSpecApproved = entity.IsSpecApproved,
             IsAbandoned = entity.IsAbandoned,
@@ -111,6 +120,8 @@ internal static class EpicMapper
         entity.IsCodeDone = spec.IsCodeDone;
         entity.IsCodeReviewApproved = spec.IsCodeReviewApproved;
         entity.IsAcPassed = spec.IsAcPassed;
+        entity.IsACRequired = spec.IsACRequired;
+        entity.IsCodeReviewRequired = spec.IsCodeReviewRequired;
 
         entity.HumanInLoop = spec.HumanInLoop is not null
             ? JsonSerializer.Serialize(spec.HumanInLoop)

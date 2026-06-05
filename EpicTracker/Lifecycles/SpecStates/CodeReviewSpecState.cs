@@ -16,10 +16,14 @@ internal class CodeReviewSpecState : SpecState
             return Exit(
                 context: context,
                 instruction: $"""
-                    Coordinate a direct code review between the coding agent and reviewer — do not relay messages.
-                    1. Tell {spec.AssignedAgentName} to send their deliverables and spec context directly to {spec.ReviewerAgentName} via tmux-broker.
-                    2. Tell {spec.ReviewerAgentName} to review the implementation at {spec.SpecDocPath} and send their verdict (APPROVED or REJECTED with notes) directly back to you via tmux-broker — not to the coding agent.
-                    Wait for {spec.ReviewerAgentName}'s verdict, then call update_spec(IsCodeReviewApproved, true/false) and advance_spec({spec.Id}).
+                    {spec.AssignedAgentName} has sent their deliverables directly to {spec.ReviewerAgentName}.
+                    Wait for messages in this format:
+                      SPEC {spec.Id} STATUS: reviewing          — reviewer has started (acknowledgement only)
+                      SPEC {spec.Id} STATUS: review-approved    — call update_spec({spec.Id}, IsCodeReviewApproved, true)  [auto-advances]
+                      SPEC {spec.Id} STATUS: review-rejected REASON: <reason>
+                                                                — call update_spec({spec.Id}, IsCodeReviewApproved, false) [auto-advances]
+                    Do not relay anything between {spec.AssignedAgentName} and {spec.ReviewerAgentName}.
+                    If rejected, the state machine will route back to coding — you will receive a new instruction at that point.
                     """);
         }
 
@@ -31,7 +35,12 @@ internal class CodeReviewSpecState : SpecState
             return new CodingSpecState();
         }
 
-        return new AcSpecState();
+        if (context.IsACRequired)
+        {
+            return new AcSpecState();
+        }
+
+        return new DoneSpecState();
     }
 
     protected override bool UpdateSpecFieldAt(SpecContext context, string fieldName, string value)

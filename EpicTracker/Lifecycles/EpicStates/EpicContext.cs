@@ -8,4 +8,5 @@ internal class EpicContext
     public required Epic Epic { get; init; }
     public required ILogger Logger { get; init; }
     public required IFileSystem FileSystem { get; init; }
+    public required EpicTrackerOptions Options { get; init; }
 }

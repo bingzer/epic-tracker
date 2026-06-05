@@ -64,7 +64,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         await hubContext.Clients.All.SendAsync("EpicUpdated", result, cancellationToken);
     }
 
-    [McpServerTool(Name = "submit_agreement"), Description("Submits an agreement vote from an agent. Used during consensus states where all agents must agree before advancing. Precondition: epic.AgentSwarm must not be null — throws if no swarm is active. Throws if agentId is not a member of the current swarm.")]
+    [McpServerTool(Name = "submit_agreement"), Description("Submits an agreement vote from an agent. Used during consensus states where all agents must agree before advancing. DISAGREE means the agent has domain input or the epic does not yet reflect their knowledge. AGREE means the agent has reviewed the updated epic and has nothing more to add (LGTM). Precondition: epic.AgentSwarm must not be null — throws if no swarm is active. Throws if agentId is not a member of the current swarm.")]
     public async Task SubmitAgreement(
         [Description("The ID of the epic.")] string epicId,
         [Description("The ID of the agent submitting the agreement.")] string agentId,
@@ -77,7 +77,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         await hubContext.Clients.All.SendAsync("EpicUpdated", result, cancellationToken);
     }
 
-    [McpServerTool(Name = "raise_human_in_loop"), Description("Raises a human-in-loop event on the epic. You must call advance immediately after — advance will transition the epic to human_in_loop state where it will block until the human responds via the dashboard. The epic will then route to approveToStateName or rejectToStateName.")]
+    [McpServerTool(Name = "raise_human_in_loop"), Description("Raises a human-in-loop event on the epic. Can be called at ANY point in the process whenever human judgment is needed to resolve a conflict or ambiguity — not just at designated gates. You must call advance immediately after — advance will transition the epic to human_in_loop state where it will block until the human responds via the dashboard. The epic will then route to approveToStateName or rejectToStateName.")]
     public async Task RaiseHumanInLoop(
         [Description("The ID of the epic.")] string epicId,
         [Description("The questions or context to present to the human reviewer.")] string questions,
@@ -96,11 +96,11 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         [Description("A short human-readable name for this spec (e.g. 'auth-flow', 'user-profile'). Used to generate the spec ID.")] string specName,
         [Description("The name of the coding agent assigned to implement this spec.")] string assignedAgentName,
         [Description("Optional absolute path to the spec document. Must be an absolute path (e.g. C:\\Users\\... or /home/...) — relative paths will be rejected.")] string? specDocPath = null,
-        [Description("Whether a code review is required before the spec can be closed.")] bool codeReviewRequired = false,
+        [Description("Whether a code review is required before the spec can be closed. Null means inherit from epic.")] bool? isCodeReviewRequired = null,
         [Description("The ID of the agent who will review the code, if code review is required.")] string? reviewerAgentId = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await service.CreateSpec(epicId, new CreateSpecRequest(specName, assignedAgentName, specDocPath, codeReviewRequired, reviewerAgentId), cancellationToken);
+        var result = await service.CreateSpec(epicId, new CreateSpecRequest(specName, assignedAgentName, specDocPath, isCodeReviewRequired, reviewerAgentId), cancellationToken);
         var epic = await service.GetEpic(epicId, cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicUpdated", epic, cancellationToken);
         return new CreateSpecResult(result.Id, result.CurrentStateName);
@@ -122,7 +122,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return new AdvanceSpecResult(result.Id, result.CurrentStateName, result.EpicAgentInstruction);
     }
 
-    [McpServerTool(Name = "update_epic"), Description("Sets a single field on an epic. Available fields: Name (string), Brief (string), EpicAgentName (string), CodingAgentNames (comma-separated string), NeedsMockup (bool), IsDocDrafted (bool), IsMockupDone (bool).")]
+    [McpServerTool(Name = "update_epic"), Description("Sets a single field on an epic. Available fields: Name (string), Brief (string), EpicAgentName (string), CodingAgentNames (comma-separated string), NeedsMockup (bool), IsBriefRefined (bool), IsDocDrafted (bool), IsMockupDone (bool).")]
     public async Task<Epic> UpdateEpic(
         [Description("The ID of the epic to update.")] string epicId,
         [Description("The name of the field to set.")] string fieldName,
@@ -134,7 +134,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return result;
     }
 
-    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentName (string), ReviewerAgentName (string), SpecDocPath (string), CodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
+    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentName (string), ReviewerAgentName (string), SpecDocPath (string), IsACRequired (bool), IsCodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
     public async Task<UpdateSpecResult> UpdateSpec(
         [Description("The ID of the spec to update.")] string specId,
         [Description("The name of the field to set.")] string fieldName,

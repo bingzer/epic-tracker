@@ -6,7 +6,8 @@ public class SpecEntity
     public string EpicId { get; set; } = default!;
     public string AssignedAgentName { get; set; } = default!;
     public string? ReviewerAgentName { get; set; }
-    public bool CodeReviewRequired { get; set; }
+    public bool? IsACRequired { get; set; }
+    public bool? IsCodeReviewRequired { get; set; }
     public string? SpecDocPath { get; set; }
     public bool IsSpecApproved { get; set; }
     public bool IsAbandoned { get; set; }

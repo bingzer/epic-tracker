@@ -175,12 +175,6 @@ function SwarmPanelBlock({ epic }: { epic: Epic }) {
     return '…';
   }
 
-  function agreementColor(a: AgentAgreement): string {
-    if (a.hasAgreed === true) return 'text-emerald-400';
-    if (a.hasAgreed === false) return 'text-red-400';
-    return 'text-zinc-500';
-  }
-
   function iconBgCls(a: AgentAgreement): string {
     if (a.hasAgreed === true) return 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400';
     if (a.hasAgreed === false) return 'bg-red-500/15 border border-red-500/30 text-red-400';
@@ -205,9 +199,6 @@ function SwarmPanelBlock({ epic }: { epic: Epic }) {
               {agreementIcon(a)}
             </span>
             <span className="font-mono text-xs text-zinc-300 flex-1">{a.agentId}</span>
-            {a.note && (
-              <span className={`text-[11px] ${agreementColor(a)}`}>{a.note}</span>
-            )}
             {!a.note && a.hasAgreed === null && (
               <span className="text-[11px] text-zinc-600">Waiting…</span>
             )}
@@ -220,7 +211,15 @@ function SwarmPanelBlock({ epic }: { epic: Epic }) {
       )}
 
       {swarm.hasDisagreement && (
-        <p className="text-xs text-red-400 font-medium mt-2">Disagreement</p>
+        <>
+          <p className="text-xs text-red-400 font-medium mt-3 mb-2">Disagreements</p>
+          {swarm.agreements.filter(a => a.hasAgreed === false && a.note).map(a => (
+            <div key={a.agentId} className="mb-2 border border-red-500/20 bg-red-500/[0.05] rounded-lg px-3 py-2">
+              <p className="font-mono text-[10px] text-red-400 mb-1">{a.agentId}</p>
+              <p className="text-[11px] text-red-300/80 whitespace-pre-wrap leading-relaxed">{a.note}</p>
+            </div>
+          ))}
+        </>
       )}
     </div>
   );
@@ -713,27 +712,54 @@ function SpecCard({
   );
 }
 
+function AuditEntry({ entry }: { entry: EpicAudit }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="py-2 border-b border-zinc-800 last:border-b-0 text-xs">
+      <div
+        className={`grid gap-3 ${entry.epicAgentInstruction ? 'cursor-pointer hover:opacity-80' : ''}`}
+        style={{ gridTemplateColumns: '9rem 1fr 6rem' }}
+        onClick={() => entry.epicAgentInstruction && setExpanded(v => !v)}
+      >
+        <span className="font-mono text-zinc-600">{new Date(entry.timestamp).toLocaleString()}</span>
+        <span className="text-zinc-300 flex items-center gap-1.5">
+          <span className="text-violet-400">{entry.fromState}</span>
+          {' → '}
+          <span className="text-violet-300">{entry.toState}</span>
+          {entry.epicAgentInstruction && (
+            <span className="text-zinc-700 text-[9px] ml-1">{expanded ? '▲' : '▼'}</span>
+          )}
+        </span>
+        <span className="font-mono text-zinc-600 text-right">{entry.epicAgentId}</span>
+      </div>
+
+      {expanded && entry.epicAgentInstruction && (
+        <div className="mt-2 ml-0 border-l-2 border-indigo-500/40 pl-3 bg-indigo-500/[0.04] rounded-r py-2">
+          <p className="font-mono text-[11px] text-indigo-200/80 whitespace-pre-wrap leading-relaxed">
+            {entry.epicAgentInstruction}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AuditSection({ entries }: { entries: EpicAudit[] }) {
   const [showAll, setShowAll] = useState(false);
   const reversed = [...entries].reverse();
-  const visible = showAll ? reversed : reversed.slice(0, 2);
-
-  let toggleLabel = 'View all →';
-
-  if (showAll) {
-    toggleLabel = 'Show less';
-  }
+  const visible = showAll ? reversed : reversed.slice(0, 5);
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Recent Activity</p>
-        {entries.length > 2 && (
+        {entries.length > 5 && (
           <button
             onClick={() => setShowAll(v => !v)}
             className="text-[11px] text-indigo-400 hover:text-indigo-300"
           >
-            {toggleLabel}
+            {showAll ? 'Show less' : `View all ${entries.length} →`}
           </button>
         )}
       </div>
@@ -743,19 +769,7 @@ function AuditSection({ entries }: { entries: EpicAudit[] }) {
       )}
 
       {visible.map(entry => (
-        <div
-          key={entry.id}
-          className="grid py-2 border-b border-zinc-800 last:border-b-0 text-xs gap-3"
-          style={{ gridTemplateColumns: '9rem 1fr 6rem' }}
-        >
-          <span className="font-mono text-zinc-600">{new Date(entry.timestamp).toLocaleString()}</span>
-          <span className="text-zinc-300">
-            <span className="text-violet-400">{entry.fromState}</span>
-            {' → '}
-            <span className="text-violet-300">{entry.toState}</span>
-          </span>
-          <span className="font-mono text-zinc-600 text-right">{entry.epicAgentId}</span>
-        </div>
+        <AuditEntry key={entry.id} entry={entry} />
       ))}
     </div>
   );

@@ -10,6 +10,10 @@ public class EpicEntity
     public bool NeedsMockup { get; set; }
     public bool IsDocDrafted { get; set; }
     public bool IsMockupDone { get; set; }
+    public bool IsBriefRefined { get; set; }
+    public bool IsACRequired { get; set; }
+    public bool IsCodeReviewRequired { get; set; }
+    public int WaterproofingIterations { get; set; }
     public string? ReviewerAgentName { get; set; }
     public string CodingAgentNames { get; set; } = default!;
     public string CurrentStateName { get; set; } = default!;

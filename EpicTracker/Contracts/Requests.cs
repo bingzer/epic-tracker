@@ -14,7 +14,7 @@ public record CreateSpecRequest(
     string SpecName,
     string AssignedAgentName,
     string? SpecDocPath,
-    bool CodeReviewRequired,
+    bool? IsCodeReviewRequired,
     string? ReviewerAgentName);
 
 public record ApproveSpecHumanInLoopRequest(bool IsApproved, string? HumanInput);
@@ -25,7 +25,9 @@ public record CreateEpicRequest(
     string? Name,
     List<string>? CodingAgentNames,
     bool NeedsMockup,
-    string? ReviewerAgentName);
+    string? ReviewerAgentName,
+    bool IsACRequired = true,
+    bool? IsCodeReviewRequired = null);
 
 public record ForceSpecStateRequest(string StateName);
 

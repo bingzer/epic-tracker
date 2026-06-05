@@ -8,6 +8,8 @@ export interface CreateEpicPayload {
   codingAgentNames?: string[];
   needsMockup: boolean;
   reviewerAgentName?: string;
+  isACRequired: boolean;
+  isCodeReviewRequired: boolean;
 }
 
 export const EpicApi = {

@@ -28,7 +28,8 @@ export interface Spec {
   epicId: string;
   assignedAgentName: string;
   reviewerAgentName: string | null;
-  codeReviewRequired: boolean;
+  isCodeReviewRequired: boolean | null;
+  isACRequired: boolean | null;
   specDocPath: string | null;
   isSpecApproved: boolean;
   isAbandoned: boolean;
@@ -57,6 +58,8 @@ export interface Epic {
   isMockupDone: boolean;
   isSpecListApproved: boolean;
   reviewerAgentName: string | null;
+  isACRequired: boolean;
+  isCodeReviewRequired: boolean;
   createdAt: string;
   specs: Spec[];
   currentStateName: string;

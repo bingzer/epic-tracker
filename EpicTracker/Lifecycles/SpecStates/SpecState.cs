@@ -45,9 +45,9 @@ internal abstract class SpecState
             return true;
         }
 
-        if (fieldName == nameof(Spec.CodeReviewRequired))
+        if (fieldName == nameof(Spec.IsCodeReviewRequired))
         {
-            context.Spec.CodeReviewRequired = bool.Parse(value);
+            context.Spec.IsCodeReviewRequired = bool.Parse(value);
             return true;
         }
 

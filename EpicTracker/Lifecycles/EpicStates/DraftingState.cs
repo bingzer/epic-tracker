@@ -18,15 +18,33 @@ internal class DraftingState : EpicState
             return Exit(context, instruction);
         }
 
+        if (!epic.IsBriefRefined)
+        {
+            return Exit(context, instruction: $"""
+                Review the brief: "{epic.Brief}"
+
+                First, assess quality: is this brief specific enough to write an epic document from?
+                A brief like "stuff" or "fix things" is too vague — raise_human_in_loop to ask for more detail.
+
+                If the brief is workable, clean it up: fix spelling, grammar, and clarity.
+                Do NOT add scope or make assumptions — only polish what the user wrote.
+                Then call update_epic({epic.Id}, Brief, <polished brief>) and update_epic({epic.Id}, IsBriefRefined, true), then advance({epic.Id}).
+
+                You may raise_human_in_loop at ANY point in the process if you need human input.
+                Use approveToStateName: "{DraftingState.StateName}" and rejectToStateName: "{DraftingState.StateName}" so the process restarts from drafting after human responds.
+                """);
+        }
+
         if (!epic.IsDocDrafted)
         {
             return Exit(
-                context: context, 
+                context: context,
                 instruction: $"""
                     Draft the epic document at {epic.EpicDocumentPath}.
                     Brief: {epic.Brief}
+                    Write a concise, high-level document capturing intent and goals only. Do NOT scan code, read files, or research the codebase.
                     Follow the governance document at {epic.EpicGovernancePath} for the required format.
-                    Once written, call update_epic(IsDocDrafted, true) then call advance({epic.Id}).
+                    Once written, call update_epic({epic.Id}, IsDocDrafted, true) then call advance({epic.Id}).
                     """);
         }
         
@@ -38,6 +56,13 @@ internal class DraftingState : EpicState
         if (fieldName == nameof(Epic.Brief))
         {
             context.Epic.Brief = value;
+            context.Epic.IsBriefRefined = false;
+            return true;
+        }
+
+        if (fieldName == nameof(Epic.IsBriefRefined))
+        {
+            context.Epic.IsBriefRefined = bool.Parse(value);
             return true;
         }
 

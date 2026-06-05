@@ -5,7 +5,35 @@ import type { Epic } from '../types';
 import { StateBadge } from '../components/StateBadge';
 import { useSignalR } from '../hooks/useSignalR';
 
-function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
+function Toggle({ id, checked, onChange, label, sublabel }: {
+  id: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  sublabel?: string;
+}) {
+  return (
+    <label htmlFor={id} className="flex items-start gap-3 cursor-pointer group">
+      <div className="relative mt-0.5 shrink-0">
+        <input
+          type="checkbox"
+          id={id}
+          checked={checked}
+          onChange={e => onChange(e.target.checked)}
+          className="sr-only peer"
+        />
+        <div className={`w-9 h-5 rounded-full transition-colors duration-200 ${checked ? 'bg-blue-600' : 'bg-gray-200 dark:bg-zinc-700'} peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-1`} />
+        <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+      </div>
+      <div>
+        <div className="text-sm font-medium text-gray-800 dark:text-zinc-200 leading-tight">{label}</div>
+        {sublabel && <div className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{sublabel}</div>}
+      </div>
+    </label>
+  );
+}
+
+function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [epicAgentName, setEpicAgentName] = useState('');
@@ -14,8 +42,23 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
   const [codingAgentNames, setCodingAgentNames] = useState<string[]>([]);
   const [needsMockup, setNeedsMockup] = useState(false);
   const [reviewerAgentName, setReviewerAgentName] = useState('');
+  const [isACRequired, setIsACRequired] = useState(true);
+  const [isCodeReviewRequired, setIsCodeReviewRequired] = useState(false);
+  const [codeReviewOverridden, setCodeReviewOverridden] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handleReviewerChange(value: string) {
+    setReviewerAgentName(value);
+    if (!codeReviewOverridden) {
+      setIsCodeReviewRequired(value.trim().length > 0);
+    }
+  }
+
+  function handleCodeReviewToggle(value: boolean) {
+    setIsCodeReviewRequired(value);
+    setCodeReviewOverridden(true);
+  }
 
   function reset() {
     setName('');
@@ -25,7 +68,15 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
     setCodingAgentNames([]);
     setNeedsMockup(false);
     setReviewerAgentName('');
+    setIsACRequired(true);
+    setIsCodeReviewRequired(false);
+    setCodeReviewOverridden(false);
     setError(null);
+  }
+
+  function handleClose() {
+    reset();
+    setOpen(false);
   }
 
   function handleAddAgent() {
@@ -54,6 +105,8 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
         codingAgentNames: codingAgentNames.length > 0 ? codingAgentNames : undefined,
         needsMockup,
         reviewerAgentName: reviewerAgentName.trim() || undefined,
+        isACRequired,
+        isCodeReviewRequired,
       };
       const epic = await EpicApi.create(payload);
       onCreated(epic);
@@ -66,105 +119,162 @@ function CreateEpicForm({ onCreated }: { onCreated: (epic: Epic) => void }) {
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-      >
-        + New epic
-      </button>
-    );
-  }
-
-  const inputCls = "w-full text-sm rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-3 py-1.5 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500";
-  const labelCls = "block text-xs text-gray-500 dark:text-zinc-400 mb-1";
+  const inputCls = "w-full text-sm rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 px-3 py-2 text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow";
+  const labelCls = "block text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wide";
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-700 p-4 space-y-3">
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">New epic</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Name</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Price Quote" className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Epic Agent *</label>
-          <input required value={epicAgentName} onChange={e => setEpicAgentName(e.target.value)} placeholder="epic-agent-id" className={inputCls} />
-        </div>
-      </div>
-      <div>
-        <label className={labelCls}>Brief *</label>
-        <textarea
-          required
-          value={brief}
-          onChange={e => setBrief(e.target.value)}
-          placeholder="Describe the purpose, scope, and goals of this epic…"
-          rows={3}
-          className={`${inputCls} resize-none`}
-        />
-      </div>
-      <div>
-        <label className={labelCls}>Coding agents</label>
-        <div className="flex gap-2">
-          <input
-            value={agentInput}
-            onChange={e => setAgentInput(e.target.value)}
-            onKeyDown={handleAgentKeyDown}
-            placeholder="agent-id (comma-separated or press Enter)"
-            className={`${inputCls} flex-1`}
-          />
-          <button
-            type="button"
-            onClick={handleAddAgent}
-            className="text-xs font-medium px-2 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 shrink-0"
-          >
-            Add
-          </button>
-        </div>
-        {codingAgentNames.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {codingAgentNames.map(a => (
-              <span key={a} className="inline-flex items-center gap-1 text-xs bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-2 py-0.5 rounded font-mono">
-                {a}
-                <button type="button" onClick={() => setCodingAgentNames(codingAgentNames.filter(x => x !== a))} className="text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 leading-none">×</button>
-              </span>
-            ))}
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+      >
+        <span className="text-base leading-none">+</span>
+        New epic
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={e => { if (e.target === e.currentTarget) handleClose(); }}
+        >
+          <div className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-zinc-700/80 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-zinc-100">New epic</h2>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800"
+                aria-label="Close"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Name</label>
+                    <input value={name} onChange={e => setName(e.target.value)} placeholder="Price Quote" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Epic Agent <span className="text-red-500">*</span></label>
+                    <input required value={epicAgentName} onChange={e => setEpicAgentName(e.target.value)} placeholder="epic-agent-id" className={inputCls} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Brief <span className="text-red-500">*</span></label>
+                  <textarea
+                    required
+                    value={brief}
+                    onChange={e => setBrief(e.target.value)}
+                    placeholder="Describe the purpose, scope, and goals of this epic…"
+                    rows={3}
+                    className={`${inputCls} resize-none`}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelCls}>Coding agents</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={agentInput}
+                      onChange={e => setAgentInput(e.target.value)}
+                      onKeyDown={handleAgentKeyDown}
+                      placeholder="agent-id — comma-separated or Enter"
+                      className={`${inputCls} flex-1`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddAgent}
+                      className="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 shrink-0 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {codingAgentNames.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {codingAgentNames.map(a => (
+                        <span key={a} className="inline-flex items-center gap-1 text-xs bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-2 py-0.5 rounded-md font-mono">
+                          {a}
+                          <button type="button" onClick={() => setCodingAgentNames(codingAgentNames.filter(x => x !== a))} className="text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 leading-none ml-0.5">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className={labelCls}>Code reviewer</label>
+                  <input
+                    value={reviewerAgentName}
+                    onChange={e => handleReviewerChange(e.target.value)}
+                    placeholder="reviewer-agent-id"
+                    className={inputCls}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/40 p-4 space-y-3.5">
+                  <p className="text-xs font-medium text-gray-400 dark:text-zinc-500 uppercase tracking-wide">Governance</p>
+                  <Toggle
+                    id="needsMockup"
+                    checked={needsMockup}
+                    onChange={setNeedsMockup}
+                    label="Needs mockup"
+                    sublabel="Require a mockup phase before spec writing"
+                  />
+                  <Toggle
+                    id="isACRequired"
+                    checked={isACRequired}
+                    onChange={setIsACRequired}
+                    label="AC required"
+                    sublabel="Run acceptance criteria checks before marking specs done"
+                  />
+                  <Toggle
+                    id="isCodeReviewRequired"
+                    checked={isCodeReviewRequired}
+                    onChange={handleCodeReviewToggle}
+                    label="Code review required"
+                    sublabel={codeReviewOverridden
+                      ? 'Manually overridden'
+                      : reviewerAgentName.trim()
+                        ? 'Auto-enabled — code reviewer is set'
+                        : 'Auto-enabled when a code reviewer is assigned'}
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between gap-3">
+                {error
+                  ? <p className="text-xs text-red-500 flex-1">{error}</p>
+                  : <span />
+                }
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {submitting ? 'Creating…' : 'Create epic'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
-      <div>
-        <label className={labelCls}>Code reviewer</label>
-        <input value={reviewerAgentName} onChange={e => setReviewerAgentName(e.target.value)} placeholder="reviewer-agent-id" className={inputCls} />
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="needsMockup"
-          checked={needsMockup}
-          onChange={e => setNeedsMockup(e.target.checked)}
-          className="rounded border-gray-300 dark:border-zinc-600"
-        />
-        <label htmlFor="needsMockup" className="text-sm text-gray-700 dark:text-zinc-300">Needs mockup</label>
-      </div>
-      {error && <p className="text-xs text-red-500">{error}</p>}
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="text-sm font-medium px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {submitting ? 'Creating…' : 'Create'}
-        </button>
-        <button
-          type="button"
-          onClick={() => { reset(); setOpen(false); }}
-          className="text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -262,8 +372,8 @@ export default function EpicsListPage() {
         <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">Epics</h1>
       </div>
 
-      <div className="space-y-2 mb-4">
-        <CreateEpicForm onCreated={epic => setEpics(prev => sortByCreatedDesc([epic, ...prev]))} />
+      <div className="mb-4">
+        <CreateEpicModal onCreated={epic => setEpics(prev => sortByCreatedDesc([epic, ...prev]))} />
       </div>
 
       <div className="mb-3">

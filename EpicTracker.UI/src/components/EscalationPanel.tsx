@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { marked } from 'marked';
 import { EpicApi } from '../epicApi';
 import type { Epic } from '../types';
 
@@ -23,9 +24,14 @@ export function EscalationPanel({ epic, onUpdated }: { epic: Epic; onUpdated: (e
   }
 
   return (
-    <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4">
-      <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">Human Review Required</p>
-      <p className="text-sm text-amber-700 dark:text-amber-400 whitespace-pre-wrap mb-3">{epic.humanInLoop.questions}</p>
+    <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.07] p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[11px] font-bold text-amber-300 uppercase tracking-widest">⚠ Human Review Required</span>
+      </div>
+      <div
+        className="prose prose-sm prose-invert prose-amber max-w-none mb-3 text-amber-200/80 [&_p]:leading-relaxed [&_ul]:mt-1 [&_li]:my-0.5"
+        dangerouslySetInnerHTML={{ __html: marked.parse(epic.humanInLoop.questions) as string }}
+      />
       <textarea
         value={feedback}
         onChange={e => setFeedback(e.target.value)}
@@ -37,24 +43,23 @@ export function EscalationPanel({ epic, onUpdated }: { epic: Epic; onUpdated: (e
         }}
         placeholder="Optional feedback… (Ctrl+Enter to approve)"
         rows={3}
-        className="w-full text-sm rounded-md border border-amber-200 dark:border-amber-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-zinc-200 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 mb-3"
+        className="w-full text-sm rounded-md border border-amber-500/20 bg-white/5 text-zinc-200 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 mb-3 placeholder:text-zinc-600"
       />
       <div className="flex items-center gap-2">
         <button
           onClick={() => handleResolve(true)}
           disabled={busy}
-          className="text-sm px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+          className="flex-1 text-sm px-3 py-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors font-semibold"
         >
-          Approve
+          ✓ Approve
         </button>
         <button
           onClick={() => handleResolve(false)}
           disabled={busy}
-          className="text-sm px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+          className="text-sm px-4 py-1.5 rounded-md border border-red-500/30 bg-red-500/[0.08] text-red-400 hover:bg-red-500/15 disabled:opacity-50 transition-colors font-semibold"
         >
-          Reject
+          ✗ Reject
         </button>
-        <span className="text-xs text-amber-600 dark:text-amber-500">Ctrl+Enter to approve</span>
       </div>
     </div>
   );

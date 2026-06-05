@@ -3,6 +3,7 @@ using System;
 using EpicTracker.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EpicTracker.Migrations
 {
     [DbContext(typeof(EpicTrackerDbContext))]
-    partial class EpicTrackerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260605163554_AddIsACRequired")]
+    partial class AddIsACRequired
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.8");
@@ -90,9 +93,6 @@ namespace EpicTracker.Migrations
                     b.Property<bool>("IsACRequired")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsBriefRefined")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("IsCodeReviewRequired")
                         .HasColumnType("INTEGER");
 
@@ -120,9 +120,6 @@ namespace EpicTracker.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("WaterproofingIterations")
-                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 

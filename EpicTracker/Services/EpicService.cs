@@ -64,6 +64,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             Brief = request.Brief,
             Slug = slug,
             NeedsMockup = request.NeedsMockup,
+            IsACRequired = request.IsACRequired,
+            IsCodeReviewRequired = request.IsCodeReviewRequired ?? (request.ReviewerAgentName != null),
             ReviewerAgentName = request.ReviewerAgentName,
             CodingAgentNames = JsonSerializer.Serialize(request.CodingAgentNames ?? []),
             CurrentStateName = DraftingState.StateName,
@@ -189,7 +191,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
         var epic = ToEpic(entity);
-        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem };
+        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem, Options = options.Value };
         var currentState = EpicState.CreateEpicState(entity.CurrentStateName);
 
         if (!currentState.UpdateEpicField(epicContext, fieldName, value))
@@ -217,9 +219,16 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     public async Task<Spec> UpdateSpecField(string specId, string fieldName, string value, CancellationToken cancellationToken = default)
     {
         var entity = await db.FindSpecOrThrow(specId, cancellationToken);
-        
+        var epicEntity = await db.FindEpicOrThrow(entity.EpicId, cancellationToken);
+
         // use current state of that spec to validate and set the field value, then save and advance
-        var specContext = new SpecContext { Spec = EpicMapper.ToSpec(entity), Logger = logger, FileSystem = fileSystem };
+        var specContext = new SpecContext
+        {
+            Spec = EpicMapper.ToSpec(entity),
+            Epic = ToEpic(epicEntity),
+            Logger = logger,
+            FileSystem = fileSystem
+        };
         var currentState = SpecState.CreateSpecState(entity.CurrentStateName);
 
         if (!currentState.UpdateSpecField(specContext, fieldName, value))
@@ -391,7 +400,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var fromState = epic.CurrentStateName;
 
-        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem };
+        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem, Options = options.Value };
 
         var currentState = EpicState.CreateEpicState(epic.CurrentStateName);
         string previousName;
@@ -402,6 +411,11 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             currentState = await currentState.MoveNext(epicContext, cancellationToken);
             epic.CurrentStateName = currentState.Name;
         } while (currentState.Name != previousName);
+
+        if (fromState == Lifecycles.EpicStates.HumanInLoopState.StateName)
+        {
+            epic.PrependHumanNote();
+        }
 
         entity.CurrentStateName = epic.CurrentStateName;
         entity.UpdatedAt = DateTime.UtcNow;
@@ -452,7 +466,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             EpicId = epicId,
             AssignedAgentName = request.AssignedAgentName,
             ReviewerAgentName = request.ReviewerAgentName,
-            CodeReviewRequired = request.CodeReviewRequired,
+            IsCodeReviewRequired = request.IsCodeReviewRequired,
             SpecDocPath = request.SpecDocPath,
             CurrentStateName = DraftingSpecState.StateName,
             CreatedAt = now,
@@ -488,7 +502,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         entity.IsCodeDone = spec.IsCodeDone;
         entity.IsCodeReviewApproved = spec.IsCodeReviewApproved;
         entity.IsAcPassed = spec.IsAcPassed;
-        entity.CodeReviewRequired = spec.CodeReviewRequired;
+        entity.IsACRequired = spec.IsACRequired;
+        entity.IsCodeReviewRequired = spec.IsCodeReviewRequired;
         entity.ReviewerAgentName = spec.ReviewerAgentName;
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -560,11 +575,19 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     public async Task<Spec> AdvanceSpec(string specId, CancellationToken cancellationToken = default)
     {
         var entity = await db.FindSpecOrThrow(specId, cancellationToken);
+        var epicEntity = await db.FindEpicOrThrow(entity.EpicId, cancellationToken);
 
         var spec = EpicMapper.ToSpec(entity);
 
-        var specContext = new SpecContext { Spec = spec, Logger = logger, FileSystem = fileSystem };
+        var specContext = new SpecContext
+        {
+            Spec = spec,
+            Epic = ToEpic(epicEntity),
+            Logger = logger,
+            FileSystem = fileSystem
+        };
 
+        var fromSpecState = spec.CurrentStateName;
         var currentState = SpecState.CreateSpecState(spec.CurrentStateName);
         string previousName;
 
@@ -574,6 +597,11 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             currentState = await currentState.MoveNext(specContext, cancellationToken);
             spec.CurrentStateName = currentState.Name;
         } while (currentState.Name != previousName);
+
+        if (fromSpecState == Lifecycles.SpecStates.HumanInLoopSpecState.StateName)
+        {
+            spec.PrependHumanNote();
+        }
 
         EpicMapper.SyncSpecToEntity(spec, entity);
 

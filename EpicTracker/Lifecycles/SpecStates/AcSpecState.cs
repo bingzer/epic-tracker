@@ -18,7 +18,7 @@ internal class AcSpecState : SpecState
                 instruction: $"""
                     Hand off spec {spec.Id} to {spec.AssignedAgentName} via tmux-broker to run the AC checklist in the spec doc at {spec.SpecDocPath}.
                     Tell {spec.AssignedAgentName} to reply via tmux-broker with results when done.
-                    Wait for their reply, then call update_spec({spec.Id}, IsAcPassed, true/false) and advance_spec({spec.Id}).
+                    Wait for their reply, then call update_spec({spec.Id}, IsAcPassed, true/false). That automatically advances the spec.
                     """
             );
         }

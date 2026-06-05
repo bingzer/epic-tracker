@@ -15,6 +15,10 @@ public class Epic
     public bool NeedsMockup { get; set; }
     public bool IsDocDrafted { get; set; }
     public bool IsMockupDone { get; set; }
+    public bool IsBriefRefined { get; set; }
+    public bool IsACRequired { get; set; }
+    public bool IsCodeReviewRequired { get; set; }
+    public int WaterproofingIterations { get; set; }
     public string? ReviewerAgentName { get; set; }
     public List<string> CodingAgentNames { get; set; } = [];
     public List<Spec> Specs { get; set; } = [];
@@ -71,6 +75,15 @@ public class Epic
 
     /// <summary>Returns true when a human has explicitly approved via <see cref="HumanInLoop"/>.</summary>
     public bool IsHumanApproved() => HumanInLoop?.IsApproved == true;
+
+    public void PrependHumanNote()
+    {
+        if (HumanInLoop?.HumanInput is not { Length: > 0 } note) return;
+        if (EpicAgentInstruction is null) return;
+
+        var decision = HumanInLoop.IsApproved == true ? "approved" : "rejected";
+        SetEpicAgentInstruction($"Human {decision}. Their note: \"{note}\"\n\n{EpicAgentInstruction}");
+    }
 
     /// <summary>Clears the active <see cref="HumanInLoop"/> and sets <see cref="EpicAgentInstruction"/> to <paramref name="instruction"/>.</summary>
     public void ResetHumanApproval()

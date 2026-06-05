@@ -25,5 +25,8 @@ epics/
 
 ## Misc
 .DS_Store
+*.zip
+publish-pkg/
+dist/
 
 tmux-broker-message-protocol.md

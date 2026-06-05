@@ -516,7 +516,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         await db.SaveChangesAsync(cancellationToken);
 
         var epicEntity = await db.FindEpicOrThrow(entity.EpicId, cancellationToken);
-        await tmux.SendKeys(epicEntity.EpicAgentName, $"Human {(request.IsApproved ? "approved" : "rejected")} spec {specId}. Call advance_spec then advance.", cancellationToken);
+        await tmux.SendKeys(epicEntity.EpicAgentName, $"Human {(request.IsApproved ? "approved" : "rejected")} spec {specId}. Call advance_spec(\"{specId}\") then advance(\"{epicEntity.Id}\").", cancellationToken);
     }
 
     public async Task<Spec> MarkSpecReadyToCode(string specId, CancellationToken cancellationToken = default)
@@ -528,7 +528,16 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return await AdvanceSpec(specId, cancellationToken);
+        var spec = await AdvanceSpec(specId, cancellationToken);
+
+        var epicEntity = await db.FindEpicOrThrow(entity.EpicId, cancellationToken);
+        await tmux.SendKeys(
+            epicEntity.EpicAgentName,
+            $"Spec {specId} is ready to code. Call advance_spec(\"{specId}\") to begin.",
+            cancellationToken
+        );
+
+        return spec;
     }
 
     public async Task<Spec> ForceSpecState(string specId, string stateName, CancellationToken cancellationToken = default)

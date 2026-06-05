@@ -15,8 +15,11 @@ internal class ReadySpecState : SpecState
         {
             return Exit(
                 context: context,
-                instruction: $"Spec {spec.Id} is waiting for a human to click Code Now in the dashboard before coding begins."
-            );
+                instruction: $"""
+                    Spec {spec.Id} is now in 'ready' state — waiting for a human to click "Code Now" in the dashboard.
+                    Do NOT message the coding agent to begin coding yet.
+                    Remind the coding agent assigned to this spec not to begin coding until you explicitly tell them to.
+                    """);
         }
         
         return new CodingSpecState();

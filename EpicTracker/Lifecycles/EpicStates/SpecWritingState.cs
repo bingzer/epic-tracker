@@ -55,6 +55,7 @@ internal class SpecWritingState : EpicState
                     Agent swarm raised to review all specs.
                     Follow the governance document at {epic.EpicGovernancePath} for swarm instructions.
                     Call advance("{epic.Id}") after submitting all agreements.
+                    Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told.
                     """
             );
         }
@@ -77,6 +78,7 @@ internal class SpecWritingState : EpicState
                 instruction: $"""
                     All specs approved by agents. HumanInLoop raised for final human review.
                     Call advance("{epic.Id}") then wait for tmux to wake you.
+                    Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told.
                     """
             );
         }

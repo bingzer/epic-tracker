@@ -2,27 +2,37 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { marked } from 'marked';
 import { useNavigate, useParams } from 'react-router-dom';
 import { EpicApi, SpecApi, DocApi } from '../epicApi';
-import type { Epic, EpicAudit, AgentAgreement } from '../types';
+import type { Epic, EpicAudit, AgentAgreement, Spec } from '../types';
 import { StateBadge } from '../components/StateBadge';
-import { StateBreadcrumb } from '../components/StateBreadcrumb';
-import { SpecRow } from '../components/SpecRow';
-import { AuditLogPanel } from '../components/AuditLogPanel';
 import { EscalationPanel } from '../components/EscalationPanel';
 import { useSignalR } from '../hooks/useSignalR';
 
-type Tab = 'details' | 'board' | 'audit' | 'agent';
+const PIPELINE_STATES = ['drafting', 'waterproofing', 'mockup', 'spec_writing', 'implementation', 'closed'] as const;
 
-
-const EPIC_STATES = [
-  'drafting',
-  'mockup',
-  'waterproofing',
-  'spec_writing',
-  'implementation',
-  'human_in_loop',
-  'agent_swarm',
-  'closed',
+const ALL_EPIC_STATES = [
+  'drafting', 'mockup', 'waterproofing', 'spec_writing',
+  'implementation', 'human_in_loop', 'agent_swarm', 'closed',
 ] as const;
+
+const SPEC_STATES = ['drafting', 'ready', 'coding', 'ac', 'code_review', 'human_in_loop', 'done'] as const;
+
+const SPEC_STATE_PROGRESS: Record<string, number> = {
+  spec_drafting: 5,
+  drafting: 5,
+  ready: 20,
+  coding: 55,
+  code_review: 75,
+  ac: 88,
+  done: 100,
+};
+
+function specDisplayName(id: string, epicId: string): string {
+  const prefix = epicId + '-';
+  const slug = id.startsWith(prefix) ? id.slice(prefix.length) : id;
+  return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ---- Sub-components ----
 
 function MarkdownDrawer({ path, onClose }: { path: string | null; onClose: () => void }) {
   const [content, setContent] = useState('');
@@ -53,21 +63,17 @@ function MarkdownDrawer({ path, onClose }: { path: string | null; onClose: () =>
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 bg-black/40 flex justify-end"
     >
-      <div className="w-full md:w-1/2 bg-white dark:bg-zinc-900 h-full flex flex-col shadow-xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-zinc-700">
-          <span className="text-xs font-mono text-gray-500 dark:text-zinc-400 truncate max-w-xs">{path}</span>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 text-lg leading-none ml-4"
-          >
-            ×
-          </button>
+      <div className="w-full md:w-1/2 bg-zinc-900 h-full flex flex-col shadow-xl border-l border-zinc-800">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+          <span className="text-xs font-mono text-zinc-400 truncate max-w-xs">{path}</span>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-200 text-lg leading-none ml-4">×</button>
         </div>
         <div className="flex-1 overflow-auto p-5">
-          {loading && <p className="text-sm text-gray-400 dark:text-zinc-500">Loading…</p>}
+          {loading && <p className="text-sm text-zinc-500">Loading…</p>}
+
           {!loading && (
             <div
-              className="prose prose-sm dark:prose-invert max-w-none"
+              className="prose prose-sm prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: content }}
             />
           )}
@@ -77,63 +83,655 @@ function MarkdownDrawer({ path, onClose }: { path: string | null; onClose: () =>
   );
 }
 
-const SWARM_STATES = new Set(['waterproofing', 'agent_swarm']);
-
-function AgentSwarmPanel({ epic }: { epic: Epic }) {
-  if (!epic.agentSwarm) return null;
-  if (epic.agentSwarm.isComplete && !SWARM_STATES.has(epic.currentStateName)) return null;
-
-  const swarm = epic.agentSwarm;
-
-  function agreementIcon(agreement: AgentAgreement) {
-    if (agreement.hasAgreed === true) return '✓';
-    if (agreement.hasAgreed === false) return '✗';
-    return '…';
-  }
-
-  function agreementColor(agreement: AgentAgreement) {
-    if (agreement.hasAgreed === true) return 'text-emerald-600 dark:text-emerald-400';
-    if (agreement.hasAgreed === false) return 'text-red-600 dark:text-red-400';
-    return 'text-gray-400 dark:text-zinc-500';
-  }
+function StatePipeline({ currentState, lastKnownState }: { currentState: string; lastKnownState: string | null }) {
+  const pipelineList = Array.from(PIPELINE_STATES);
+  const inPipeline = (pipelineList as string[]).includes(currentState);
+  const displayState = inPipeline ? currentState : (lastKnownState ?? 'drafting');
+  const activeIndex = (pipelineList as string[]).indexOf(displayState);
 
   return (
-    <div className="rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-4">
-      <p className="text-sm font-semibold text-violet-800 dark:text-violet-300 mb-1">
-        Agent Swarm — Iteration {swarm.iteration + 1}
-      </p>
-      <p className="text-sm text-violet-700 dark:text-violet-400 mb-2">{swarm.objective}</p>
-      {swarm.agreements.length > 0 && (
-        <ul className="space-y-0.5">
-          {swarm.agreements.map(a => (
-            <li key={a.agentId} className="flex items-center gap-2 text-xs">
-              <span className={`font-semibold ${agreementColor(a)}`}>{agreementIcon(a)}</span>
-              <span className="font-mono text-gray-700 dark:text-zinc-300">{a.agentId}</span>
-              {a.note && <span className="text-gray-500 dark:text-zinc-500">{a.note}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-2 flex gap-2 text-xs">
-        {swarm.hasConsensus && <span className="text-emerald-600 dark:text-emerald-400 font-medium">Consensus reached</span>}
-        {swarm.hasDisagreement && <span className="text-red-600 dark:text-red-400 font-medium">Disagreement</span>}
-        {swarm.isComplete && <span className="text-gray-500 dark:text-zinc-400">Complete</span>}
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-8 py-5 mb-4">
+      <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600 mb-4">Epic Flow</p>
+
+      <div className="relative flex items-start">
+        <div className="absolute top-[5px] left-0 right-0 h-px bg-zinc-700" />
+
+        {pipelineList.map((state, i) => {
+          const isDone = i < activeIndex;
+          const isActive = i === activeIndex;
+
+          let dotCls = 'w-2.5 h-2.5 rounded-full border-2 border-zinc-600 bg-zinc-600 relative z-10';
+
+          if (isDone) {
+            dotCls = 'w-2.5 h-2.5 rounded-full relative z-10 bg-cyan-400 border-2 border-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.4)]';
+          }
+
+          if (isActive) {
+            dotCls = 'w-3.5 h-3.5 rounded-full relative z-10 bg-indigo-500 border-2 border-indigo-500 shadow-[0_0_0_4px_rgba(99,102,241,0.2),0_0_16px_rgba(99,102,241,0.5)] animate-pulse';
+          }
+
+          let labelCls = 'text-[10px] tracking-wider uppercase font-semibold mt-1.5 text-zinc-600 whitespace-nowrap';
+
+          if (isDone) {
+            labelCls = 'text-[10px] tracking-wider uppercase font-semibold mt-1.5 text-cyan-400 whitespace-nowrap';
+          }
+
+          if (isActive) {
+            labelCls = 'text-[10px] tracking-wider uppercase font-bold mt-1.5 text-indigo-400 whitespace-nowrap';
+          }
+
+          return (
+            <div key={state} className="flex-1 flex flex-col items-center">
+              <div className={dotCls} />
+              <span className={labelCls}>{state.replace(/_/g, ' ')}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function togglePillCls(active: boolean) {
-  if (active) {
-    return 'px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60';
+function InstructionBlock({ instruction, epicAgentName }: { instruction: string | null; epicAgentName: string }) {
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+      <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600 mb-3">Now — Agent Instruction</p>
+
+      {!instruction && (
+        <p className="text-xs text-zinc-600">No active agent instruction.</p>
+      )}
+
+      {instruction && (
+        <>
+          <div className="border-l-[3px] border-indigo-500 bg-indigo-500/[0.06] rounded-r-lg px-4 py-3">
+            <p className="font-mono text-[11.5px] leading-relaxed text-indigo-200 whitespace-pre-wrap">{instruction}</p>
+          </div>
+
+          <div className="mt-2.5 flex items-center gap-2">
+            <span className="text-[10px] text-zinc-600">Epic Agent:</span>
+            <span className="font-mono text-[10px] text-indigo-400">{epicAgentName}</span>
+            <a href={`openterm:${epicAgentName}`} className="text-[10px] text-indigo-500 hover:text-indigo-300 ml-1">↗ Open chat</a>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SwarmPanelBlock({ epic }: { epic: Epic }) {
+  if (!epic.agentSwarm) return null;
+
+  const swarm = epic.agentSwarm;
+
+  function agreementIcon(a: AgentAgreement): string {
+    if (a.hasAgreed === true) return '✓';
+    if (a.hasAgreed === false) return '✗';
+    return '…';
   }
 
-  return 'px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700';
+  function agreementColor(a: AgentAgreement): string {
+    if (a.hasAgreed === true) return 'text-emerald-400';
+    if (a.hasAgreed === false) return 'text-red-400';
+    return 'text-zinc-500';
+  }
+
+  function iconBgCls(a: AgentAgreement): string {
+    if (a.hasAgreed === true) return 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400';
+    if (a.hasAgreed === false) return 'bg-red-500/15 border border-red-500/30 text-red-400';
+    return 'bg-white/5 border border-white/10 text-zinc-500';
+  }
+
+  return (
+    <div className="bg-violet-500/[0.07] border border-violet-500/25 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-[11px] font-bold text-violet-300 uppercase tracking-wider">Agent Swarm</span>
+        <span className="text-[10px] text-violet-600 bg-violet-500/15 px-2 py-0.5 rounded-full">
+          Iteration {swarm.iteration + 1}
+        </span>
+      </div>
+
+      <p className="text-xs text-violet-200/80 mb-3 leading-relaxed">{swarm.objective}</p>
+
+      <div>
+        {swarm.agreements.map(a => (
+          <div key={a.agentId} className="flex items-center gap-2.5 py-1.5 border-b border-violet-500/10 last:border-b-0">
+            <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] flex-shrink-0 ${iconBgCls(a)}`}>
+              {agreementIcon(a)}
+            </span>
+            <span className="font-mono text-xs text-zinc-300 flex-1">{a.agentId}</span>
+            {a.note && (
+              <span className={`text-[11px] ${agreementColor(a)}`}>{a.note}</span>
+            )}
+            {!a.note && a.hasAgreed === null && (
+              <span className="text-[11px] text-zinc-600">Waiting…</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {swarm.hasConsensus && (
+        <p className="text-xs text-emerald-400 font-medium mt-2">Consensus reached</p>
+      )}
+
+      {swarm.hasDisagreement && (
+        <p className="text-xs text-red-400 font-medium mt-2">Disagreement</p>
+      )}
+    </div>
+  );
 }
 
-function inputCls() {
-  return 'w-full text-xs rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500';
+function EpicSummaryCard({
+  epic,
+  onUpdated,
+  onViewDoc,
+}: {
+  epic: Epic;
+  onUpdated: (e: Epic) => void;
+  onViewDoc: (path: string) => void;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [epicName, setEpicName] = useState(epic.name ?? '');
+  const [epicBrief, setEpicBrief] = useState(epic.brief ?? '');
+  const [epicSlug, setEpicSlug] = useState(epic.slug ?? '');
+  const [epicMockupPath, setEpicMockupPath] = useState(epic.mockupPath ?? '');
+  const [agentInput, setAgentInput] = useState('');
+  const [reviewerInput, setReviewerInput] = useState(epic.reviewerAgentName ?? '');
+
+  const inputCls = 'w-full text-xs rounded-lg border border-zinc-700 bg-white/[0.04] px-2.5 py-1.5 text-zinc-100 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500';
+
+  function flagCls(active: boolean): string {
+    if (active) {
+      return 'inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+    }
+
+    return 'inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-white/[0.04] text-zinc-400 border border-zinc-700';
+  }
+
+  async function handleTextField(field: keyof Epic, value: string) {
+    try {
+      const updated = await EpicApi.update(epic.id, { ...epic, [field]: value || null });
+      onUpdated(updated);
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+
+  async function handleToggle(field: keyof Epic) {
+    const current = epic[field] as boolean;
+
+    try {
+      const updated = await EpicApi.update(epic.id, { ...epic, [field]: !current });
+      onUpdated(updated);
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+
+  async function handleAddAgent() {
+    if (!agentInput.trim()) return;
+
+    const parts = agentInput.split(',').map(s => s.trim()).filter(Boolean);
+    const next = [...epic.codingAgentNames];
+
+    for (const p of parts) {
+      if (!next.includes(p)) next.push(p);
+    }
+
+    setAgentInput('');
+
+    try {
+      const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
+      onUpdated(updated);
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+
+  async function handleRemoveAgent(agent: string) {
+    const next = epic.codingAgentNames.filter(a => a !== agent);
+
+    try {
+      const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
+      onUpdated(updated);
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+
+  async function handleSaveReviewer() {
+    try {
+      const updated = await EpicApi.update(epic.id, { ...epic, reviewerAgentName: reviewerInput.trim() || null });
+      onUpdated(updated);
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+
+  let editBtnLabel = 'Edit';
+
+  if (editOpen) {
+    editBtnLabel = 'Done';
+  }
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Epic</p>
+        <button
+          onClick={() => setEditOpen(v => !v)}
+          className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors"
+        >
+          {editBtnLabel}
+        </button>
+      </div>
+
+      <p className="text-sm font-bold text-zinc-100 mb-3 leading-snug">{epic.name}</p>
+
+      <div className="space-y-3">
+        <div>
+          <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Coding Agents</p>
+          <div className="flex flex-wrap gap-1.5">
+            {epic.codingAgentNames.map(a => (
+              <span key={a} className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
+                {a}
+                <a href={`openterm:${a}`} className="text-indigo-400 hover:text-indigo-200 text-[10px] leading-none">↗</a>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {epic.reviewerAgentName && (
+          <div>
+            <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Reviewer</p>
+            <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
+              {epic.reviewerAgentName}
+              <a href={`openterm:${epic.reviewerAgentName}`} className="text-indigo-400 hover:text-indigo-200 text-[10px] leading-none">↗</a>
+            </span>
+          </div>
+        )}
+
+        <div>
+          <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Flags</p>
+          <div className="flex flex-wrap gap-1.5">
+            <span className={flagCls(epic.needsMockup)}>
+              {epic.needsMockup ? '✓' : '○'} Needs Mockup
+            </span>
+            <span className={flagCls(epic.isDocDrafted)}>
+              {epic.isDocDrafted ? '✓' : '○'} Doc Drafted
+            </span>
+            {epic.needsMockup && (
+              <span className={flagCls(epic.isMockupDone)}>
+                {epic.isMockupDone ? '✓' : '○'} Mockup Done
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {editOpen && (
+        <div className="mt-4 pt-4 border-t border-zinc-800 space-y-3">
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Name</label>
+            <input
+              value={epicName}
+              onChange={e => setEpicName(e.target.value)}
+              onBlur={() => handleTextField('name', epicName)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleTextField('name', epicName); } }}
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Slug</label>
+            <input
+              value={epicSlug}
+              onChange={e => setEpicSlug(e.target.value)}
+              onBlur={() => handleTextField('slug', epicSlug)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleTextField('slug', epicSlug); } }}
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Brief</label>
+            <textarea
+              value={epicBrief}
+              onChange={e => setEpicBrief(e.target.value)}
+              onBlur={() => handleTextField('brief', epicBrief)}
+              rows={3}
+              className={inputCls + ' resize-y'}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Flags</label>
+            <div className="flex flex-wrap gap-1.5">
+              <button onClick={() => handleToggle('needsMockup')} className={flagCls(epic.needsMockup)}>
+                {epic.needsMockup ? '✓' : '○'} Needs Mockup
+              </button>
+              <button onClick={() => handleToggle('isDocDrafted')} className={flagCls(epic.isDocDrafted)}>
+                {epic.isDocDrafted ? '✓' : '○'} Doc Drafted
+              </button>
+              {epic.needsMockup && (
+                <button onClick={() => handleToggle('isMockupDone')} className={flagCls(epic.isMockupDone)}>
+                  {epic.isMockupDone ? '✓' : '○'} Mockup Done
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Coding Agents</label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {epic.codingAgentNames.map(a => (
+                <span key={a} className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
+                  {a}
+                  <a href={`openterm:${a}`} className="text-indigo-400 hover:text-indigo-200 text-[10px] leading-none">↗</a>
+                  <button onClick={() => handleRemoveAgent(a)} className="text-zinc-500 hover:text-red-400 leading-none">×</button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={agentInput}
+                onChange={e => setAgentInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddAgent(); } }}
+                placeholder="agent-id"
+                className={inputCls + ' flex-1'}
+              />
+              <button
+                onClick={handleAddAgent}
+                className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 bg-white/[0.04] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors flex-shrink-0"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Reviewer</label>
+            <div className="flex gap-2">
+              <input
+                value={reviewerInput}
+                onChange={e => setReviewerInput(e.target.value)}
+                placeholder="reviewer-agent-id"
+                className={inputCls + ' flex-1'}
+              />
+              <button
+                onClick={handleSaveReviewer}
+                className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 bg-white/[0.04] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors flex-shrink-0"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+
+          {epic.needsMockup && (
+            <div>
+              <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Mockup Path</label>
+              <input
+                value={epicMockupPath}
+                onChange={e => setEpicMockupPath(e.target.value)}
+                onBlur={() => handleTextField('mockupPath', epicMockupPath)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleTextField('mockupPath', epicMockupPath); } }}
+                placeholder="/path/to/mockup"
+                className={inputCls}
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Documents</label>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between bg-white/[0.03] border border-zinc-800 rounded-lg px-3 py-2">
+                <div className="min-w-0 mr-3">
+                  <p className="text-[10px] text-zinc-600 mb-0.5">Epic Document</p>
+                  <p className="font-mono text-[10px] text-indigo-300 truncate">{epic.epicDocumentPath || '—'}</p>
+                </div>
+                {epic.epicDocumentPath && (
+                  <button
+                    onClick={() => onViewDoc(epic.epicDocumentPath)}
+                    className="text-[11px] px-2 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 flex-shrink-0"
+                  >
+                    View
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between bg-white/[0.03] border border-zinc-800 rounded-lg px-3 py-2">
+                <div className="min-w-0 mr-3">
+                  <p className="text-[10px] text-zinc-600 mb-0.5">Governance</p>
+                  <p className="font-mono text-[10px] text-indigo-300 truncate">{epic.epicGovernancePath || '—'}</p>
+                </div>
+                {epic.epicGovernancePath && (
+                  <button
+                    onClick={() => onViewDoc(epic.epicGovernancePath)}
+                    className="text-[11px] px-2 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 flex-shrink-0"
+                  >
+                    View
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
+
+function SpecCard({
+  spec,
+  epicId,
+  onUpdated,
+  onViewDoc,
+  onApproveHumanInLoop,
+  onForceState,
+}: {
+  spec: Spec;
+  epicId: string;
+  onUpdated: () => void;
+  onViewDoc: (path: string) => void;
+  onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
+  onForceState: (specId: string, stateName: string) => void;
+}) {
+  const [codingNow, setCodingNow] = useState(false);
+  const [showForceState, setShowForceState] = useState(false);
+
+  const progress = SPEC_STATE_PROGRESS[spec.currentStateName] ?? 0;
+  const isDone = spec.currentStateName === 'done';
+  const isReady = spec.currentStateName === 'ready';
+  const needsHumanReview = spec.humanInLoop !== null && spec.humanInLoop.isApproved === null;
+
+  let cardCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors';
+
+  if (isDone) {
+    cardCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 opacity-[0.65]';
+  }
+
+  if (spec.isAbandoned) {
+    cardCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 opacity-40';
+  }
+
+  let progressLabel = `${progress}%`;
+
+  if (isDone) {
+    progressLabel = 'Complete';
+  }
+
+  let codeNowLabel = '▶ Code Now';
+
+  if (codingNow) {
+    codeNowLabel = '…';
+  }
+
+  async function handleCodeNow() {
+    setCodingNow(true);
+
+    try {
+      await SpecApi.codeNow(spec.id);
+      onUpdated();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setCodingNow(false);
+    }
+  }
+
+  function handleForceStateSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const stateName = e.target.value;
+
+    if (!stateName) return;
+    if (!window.confirm(`Force spec to state "${stateName}"?`)) return;
+
+    onForceState(spec.id, stateName);
+    setShowForceState(false);
+  }
+
+  return (
+    <div className={cardCls}>
+      <div className="flex items-start justify-between gap-3 mb-2.5">
+        <p className="text-[13px] font-semibold text-zinc-100 leading-snug">
+          {specDisplayName(spec.id, epicId)}
+        </p>
+        <StateBadge state={spec.currentStateName} />
+      </div>
+
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className="font-mono text-[11px] text-indigo-300">{spec.assignedAgentName}</span>
+        <a href={`openterm:${spec.assignedAgentName}`} className="text-[10px] text-indigo-500 hover:text-indigo-300">↗</a>
+
+        {spec.reviewerAgentName && spec.currentStateName === 'code_review' && (
+          <>
+            <span className="text-[10px] text-zinc-600">Reviewer:</span>
+            <span className="font-mono text-[11px] text-orange-400">{spec.reviewerAgentName}</span>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="flex-1 h-[3px] rounded-full bg-zinc-800 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-[10px] text-zinc-600 whitespace-nowrap flex-shrink-0">{progressLabel}</span>
+      </div>
+
+      {needsHumanReview && spec.humanInLoop && (
+        <div className="mb-3 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
+          <p className="mb-2">{spec.humanInLoop.questions}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onApproveHumanInLoop(spec.id, true, null)}
+              className="text-xs px-2 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25"
+            >
+              Approve
+            </button>
+            <button
+              onClick={() => onApproveHumanInLoop(spec.id, false, null)}
+              className="text-xs px-2 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25"
+            >
+              Reject
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 flex-wrap">
+        {isReady && (
+          <button
+            onClick={handleCodeNow}
+            disabled={codingNow}
+            className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+          >
+            {codeNowLabel}
+          </button>
+        )}
+
+        {spec.specDocPath && (
+          <button
+            onClick={() => onViewDoc(spec.specDocPath!)}
+            className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            View spec doc
+          </button>
+        )}
+
+        <button
+          onClick={() => setShowForceState(v => !v)}
+          className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          Force state
+        </button>
+      </div>
+
+      {showForceState && (
+        <select
+          defaultValue=""
+          onChange={handleForceStateSelect}
+          className="mt-2 text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 px-2 py-1.5 focus:outline-none w-full"
+        >
+          <option value="" disabled>Select state →</option>
+          {SPEC_STATES.map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
+function AuditSection({ entries }: { entries: EpicAudit[] }) {
+  const [showAll, setShowAll] = useState(false);
+  const reversed = [...entries].reverse();
+  const visible = showAll ? reversed : reversed.slice(0, 2);
+
+  let toggleLabel = 'View all →';
+
+  if (showAll) {
+    toggleLabel = 'Show less';
+  }
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Recent Activity</p>
+        {entries.length > 2 && (
+          <button
+            onClick={() => setShowAll(v => !v)}
+            className="text-[11px] text-indigo-400 hover:text-indigo-300"
+          >
+            {toggleLabel}
+          </button>
+        )}
+      </div>
+
+      {entries.length === 0 && (
+        <p className="text-xs text-zinc-600 py-2 text-center">No activity yet.</p>
+      )}
+
+      {visible.map(entry => (
+        <div
+          key={entry.id}
+          className="grid py-2 border-b border-zinc-800 last:border-b-0 text-xs gap-3"
+          style={{ gridTemplateColumns: '9rem 1fr 6rem' }}
+        >
+          <span className="font-mono text-zinc-600">{new Date(entry.timestamp).toLocaleString()}</span>
+          <span className="text-zinc-300">
+            <span className="text-violet-400">{entry.fromState}</span>
+            {' → '}
+            <span className="text-violet-300">{entry.toState}</span>
+          </span>
+          <span className="font-mono text-zinc-600 text-right">{entry.epicAgentId}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- Main Page ----
 
 export default function EpicDetailPage() {
   const { epicId } = useParams<{ epicId: string }>();
@@ -141,17 +739,8 @@ export default function EpicDetailPage() {
   const [epic, setEpic] = useState<Epic | null>(null);
   const [auditLog, setAuditLog] = useState<EpicAudit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>('details');
   const [error, setError] = useState<string | null>(null);
-  const [agentInput, setAgentInput] = useState('');
-  const [reviewerInput, setReviewerInput] = useState<string>('');
   const [drawerPath, setDrawerPath] = useState<string | null>(null);
-
-  const [epicName, setEpicName] = useState('');
-  const [epicBrief, setEpicBrief] = useState('');
-  const [epicSlug, setEpicSlug] = useState('');
-  const [epicMockupPath, setEpicMockupPath] = useState('');
-
   const [swarmObjective, setSwarmObjective] = useState('');
   const [swarmToState, setSwarmToState] = useState('');
   const [swarmSubmitting, setSwarmSubmitting] = useState(false);
@@ -162,11 +751,6 @@ export default function EpicDetailPage() {
     try {
       const data = await EpicApi.get(epicId);
       setEpic(data);
-      setReviewerInput(data.reviewerAgentName ?? '');
-      setEpicName(data.name ?? '');
-      setEpicBrief(data.brief ?? '');
-      setEpicSlug(data.slug ?? '');
-      setEpicMockupPath(data.mockupPath ?? '');
     } catch (e) {
       setError(String(e));
     } finally {
@@ -190,40 +774,16 @@ export default function EpicDetailPage() {
       const e = args[0] as Epic;
       if (e?.id === epicId) setEpic(e);
     },
-    SpecUpdated: () => {
-      load();
-    },
+    SpecUpdated: () => { load(); },
   });
 
   useEffect(() => { load(); loadAudit(); }, [load, loadAudit]);
-
-  useEffect(() => {
-    if (tab === 'audit') loadAudit();
-  }, [tab, loadAudit]);
 
   async function handleWakeAgent() {
     if (!epicId) return;
 
     try {
       await EpicApi.wakeAgent(epicId);
-    } catch (e) {
-      alert(String(e));
-    }
-  }
-
-  async function handleApproveSpecHumanInLoop(specId: string, isApproved: boolean, feedback: string | null) {
-    try {
-      await SpecApi.approveHumanInLoop(specId, isApproved, feedback);
-      load();
-    } catch (e) {
-      alert(String(e));
-    }
-  }
-
-  async function handleForceSpecState(specId: string, stateName: string) {
-    try {
-      await SpecApi.forceState(specId, stateName);
-      load();
     } catch (e) {
       alert(String(e));
     }
@@ -253,69 +813,19 @@ export default function EpicDetailPage() {
     }
   }
 
-  async function handleAddCodingAgent() {
-    if (!epic || !agentInput.trim()) return;
-
-    const parts = agentInput.split(',').map(s => s.trim()).filter(Boolean);
-    const next = [...epic.codingAgentNames];
-
-    for (const p of parts) {
-      if (!next.includes(p)) next.push(p);
-    }
-
-    setAgentInput('');
-
+  async function handleApproveSpecHumanInLoop(specId: string, isApproved: boolean, feedback: string | null) {
     try {
-      const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
-      setEpic(updated);
+      await SpecApi.approveHumanInLoop(specId, isApproved, feedback);
+      load();
     } catch (e) {
       alert(String(e));
     }
   }
 
-  async function handleRemoveCodingAgent(agent: string) {
-    if (!epic) return;
-
-    const next = epic.codingAgentNames.filter(a => a !== agent);
-
+  async function handleForceSpecState(specId: string, stateName: string) {
     try {
-      const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
-      setEpic(updated);
-    } catch (e) {
-      alert(String(e));
-    }
-  }
-
-  async function handleSaveReviewer() {
-    if (!epic) return;
-
-    try {
-      const updated = await EpicApi.update(epic.id, { ...epic, reviewerAgentName: reviewerInput.trim() || null });
-      setEpic(updated);
-    } catch (e) {
-      alert(String(e));
-    }
-  }
-
-  async function handleEpicTextField(field: keyof Epic, value: string) {
-    if (!epic) return;
-
-    try {
-      const updated = await EpicApi.update(epic.id, { ...epic, [field]: value || null });
-      setEpic(updated);
-    } catch (e) {
-      alert(String(e));
-    }
-  }
-
-  async function handleEpicToggle(field: keyof Epic) {
-    if (!epic) return;
-
-    const current = epic[field] as boolean;
-
-    try {
-      const updated = await EpicApi.update(epic.id, { ...epic, [field]: !current });
-      setEpic(updated);
+      await SpecApi.forceState(specId, stateName);
+      load();
     } catch (e) {
       alert(String(e));
     }
@@ -338,381 +848,180 @@ export default function EpicDetailPage() {
     }
   }
 
-  if (loading) return <div className="p-6 text-sm text-gray-400 dark:text-zinc-500">Loading…</div>;
+  if (loading) return <div className="p-6 text-sm text-zinc-500">Loading…</div>;
   if (error) return <div className="p-6 text-sm text-red-500">{error}</div>;
   if (!epic) return null;
 
-  const lastRealState = epic.lastKnownStateName ?? undefined;
+  const showSwarm = epic.agentSwarm !== null && (
+    epic.currentStateName === 'agent_swarm' || epic.currentStateName === 'waterproofing'
+  );
 
-  const tabCls = (t: Tab) => `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-    tab === t
-      ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-      : 'border-transparent text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200'
-  }`;
+  let nudgeLabel = 'Nudge Agent';
+
+  if (epic.currentStateName === 'drafting') {
+    nudgeLabel = `Let's work on ${epic.name}`;
+  }
+
+  let swarmBtnLabel = 'Raise Swarm';
+
+  if (swarmSubmitting) {
+    swarmBtnLabel = 'Raising…';
+  }
 
   return (
-    <div className="p-5 max-w-6xl mx-auto space-y-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">{epic.name}</h1>
-        <StateBadge state={epic.currentStateName} />
-        {epic.humanInLoop && epic.humanInLoop.isApproved === null && (
-          <span className="text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 rounded">
-            HUMAN REVIEW
-          </span>
-        )}
-        <span className="text-xs text-gray-400 dark:text-zinc-600 font-mono ml-1">{epic.id}</span>
-        <div className="ml-auto flex items-center gap-2">
+    <div className="min-h-screen bg-zinc-950">
+
+      {/* Sticky header */}
+      <div className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-sm">
+        <div className="max-w-[1280px] mx-auto px-6 py-3 flex items-center gap-3 flex-wrap">
           <button
-            onClick={handleWakeAgent}
-            className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+            onClick={() => navigate('/')}
+            className="text-xs text-zinc-600 hover:text-zinc-400 flex items-center gap-1"
           >
-            {epic.currentStateName === 'drafting' ? `Let's work on ${epic.name}` : 'Nudge agent'}
+            ← Epics
           </button>
-          <select
-            defaultValue=""
-            onChange={e => { if (e.target.value) { handleForceEpicState(e.target.value); e.target.value = ''; } }}
-            className="text-xs rounded-md border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            <option value="" disabled>Force state →</option>
-            {EPIC_STATES.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          <button
-            onClick={handleDeleteEpic}
-            className="text-xs px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
-          >
-            Delete
-          </button>
+
+          <span className="text-zinc-700">/</span>
+
+          <h1 className="text-[15px] font-bold text-zinc-100 flex-shrink-0">{epic.name}</h1>
+          <StateBadge state={epic.currentStateName} />
+          <span className="font-mono text-[10px] text-zinc-600">{epic.id}</span>
+
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={handleWakeAgent}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+            >
+              {nudgeLabel}
+            </button>
+
+            <select
+              defaultValue=""
+              onChange={e => { if (e.target.value) { handleForceEpicState(e.target.value); e.target.value = ''; } }}
+              className="text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 px-2.5 py-1.5 focus:outline-none cursor-pointer"
+            >
+              <option value="" disabled>Force state →</option>
+              {ALL_EPIC_STATES.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleDeleteEpic}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
 
-      <StateBreadcrumb state={epic.currentStateName} type="epic" lastRealState={lastRealState} />
+      {/* Main content */}
+      <div className="max-w-[1280px] mx-auto px-6 py-6">
 
-      <EscalationPanel key={epic.humanInLoop?.questions ?? 'none'} epic={epic} onUpdated={setEpic} />
+        {/* Pipeline */}
+        <StatePipeline currentState={epic.currentStateName} lastKnownState={epic.lastKnownStateName} />
 
-      <div>
-        <div className="flex gap-1 border-b border-gray-200 dark:border-zinc-800">
-          <button className={tabCls('details')} onClick={() => setTab('details')}>Epic Details</button>
-          <button className={tabCls('board')} onClick={() => setTab('board')}>Epic Board</button>
-          <button className={tabCls('audit')} onClick={() => setTab('audit')}>Audit Log</button>
-          <button className={tabCls('agent')} onClick={() => setTab('agent')}>Agent</button>
-        </div>
+        {/* Two-column body */}
+        <div className="grid gap-4 mb-4" style={{ gridTemplateColumns: '380px 1fr' }}>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-b-xl border-x border-b border-gray-100 dark:border-zinc-800 shadow-sm">
-        {tab === 'details' && (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="space-y-3">
+          {/* Left column */}
+          <div className="flex flex-col gap-3.5">
 
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-0.5">Name</label>
-                <input
-                  value={epicName}
-                  onChange={e => setEpicName(e.target.value)}
-                  onBlur={() => handleEpicTextField('name', epicName)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleEpicTextField('name', epicName); } }}
-                  className={inputCls()}
-                />
-              </div>
+            <EpicSummaryCard epic={epic} onUpdated={setEpic} onViewDoc={setDrawerPath} />
 
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-0.5">Slug</label>
-                <input
-                  value={epicSlug}
-                  onChange={e => setEpicSlug(e.target.value)}
-                  onBlur={() => handleEpicTextField('slug', epicSlug)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleEpicTextField('slug', epicSlug); } }}
-                  className={inputCls()}
-                />
-              </div>
+            <InstructionBlock instruction={epic.epicAgentInstruction} epicAgentName={epic.epicAgentName} />
 
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-0.5">Brief</label>
-                <textarea
-                  value={epicBrief}
-                  onChange={e => setEpicBrief(e.target.value)}
-                  onBlur={() => handleEpicTextField('brief', epicBrief)}
-                  rows={3}
-                  className="w-full text-xs rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
-                />
-              </div>
+            <EscalationPanel
+              key={epic.humanInLoop?.questions ?? 'none'}
+              epic={epic}
+              onUpdated={setEpic}
+            />
 
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Created</span>
-                <span className="text-gray-800 dark:text-zinc-200 text-xs">{new Date(epic.createdAt).toLocaleString()}</span>
-              </div>
-
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Epic Agent</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-sm">{epic.epicAgentName}</span>
-                  <a href={`openterm:${epic.epicAgentName}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">Open chat</a>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => handleEpicToggle('needsMockup')}
-                  className={togglePillCls(epic.needsMockup)}
-                >
-                  Needs Mockup
-                </button>
-                <button
-                  onClick={() => handleEpicToggle('isDocDrafted')}
-                  className={togglePillCls(epic.isDocDrafted)}
-                >
-                  Doc Drafted
-                </button>
-                {epic.needsMockup && (
-                  <button
-                    onClick={() => handleEpicToggle('isMockupDone')}
-                    className={togglePillCls(epic.isMockupDone)}
-                  >
-                    Mockup Done
-                  </button>
-                )}
-              </div>
-
-              {epic.needsMockup && (
-                <div>
-                  <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-0.5">Mockup Path</label>
-                  <input
-                    value={epicMockupPath}
-                    onChange={e => setEpicMockupPath(e.target.value)}
-                    onBlur={() => handleEpicTextField('mockupPath', epicMockupPath)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleEpicTextField('mockupPath', epicMockupPath); } }}
-                    placeholder="/path/to/mockup"
-                    className={inputCls()}
-                  />
-                </div>
-              )}
-
-              {epic.humanInLoop && (
-                <details>
-                  <summary className="text-xs font-medium text-gray-500 dark:text-zinc-400 cursor-pointer">HumanInLoop</summary>
-                  <pre className="text-xs bg-gray-50 dark:bg-zinc-800 rounded p-2 mt-1 overflow-auto">{JSON.stringify(epic.humanInLoop, null, 2)}</pre>
-                </details>
-              )}
-              {epic.agentSwarm && (
-                <details>
-                  <summary className="text-xs font-medium text-gray-500 dark:text-zinc-400 cursor-pointer">AgentSwarm</summary>
-                  <pre className="text-xs bg-gray-50 dark:bg-zinc-800 rounded p-2 mt-1 overflow-auto">{JSON.stringify(epic.agentSwarm, null, 2)}</pre>
-                </details>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Epic Document</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs break-all">{epic.epicDocumentPath || '—'}</span>
-                  {epic.epicDocumentPath && (
-                    <button
-                      onClick={() => setDrawerPath(epic.epicDocumentPath)}
-                      className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 shrink-0"
-                    >
-                      View
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block">Governance Path</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-800 dark:text-zinc-200 font-mono text-xs break-all">{epic.epicGovernancePath || '—'}</span>
-                  {epic.epicGovernancePath && (
-                    <button
-                      onClick={() => setDrawerPath(epic.epicGovernancePath)}
-                      className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 shrink-0"
-                    >
-                      View
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Coding Agents</span>
-                <div className="flex flex-wrap gap-1 mb-1">
-                  {epic.codingAgentNames.map(a => (
-                    <span key={a} className="inline-flex items-center gap-1 text-xs font-mono bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-1.5 py-0.5 rounded">
-                      {a}
-                      <a href={`openterm:${a}`} className="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 leading-none" title="Open chat">↗</a>
-                      <button
-                        onClick={() => handleRemoveCodingAgent(a)}
-                        className="text-gray-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 leading-none"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-1.5">
-                  <input
-                    value={agentInput}
-                    onChange={e => setAgentInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCodingAgent(); } }}
-                    placeholder="agent-id"
-                    className="text-xs rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCodingAgent}
-                    className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 shrink-0"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-1">Reviewer</span>
-                {epic.reviewerAgentName && (
-                  <a href={`openterm:${epic.reviewerAgentName}`} className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-mono mr-2">{epic.reviewerAgentName} ↗</a>
-                )}
-                <div className="flex gap-1.5 mt-1">
-                  <input
-                    value={reviewerInput}
-                    onChange={e => setReviewerInput(e.target.value)}
-                    placeholder="reviewer-agent-id"
-                    className="text-xs rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveReviewer}
-                    className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 shrink-0"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tab === 'board' && (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-gray-400 dark:text-zinc-500">
-                  <th className="px-3 py-2 font-medium">Spec</th>
-                  <th className="px-3 py-2 font-medium">Agent</th>
-                  <th className="px-3 py-2 font-medium">State</th>
-                  <th className="px-3 py-2 font-medium">Progress</th>
-                  <th className="px-3 py-2 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {epic.specs.length === 0 ? (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-sm text-gray-400 dark:text-zinc-500">No specs yet.</td></tr>
-                ) : (
-                  epic.specs.map(s => (
-                    <SpecRow
-                      key={s.id}
-                      spec={s}
-                      onApproveHumanInLoop={handleApproveSpecHumanInLoop}
-                      onForceState={handleForceSpecState}
-                      onViewDoc={setDrawerPath}
-                      onUpdated={load}
-                    />
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {tab === 'audit' && (
-          <div className="p-4">
-            <AuditLogPanel entries={auditLog} />
-          </div>
-        )}
-
-        {tab === 'agent' && (
-          <div className="p-4 space-y-4">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-gray-400 dark:text-zinc-500 border-b border-gray-100 dark:border-zinc-800">
-                  <th className="pb-2 font-medium">Agent</th>
-                  <th className="pb-2 font-medium">Role</th>
-                  <th className="pb-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
-                <tr>
-                  <td className="py-2 font-mono text-gray-800 dark:text-zinc-200">{epic.epicAgentName}</td>
-                  <td className="py-2 text-gray-500 dark:text-zinc-400">Epic Agent (PM)</td>
-                  <td className="py-2">
-                    <a href={`openterm:${epic.epicAgentName}`} className="text-xs px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Chat</a>
-                  </td>
-                </tr>
-                {epic.codingAgentNames.map(a => (
-                  <tr key={a}>
-                    <td className="py-2 font-mono text-gray-800 dark:text-zinc-200">{a}</td>
-                    <td className="py-2 text-gray-500 dark:text-zinc-400">Coding Agent</td>
-                    <td className="py-2">
-                      <a href={`openterm:${a}`} className="text-xs px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Chat</a>
-                    </td>
-                  </tr>
-                ))}
-                {epic.reviewerAgentName && (
-                  <tr>
-                    <td className="py-2 font-mono text-gray-800 dark:text-zinc-200">{epic.reviewerAgentName}</td>
-                    <td className="py-2 text-gray-500 dark:text-zinc-400">Reviewer</td>
-                    <td className="py-2">
-                      <a href={`openterm:${epic.reviewerAgentName}`} className="text-xs px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Chat</a>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-
-            <AgentSwarmPanel epic={epic} />
-
-            {epic.epicAgentInstruction ? (
-              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3">
-                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1">
-                  Epic Agent Instruction
-                </span>
-                <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{epic.epicAgentInstruction}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400 dark:text-zinc-500">No active agent instruction.</p>
+            {showSwarm && (
+              <SwarmPanelBlock epic={epic} />
             )}
 
-            <div className="rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/50 p-4 space-y-3">
-              <p className="text-xs font-semibold text-gray-700 dark:text-zinc-200 uppercase tracking-wide">Raise Agent Swarm</p>
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-0.5">Objective</label>
-                <textarea
-                  value={swarmObjective}
-                  onChange={e => setSwarmObjective(e.target.value)}
-                  rows={3}
-                  placeholder="Describe the swarm objective…"
-                  className="w-full text-xs rounded border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
-                />
+            <details className="group">
+              <summary className="text-[10px] font-bold tracking-widest uppercase text-zinc-700 hover:text-zinc-500 cursor-pointer select-none list-none flex items-center gap-1.5">
+                <span className="group-open:rotate-90 transition-transform inline-block leading-none">›</span>
+                Raise Agent Swarm
+              </summary>
+
+              <div className="mt-3 space-y-2.5 pl-3 border-l border-zinc-800">
+                <div>
+                  <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Objective</label>
+                  <textarea
+                    value={swarmObjective}
+                    onChange={e => setSwarmObjective(e.target.value)}
+                    rows={3}
+                    placeholder="Describe the swarm objective…"
+                    className="w-full text-xs rounded-lg border border-zinc-700 bg-white/[0.04] px-2.5 py-1.5 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">To State (after consensus)</label>
+                  <input
+                    value={swarmToState}
+                    onChange={e => setSwarmToState(e.target.value)}
+                    placeholder="e.g. implementation"
+                    className="w-full text-xs rounded-lg border border-zinc-700 bg-white/[0.04] px-2.5 py-1.5 text-zinc-100 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <button
+                  onClick={handleRaiseSwarm}
+                  disabled={swarmSubmitting || !swarmObjective.trim() || !swarmToState.trim()}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {swarmBtnLabel}
+                </button>
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-0.5">To State (after consensus)</label>
-                <input
-                  value={swarmToState}
-                  onChange={e => setSwarmToState(e.target.value)}
-                  placeholder="e.g. implementation"
-                  className="w-full text-xs rounded border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
+            </details>
+
+          </div>
+
+          {/* Right column — Epic Board */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Epic Board — Specs</p>
               <button
-                onClick={handleRaiseSwarm}
-                disabled={swarmSubmitting || !swarmObjective.trim() || !swarmToState.trim()}
-                className="text-xs px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled
+                className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] border border-zinc-700 text-zinc-600 cursor-not-allowed"
               >
-                {swarmSubmitting ? 'Raising…' : 'Raise Swarm'}
+                + New Spec
               </button>
             </div>
+
+            {epic.specs.length === 0 && (
+              <p className="text-sm text-zinc-600 py-6 text-center">No specs yet.</p>
+            )}
+
+            <div className="space-y-2.5">
+              {epic.specs.map(s => (
+                <SpecCard
+                  key={s.id}
+                  spec={s}
+                  epicId={epic.id}
+                  onUpdated={load}
+                  onViewDoc={setDrawerPath}
+                  onApproveHumanInLoop={handleApproveSpecHumanInLoop}
+                  onForceState={handleForceSpecState}
+                />
+              ))}
+            </div>
           </div>
-        )}
+
         </div>
+
+        {/* Audit log */}
+        <AuditSection entries={auditLog} />
+
       </div>
 
       <MarkdownDrawer path={drawerPath} onClose={() => setDrawerPath(null)} />
+
     </div>
   );
 }

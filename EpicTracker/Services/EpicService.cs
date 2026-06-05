@@ -51,7 +51,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         var slug = baseSlug;
         var counter = 2;
 
-        while (await db.Epics.AnyAsync(e => e.Id == slug, cancellationToken))
+        while (await db.Epics.AnyAsync(e => e.Slug == slug, cancellationToken))
         {
             slug = $"{baseSlug}-{counter++}";
         }
@@ -161,7 +161,6 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         entity.Name = epic.Name;
         entity.Brief = epic.Brief;
-        entity.Slug = epic.Slug;
         entity.NeedsMockup = epic.NeedsMockup;
         entity.IsDocDrafted = epic.IsDocDrafted;
         entity.IsMockupDone = epic.IsMockupDone;
@@ -203,7 +202,14 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         if (fieldName == nameof(Epic.Name))
         {
-            entity.Slug = Slugify(epic.Name, entity.Id);
+            var baseSlug = Slugify(epic.Name, entity.Id);
+            var slug = baseSlug;
+            var counter = 2;
+            while (await db.Epics.AnyAsync(e => e.Slug == slug && e.Id != entity.Id, cancellationToken))
+            {
+                slug = $"{baseSlug}-{counter++}";
+            }
+            entity.Slug = slug;
         }
 
         entity.UpdatedAt = DateTime.UtcNow;

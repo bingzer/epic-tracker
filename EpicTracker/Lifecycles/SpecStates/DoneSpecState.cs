@@ -1,8 +1,5 @@
 namespace EpicTracker.Lifecycles.SpecStates;
 
-/// <summary>
-/// Terminal state. Spec is complete.
-/// </summary>
 internal class DoneSpecState : SpecState
 {
     public const string StateName = "done";
@@ -12,6 +9,9 @@ internal class DoneSpecState : SpecState
     {
         await Task.CompletedTask;
 
-        return this;
+        return Exit(
+            context: context,
+            instruction: "Spec is complete. No further action needed."
+        );
     }
 }

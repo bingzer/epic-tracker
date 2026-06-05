@@ -54,10 +54,9 @@ public class Epic
     }
 
     /// <summary>Clears the active agent swarm and sets <see cref="EpicAgentInstruction"/> to <paramref name="instruction"/>.</summary>
-    public void ResetAgentSwarm(string instruction)
+    public void ResetAgentSwarm()
     {
         AgentSwarm = null;
-        SetEpicAgentInstruction(instruction);
     }
 
     /// <summary>Returns true when no agent swarm has been raised yet.</summary>
@@ -73,10 +72,9 @@ public class Epic
     public bool IsHumanApproved() => HumanInLoop?.IsApproved == true;
 
     /// <summary>Clears the active <see cref="HumanInLoop"/> and sets <see cref="EpicAgentInstruction"/> to <paramref name="instruction"/>.</summary>
-    public void ResetHumanApproval(string instruction)
+    public void ResetHumanApproval()
     {
         HumanInLoop = null;
-        SetEpicAgentInstruction(instruction);
     }
 
     /// <summary>
@@ -95,6 +93,22 @@ public class Epic
         };
 
         SetEpicAgentInstruction(instruction);
+    }
+
+    public void ApproveAllSpecs()
+    {
+        foreach (var spec in Specs)
+        {
+            spec.IsSpecApproved = true;
+        }
+    }
+
+    public void AbandonAllSpecs()
+    {
+        foreach (var spec in Specs)
+        {
+            spec.IsAbandoned = true;
+        }
     }
 
 }

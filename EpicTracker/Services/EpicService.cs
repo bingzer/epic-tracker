@@ -236,8 +236,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         switch (fieldName)
         {
-            case "AssignedAgentId":
-                entity.AssignedAgentId = value;
+            case "AssignedAgentName":
+                entity.AssignedAgentName = value;
                 break;
 
             case "ReviewerAgentName":
@@ -274,7 +274,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
             default:
                 throw new InvalidOperationException(
-                    $"Unknown field '{fieldName}'. Valid fields: AssignedAgentId, ReviewerAgentName, SpecDocPath, CodeReviewRequired, IsSpecDrafted, IsCodeDone, IsAcPassed, IsCodeReviewApproved.");
+                    $"Unknown field '{fieldName}'. Valid fields: AssignedAgentName, ReviewerAgentName, SpecDocPath, CodeReviewRequired, IsSpecDrafted, IsCodeDone, IsAcPassed, IsCodeReviewApproved.");
         }
 
         entity.UpdatedAt = DateTime.UtcNow;
@@ -442,7 +442,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem };
 
-        var currentState = EpicState.Create(epic.CurrentStateName);
+        var currentState = EpicState.CreateEpicState(epic.CurrentStateName);
         string previousName;
 
         do
@@ -499,7 +499,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         {
             Id = slug,
             EpicId = epicId,
-            AssignedAgentId = request.AssignedAgentId,
+            AssignedAgentName = request.AssignedAgentName,
             ReviewerAgentName = request.ReviewerAgentName,
             CodeReviewRequired = request.CodeReviewRequired,
             SpecDocPath = request.SpecDocPath,
@@ -603,7 +603,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var spec = EpicMapper.ToSpec(entity);
 
-        var currentState = SpecState.Create(spec.CurrentStateName);
+        var currentState = SpecState.CreateSpecState(spec.CurrentStateName);
 
         var specContext = new SpecContext { Spec = spec, Logger = logger, FileSystem = fileSystem };
 

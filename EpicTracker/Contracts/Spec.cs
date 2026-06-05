@@ -4,7 +4,7 @@ public class Spec
 {
     public string Id { get; set; } = default!;
     public string EpicId { get; set; } = default!;
-    public string AssignedAgentId { get; set; } = default!;
+    public string AssignedAgentName { get; set; } = default!;
     public string? ReviewerAgentName { get; set; }
     public bool CodeReviewRequired { get; set; }
     public string? SpecDocPath { get; set; }
@@ -24,6 +24,27 @@ public class Spec
     public void SetEpicAgentInstruction(string instruction)
     {
         EpicAgentInstruction = instruction;
+    }
+
+    public bool IsHumanApproved() => HumanInLoop?.IsApproved == true;
+    public bool IsHumanRejected() => HumanInLoop?.IsApproved == false;
+    public bool NeedsHumanReview() => HumanInLoop is null;
+
+    public void ResetHumanApproval()
+    {
+        HumanInLoop = null;
+    }
+
+    public void RaiseHumanInLoop(string questions, string approveToStateName, string rejectToStateName, string instruction)
+    {
+        HumanInLoop = new HumanInLoop
+        {
+            Questions = questions,
+            ApproveToStateName = approveToStateName,
+            RejectToStateName = rejectToStateName
+        };
+
+        SetEpicAgentInstruction(instruction);
     }
 
 }

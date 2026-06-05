@@ -94,13 +94,13 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
     public async Task<CreateSpecResult> CreateSpec(
         [Description("The ID of the epic this spec belongs to.")] string epicId,
         [Description("A short human-readable name for this spec (e.g. 'auth-flow', 'user-profile'). Used to generate the spec ID.")] string specName,
-        [Description("The ID of the coding agent assigned to implement this spec.")] string assignedAgentId,
+        [Description("The name of the coding agent assigned to implement this spec.")] string assignedAgentName,
         [Description("Optional absolute path to the spec document. Must be an absolute path (e.g. C:\\Users\\... or /home/...) — relative paths will be rejected.")] string? specDocPath = null,
         [Description("Whether a code review is required before the spec can be closed.")] bool codeReviewRequired = false,
         [Description("The ID of the agent who will review the code, if code review is required.")] string? reviewerAgentId = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await service.CreateSpec(epicId, new CreateSpecRequest(specName, assignedAgentId, specDocPath, codeReviewRequired, reviewerAgentId), cancellationToken);
+        var result = await service.CreateSpec(epicId, new CreateSpecRequest(specName, assignedAgentName, specDocPath, codeReviewRequired, reviewerAgentId), cancellationToken);
         var epic = await service.GetEpic(epicId, cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicUpdated", epic, cancellationToken);
         return new CreateSpecResult(result.Id, result.CurrentStateName);
@@ -134,7 +134,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return result;
     }
 
-    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentId (string), ReviewerAgentName (string), SpecDocPath (string), CodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
+    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentName (string), ReviewerAgentName (string), SpecDocPath (string), CodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
     public async Task<UpdateSpecResult> UpdateSpec(
         [Description("The ID of the spec to update.")] string specId,
         [Description("The name of the field to set.")] string fieldName,

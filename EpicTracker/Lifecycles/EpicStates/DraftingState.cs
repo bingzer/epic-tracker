@@ -10,6 +10,8 @@ internal class DraftingState : EpicState
     {
         await Task.CompletedTask;
 
+        var epic = context.Epic;
+
         if (!TryValidate(context.Epic, out var instruction))
         {
             return Exit(context, instruction);
@@ -17,13 +19,14 @@ internal class DraftingState : EpicState
 
         if (!epic.IsDocDrafted)
         {
-            return Exit(context, 
-                $"""
-                Draft the epic document at {epic.EpicDocumentPath}.
-                Brief: {epic.Brief}
-                Follow the governance document at {epic.EpicGovernancePath} for the required format.
-                Once written, call update_epic(IsDocDrafted, true) then call advance({epic.Id}).
-                """);
+            return Exit(
+                context: context, 
+                instruction: $"""
+                    Draft the epic document at {epic.EpicDocumentPath}.
+                    Brief: {epic.Brief}
+                    Follow the governance document at {epic.EpicGovernancePath} for the required format.
+                    Once written, call update_epic(IsDocDrafted, true) then call advance({epic.Id}).
+                    """);
         }
         
         return new WaterproofingState();

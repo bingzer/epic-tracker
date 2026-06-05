@@ -13,18 +13,12 @@ internal class ReadySpecState : SpecState
 
         if (!spec.IsReadyToCode)
         {
-            spec.SetEpicAgentInstruction($"""
-                Spec {spec.Id} is ready for coding. A human must click "Code Now" in the dashboard to release it.
-                Do not start coding. Wait for the human gate.
-                """);
-
-            return this;
+            return Exit(
+                context: context,
+                instruction: $"Spec {spec.Id} is waiting for a human to click Code Now in the dashboard before coding begins."
+            );
         }
-
-        spec.SetEpicAgentInstruction($"""
-            Spec {spec.Id} has been released by the human. Hand off to coding agent {spec.AssignedAgentId}.
-            """);
-
+        
         return new CodingSpecState();
     }
 }

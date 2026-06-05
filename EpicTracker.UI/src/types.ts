@@ -26,7 +26,7 @@ export interface HumanInLoop {
 export interface Spec {
   id: string;
   epicId: string;
-  assignedAgentId: string;
+  assignedAgentName: string;
   reviewerAgentName: string | null;
   codeReviewRequired: boolean;
   specDocPath: string | null;

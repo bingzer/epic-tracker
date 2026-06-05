@@ -12,8 +12,9 @@ internal class ClosedState : EpicState
     {
         await Task.CompletedTask;
 
-        context.Epic.SetEpicAgentInstruction("This epic is already closed.");
-
-        return this;
+        return Exit(
+            context: context,
+            instruction: "This epic is already closed."
+        );
     }
 }

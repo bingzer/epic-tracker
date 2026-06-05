@@ -1,8 +1,5 @@
 namespace EpicTracker.Lifecycles.SpecStates;
 
-/// <summary>
-/// Blocks until a human responds to Spec.HumanInLoop. Routes to ApproveToStateName or RejectToStateName.
-/// </summary>
 internal class HumanInLoopSpecState : SpecState
 {
     public const string StateName = "spec_human_in_loop";
@@ -21,17 +18,18 @@ internal class HumanInLoopSpecState : SpecState
 
         if (spec.HumanInLoop.IsApproved is null)
         {
-            spec.SetEpicAgentInstruction("Waiting for human response.");
-
-            return this;
+            return Exit(
+                context: context,
+                instruction: $"Waiting for human response. Call advance_spec(\"{spec.Id}\") then wait for tmux to wake you."
+            );
         }
 
         var toStateName = spec.HumanInLoop.IsApproved == true
             ? spec.HumanInLoop.ApproveToStateName
             : spec.HumanInLoop.RejectToStateName;
 
-        spec.HumanInLoop = null;
+        spec.ResetHumanApproval();
 
-        return SpecState.Create(toStateName);
+        return MoveTo(toStateName);
     }
 }

@@ -34,7 +34,7 @@ export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, o
   const [feedback, setFeedback] = useState('');
   const [codingNow, setCodingNow] = useState(false);
   const [specDocPath, setSpecDocPath] = useState(spec.specDocPath ?? '');
-  const [assignedAgentId, setAssignedAgentId] = useState(spec.assignedAgentId ?? '');
+  const [assignedAgentName, setassignedAgentName] = useState(spec.assignedAgentName ?? '');
   const [reviewerAgentName, setReviewerAgentId] = useState(spec.reviewerAgentName ?? '');
 
   const needsHumanReview = spec.humanInLoop !== null && spec.humanInLoop.isApproved === null;
@@ -109,7 +109,7 @@ export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, o
             )}
           </span>
         </td>
-        <td className="px-3 py-2 text-sm text-gray-600 dark:text-zinc-400">{spec.assignedAgentId}</td>
+        <td className="px-3 py-2 text-sm text-gray-600 dark:text-zinc-400">{spec.assignedAgentName}</td>
         <td className="px-3 py-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <StateBadge state={spec.currentStateName} />
@@ -220,10 +220,10 @@ export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, o
               <div>
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 block mb-0.5">Assigned Agent</label>
                 <input
-                  value={assignedAgentId}
-                  onChange={e => setAssignedAgentId(e.target.value)}
-                  onBlur={() => saveTextField('assignedAgentId', assignedAgentId)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveTextField('assignedAgentId', assignedAgentId); } }}
+                  value={assignedAgentName}
+                  onChange={e => setassignedAgentName(e.target.value)}
+                  onBlur={() => saveTextField('assignedAgentName', assignedAgentName)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveTextField('assignedAgentName', assignedAgentName); } }}
                   placeholder="agent-id"
                   className="w-full text-xs rounded border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />

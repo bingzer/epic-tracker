@@ -12,7 +12,7 @@ public record SubmitAgreementRequest(string AgentId, bool HasAgreed, string? Not
 
 public record CreateSpecRequest(
     string SpecName,
-    string AssignedAgentId,
+    string AssignedAgentName,
     string? SpecDocPath,
     bool CodeReviewRequired,
     string? ReviewerAgentName);

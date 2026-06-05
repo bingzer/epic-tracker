@@ -1,8 +1,5 @@
 namespace EpicTracker.Lifecycles.SpecStates;
 
-/// <summary>
-/// Coding agent runs the AC checklist from the spec doc, then human signs off before marking done.
-/// </summary>
 internal class AcSpecState : SpecState
 {
     public const string StateName = "ac";
@@ -16,57 +13,45 @@ internal class AcSpecState : SpecState
 
         if (spec.IsAcPassed is null)
         {
-            spec.SetEpicAgentInstruction($"""
-                Hand off spec {spec.Id} to coding agent {spec.AssignedAgentId} to run the AC checklist in the spec doc at {spec.SpecDocPath}.
-                Tell {spec.AssignedAgentId} to report back with results when done.
-                You are handing off — do not follow up. Wait for {spec.AssignedAgentId} to report back, then call UpdateSpec to set IsAcPassed = true or false and call AdvanceSpec.
-                """);
-
-            return this;
+            return Exit(
+                context: context,
+                instruction: $"""
+                    Hand off spec {spec.Id} to {spec.AssignedAgentName} via tmux-broker to run the AC checklist in the spec doc at {spec.SpecDocPath}.
+                    Tell {spec.AssignedAgentName} to reply via tmux-broker with results when done.
+                    Wait for their reply, then call update_spec({spec.Id}, IsAcPassed, true/false) and advance_spec({spec.Id}).
+                    """
+            );
         }
 
         if (spec.IsAcPassed == false)
         {
-            spec.IsAcPassed = null;
-            spec.IsCodeDone = false;
-
-            spec.SetEpicAgentInstruction($"""
-                AC failed for spec {spec.Id}. Hand back to coding agent {spec.AssignedAgentId} to fix the failing criteria.
-                Tell {spec.AssignedAgentId} to report back when done, then call UpdateSpec to set IsCodeDone = true and call AdvanceSpec.
-                """);
-
-            return new CodingSpecState();
+            return RaiseHumanInLoop(
+                context: context,
+                questions: $"AC failed for spec {spec.Id}. Approve to override and mark as done, or reject to send back to coding.",
+                approveToStateName: DoneSpecState.StateName,
+                rejectToStateName: CodingSpecState.StateName,
+                instruction: $"""
+                    AC failed. HumanInLoop raised for direction.
+                    Call advance_spec("{spec.Id}") then wait for tmux to wake you.
+                    """
+            );
         }
 
-        if (spec.HumanInLoop is null || spec.HumanInLoop.IsApproved is null)
+        if (spec.NeedsHumanReview())
         {
-            spec.HumanInLoop = new HumanInLoop
-            {
-                Questions = $"Spec {spec.Id} has passed AC. Please review and approve to mark as done.",
-                ApproveToStateName = DoneSpecState.StateName,
-                RejectToStateName = CodingSpecState.StateName
-            };
-
-            spec.SetEpicAgentInstruction("AC passed. Raised HumanInLoop for final sign-off.");
-
-            return new HumanInLoopSpecState();
+            return RaiseHumanInLoop(
+                context: context,
+                questions: $"Spec {spec.Id} has passed AC. Please review and approve to mark as done.",
+                approveToStateName: DoneSpecState.StateName,
+                rejectToStateName: CodingSpecState.StateName,
+                instruction: $"""
+                    AC passed. HumanInLoop raised for final sign-off.
+                    Call advance_spec("{spec.Id}") then wait for tmux to wake you.
+                    """
+            );
         }
 
-        if (spec.HumanInLoop.IsApproved == false)
-        {
-            spec.IsAcPassed = null;
-            spec.IsCodeDone = false;
-            spec.HumanInLoop = null;
-
-            spec.SetEpicAgentInstruction($"Human rejected AC sign-off. Hand back to {spec.AssignedAgentId} to rework.");
-
-            return new CodingSpecState();
-        }
-
-        spec.HumanInLoop = null;
-
-        spec.SetEpicAgentInstruction($"Spec {spec.Id} approved. Marking as done.");
-
+        spec.ResetHumanApproval();
         return new DoneSpecState();
     }
 }

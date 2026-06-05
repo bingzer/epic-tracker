@@ -61,7 +61,7 @@ internal static class EpicMapper
         {
             Id = entity.Id,
             EpicId = entity.EpicId,
-            AssignedAgentId = entity.AssignedAgentId,
+            AssignedAgentName = entity.AssignedAgentName,
             ReviewerAgentName = entity.ReviewerAgentName,
             CodeReviewRequired = entity.CodeReviewRequired,
             SpecDocPath = entity.SpecDocPath,

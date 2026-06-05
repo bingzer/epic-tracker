@@ -70,6 +70,34 @@ internal abstract class EpicState
         return this;
     }
 
+    protected AgentSwarmState RaiseAgentSwarm(EpicContext context, string objective, string whenApprovedStateName, string instruction)
+    {
+        context.Epic.RaiseAgentSwarm(
+            objective: objective,
+            toStateName: whenApprovedStateName,
+            instruction: instruction
+        );
+
+        return new AgentSwarmState();
+    }
+
+    protected HumanInLoopState RaiseHumanInLoop(EpicContext context, string questions, string approveToStateName, string rejectToStateName, string instruction)
+    {
+        context.Epic.RaiseHumanInLoop(
+            questions: questions,
+            approveToStateName: approveToStateName,
+            rejectToStateName: rejectToStateName,
+            instruction: instruction
+        );
+
+        return new HumanInLoopState();
+    }
+
+    protected EpicState MoveTo(string stateName)
+    {
+        return CreateEpicState(stateName);
+    }
+
     private static readonly Dictionary<string, Func<EpicState>> Factories = Assembly
         .GetExecutingAssembly()
         .GetTypes()
@@ -79,7 +107,7 @@ internal abstract class EpicState
             t => (Func<EpicState>)(() => (EpicState)Activator.CreateInstance(t)!)
         );
 
-    internal static EpicState Create(string stateName)
+    internal static EpicState CreateEpicState(string stateName)
     {
         if (!Factories.TryGetValue(stateName, out var factory))
         {

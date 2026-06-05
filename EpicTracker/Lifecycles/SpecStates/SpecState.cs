@@ -31,6 +31,25 @@ internal abstract class SpecState
         return next;
     }
 
+    protected SpecState Exit(SpecContext context, string instruction)
+    {
+        context.Spec.SetEpicAgentInstruction(instruction);
+        return this;
+    }
+
+    protected HumanInLoopSpecState RaiseHumanInLoop(SpecContext context, string questions, string approveToStateName, string rejectToStateName, string instruction)
+    {
+        context.Spec.RaiseHumanInLoop(
+            questions: questions,
+            approveToStateName: approveToStateName,
+            rejectToStateName: rejectToStateName,
+            instruction: instruction
+        );
+        return new HumanInLoopSpecState();
+    }
+
+    protected SpecState MoveTo(string stateName) => CreateSpecState(stateName);
+
     private static readonly Dictionary<string, Func<SpecState>> Factories = Assembly
         .GetExecutingAssembly()
         .GetTypes()
@@ -40,7 +59,7 @@ internal abstract class SpecState
             t => (Func<SpecState>)(() => (SpecState)Activator.CreateInstance(t)!)
         );
 
-    internal static SpecState Create(string stateName)
+    internal static SpecState CreateSpecState(string stateName)
     {
         if (!Factories.TryGetValue(stateName, out var factory))
         {

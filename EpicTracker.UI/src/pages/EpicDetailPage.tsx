@@ -319,7 +319,11 @@ function SwarmPanelBlock({ epic }: { epic: Epic }) {
 }
 
 function AgentPill({ name, statuses }: { name: string; statuses?: Record<string, AgentStatus> }) {
-  const status = statuses?.[name]?.lastStatus ?? 'offline';
+  const agent = statuses?.[name];
+  const isStale = agent?.lastSeen
+    ? (Date.now() - new Date(agent.lastSeen).getTime()) > 2 * 60 * 1000
+    : true;
+  const status = !agent || isStale ? 'offline' : (agent.lastStatus ?? 'offline');
   const dotCls =
     status === 'running' ? 'bg-emerald-400 shadow-[0_0_5px_1px_rgba(52,211,153,0.5)]' :
     status === 'idle'    ? 'bg-amber-400' :

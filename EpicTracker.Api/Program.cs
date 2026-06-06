@@ -25,6 +25,7 @@ builder.Services.AddMcpServer()
     .WithToolsFromAssembly(typeof(EpicAgentMcpTools).Assembly);
 
 builder.Services.AddCarter();
+builder.Services.AddHttpClient();
 
 builder.Services.AddCors(options =>
 {

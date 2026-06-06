@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { marked } from 'marked';
 import { useNavigate, useParams } from 'react-router-dom';
-import { EpicApi, SpecApi, DocApi } from '../epicApi';
+import { EpicApi, SpecApi, DocApi, AgentApi } from '../epicApi';
+import type { AgentStatus } from '../epicApi';
 import type { Epic, AuditLog, AgentAgreement, Spec } from '../types';
 import { AuditLogPanel } from '../components/AuditLogPanel';
 import { StateBadge } from '../components/StateBadge';
@@ -31,6 +32,27 @@ function specDisplayName(id: string, epicId: string): string {
   const prefix = epicId + '-';
   const slug = id.startsWith(prefix) ? id.slice(prefix.length) : id;
   return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function useAgentStatuses() {
+  const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({});
+
+  useEffect(() => {
+    function fetch() {
+      AgentApi.list()
+        .then(list => {
+          const map: Record<string, AgentStatus> = {};
+          for (const a of list) map[a.sessionName] = a;
+          setStatuses(map);
+        })
+        .catch(() => {});
+    }
+    fetch();
+    const id = setInterval(fetch, 20000);
+    return () => clearInterval(id);
+  }, []);
+
+  return statuses;
 }
 
 // ---- Sub-components ----
@@ -76,6 +98,76 @@ function MarkdownDrawer({ path, onClose }: { path: string | null; onClose: () =>
             <div
               className="prose prose-sm prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: content }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GovernanceEditor({ path, onClose }: { path: string; onClose: () => void }) {
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    DocApi.get(path)
+      .then(text => { setContent(text); setDirty(false); })
+      .catch(e => alert(String(e)))
+      .finally(() => setLoading(false));
+  }, [path]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await DocApi.save(path, content);
+      setDirty(false);
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose();
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 bg-black/40 flex justify-end"
+    >
+      <div className="w-full md:w-1/2 bg-zinc-900 h-full flex flex-col shadow-xl border-l border-zinc-800">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+          <span className="text-xs font-mono text-zinc-400 truncate max-w-xs">{path}</span>
+          <div className="flex items-center gap-2 ml-4 shrink-0">
+            {dirty && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="text-xs px-3 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors font-semibold"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            )}
+            <button onClick={onClose} className="text-zinc-400 hover:text-zinc-200 text-lg leading-none">×</button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          {loading ? (
+            <p className="text-sm text-zinc-500 p-5">Loading…</p>
+          ) : (
+            <textarea
+              value={content}
+              onChange={e => { setContent(e.target.value); setDirty(true); }}
+              className="w-full h-full bg-transparent text-xs font-mono text-zinc-200 p-5 resize-none focus:outline-none leading-relaxed"
+              spellCheck={false}
             />
           )}
         </div>
@@ -226,9 +318,15 @@ function SwarmPanelBlock({ epic }: { epic: Epic }) {
   );
 }
 
-function AgentPill({ name }: { name: string }) {
+function AgentPill({ name, statuses }: { name: string; statuses?: Record<string, AgentStatus> }) {
+  const status = statuses?.[name]?.lastStatus ?? 'offline';
+  const dotCls =
+    status === 'running' ? 'bg-emerald-400 shadow-[0_0_5px_1px_rgba(52,211,153,0.5)]' :
+    status === 'idle'    ? 'bg-amber-400' :
+                           'bg-zinc-600';
   return (
-    <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full pl-2.5 pr-1 py-1 text-xs font-medium text-indigo-300">
+    <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full pl-2 pr-1 py-1 text-xs font-medium text-indigo-300">
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotCls}`} title={status} />
       {name}
       <a
         href={`openterm:${name}`}
@@ -487,12 +585,16 @@ function EpicSummaryCard({
   epic,
   onUpdated,
   onViewDoc,
+  onEditGovernance,
   onForceState,
+  agentStatuses,
 }: {
   epic: Epic;
   onUpdated: (e: Epic) => void;
   onViewDoc: (path: string) => void;
+  onEditGovernance: () => void;
   onForceState: (state: string) => void;
+  agentStatuses: Record<string, AgentStatus>;
 }) {
   const [editOpen, setEditOpen] = useState(false);
 
@@ -528,20 +630,20 @@ function EpicSummaryCard({
         <div className="space-y-3">
           <div>
             <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Epic Agent</p>
-            <AgentPill name={epic.epicAgentName} />
+            <AgentPill name={epic.epicAgentName} statuses={agentStatuses} />
           </div>
 
           <div>
             <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Coding Agents</p>
             <div className="flex flex-wrap gap-1.5">
-              {epic.codingAgentNames.map(a => <AgentPill key={a} name={a} />)}
+              {epic.codingAgentNames.map(a => <AgentPill key={a} name={a} statuses={agentStatuses} />)}
             </div>
           </div>
 
           {epic.reviewerAgentName && (
             <div>
               <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Reviewer</p>
-              <AgentPill name={epic.reviewerAgentName} />
+              <AgentPill name={epic.reviewerAgentName} statuses={agentStatuses} />
             </div>
           )}
 
@@ -567,7 +669,7 @@ function EpicSummaryCard({
             )}
             {epic.epicGovernancePath && (
               <button
-                onClick={() => onViewDoc(epic.epicGovernancePath)}
+                onClick={onEditGovernance}
                 className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
               >
                 📋 Governance
@@ -785,11 +887,13 @@ export default function EpicDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawerPath, setDrawerPath] = useState<string | null>(null);
+  const [governanceEditorOpen, setGovernanceEditorOpen] = useState(false);
   const [swarmObjective, setSwarmObjective] = useState('');
   const [swarmToState, setSwarmToState] = useState('');
   const [swarmSubmitting, setSwarmSubmitting] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const agentStatuses = useAgentStatuses();
 
   const load = useCallback(async () => {
     if (!epicId) return;
@@ -991,7 +1095,7 @@ export default function EpicDetailPage() {
               onUpdated={setEpic}
             />
 
-            <EpicSummaryCard epic={epic} onUpdated={setEpic} onViewDoc={setDrawerPath} onForceState={handleForceEpicState} />
+            <EpicSummaryCard epic={epic} onUpdated={setEpic} onViewDoc={setDrawerPath} onEditGovernance={() => setGovernanceEditorOpen(true)} onForceState={handleForceEpicState} agentStatuses={agentStatuses} />
 
             <InstructionBlock instruction={epic.epicAgentInstruction} epicAgentName={epic.epicAgentName} />
 
@@ -1081,6 +1185,9 @@ export default function EpicDetailPage() {
       </div>
 
       <MarkdownDrawer path={drawerPath} onClose={() => setDrawerPath(null)} />
+      {governanceEditorOpen && epic.epicGovernancePath && (
+        <GovernanceEditor path={epic.epicGovernancePath} onClose={() => setGovernanceEditorOpen(false)} />
+      )}
 
     </div>
   );

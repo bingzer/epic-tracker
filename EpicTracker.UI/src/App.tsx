@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from 'react-router-dom';
 import { useSignalR } from './hooks/useSignalR';
 import EpicsListPage from './pages/EpicsListPage';
 import EpicDetailPage from './pages/EpicDetailPage';
+import TemplatesPage from './pages/TemplatesPage';
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => {
@@ -40,6 +41,7 @@ export default function App() {
           <span className="text-xs font-medium bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400 px-1.5 py-0.5 rounded mr-2">DEV</span>
         )}
         <NavLink to="/" end className={navClass}>Epics</NavLink>
+        <NavLink to="/templates" className={navClass}>Templates</NavLink>
 
         <div className="flex items-center gap-2 ml-auto">
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-red-400'}`} />
@@ -58,6 +60,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<EpicsListPage />} />
           <Route path="/epics/:epicId" element={<EpicDetailPage />} />
+          <Route path="/templates" element={<TemplatesPage />} />
         </Routes>
       </main>
     </div>

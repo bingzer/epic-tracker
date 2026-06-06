@@ -49,8 +49,24 @@ export const EpicApi = {
     api.post<Spec>(`/api/epics/${epicId}/specs`, { assignedAgentName, specDocPath, codeReviewRequired, reviewerAgentName }),
 };
 
+export interface AgentStatus {
+  sessionName: string;
+  lastStatus: 'running' | 'idle' | 'offline';
+  lastSeen: string | null;
+}
+
+export const AgentApi = {
+  list: () => api.get<AgentStatus[]>('/api/agents'),
+};
+
+export const TemplateApi = {
+  getGovernance: () => api.getText('/api/templates/governance'),
+  saveGovernance: (content: string) => api.put<void>('/api/templates/governance', { content }),
+};
+
 export const DocApi = {
   get: (path: string) => api.getText(`/api/docs?path=${encodeURIComponent(path)}`),
+  save: (path: string, content: string) => api.put<void>('/api/docs', { path, content }),
 };
 
 export const SpecApi = {

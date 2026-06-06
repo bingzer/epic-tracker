@@ -14,11 +14,13 @@ public static class ServiceRegistration
 
         var epicsBasePath = configuration["EpicTracker:EpicsBasePath"] ?? string.Empty;
         var governanceTemplatePath = Path.Combine(contentRootPath, "Templates", "governance.md");
+        var tmuxBrokerUrl = configuration["EpicTracker:TmuxBrokerUrl"] ?? "http://127.0.0.1:6789";
 
         services.Configure<EpicTrackerOptions>(o =>
         {
             o.EpicsBasePath = epicsBasePath;
             o.GovernanceTemplatePath = governanceTemplatePath;
+            o.TmuxBrokerUrl = tmuxBrokerUrl;
         });
 
         services.AddScoped<EpicService>();

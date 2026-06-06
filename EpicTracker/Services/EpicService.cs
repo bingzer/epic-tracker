@@ -328,6 +328,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         EpicMapper.SyncToEntity(epic, entity);
 
+        entity.CurrentStateName = Lifecycles.EpicStates.HumanInLoopState.StateName;
         entity.UpdatedAt = DateTime.UtcNow;
 
         db.AuditLogs.Add(EpicMapper.MakeAuditLog(

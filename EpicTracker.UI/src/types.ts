@@ -69,12 +69,14 @@ export interface Epic {
   lastKnownStateName: string | null;
 }
 
-export interface EpicAudit {
+export interface AuditLog {
   id: number;
-  epicId: string;
-  epicAgentId: string;
-  fromState: string;
-  toState: string;
-  epicAgentInstruction: string | null;
   timestamp: string;
+  action: string;
+  epicState: string;
+  specState: string | null;
+  epicId: string;
+  specId: string | null;
+  actor: string | null;
+  message: string | null;
 }

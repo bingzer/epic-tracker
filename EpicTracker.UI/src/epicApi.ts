@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Epic, EpicAudit, Spec } from './types';
+import type { Epic, AuditLog, Spec } from './types';
 
 export interface CreateEpicPayload {
   epicAgentName: string;
@@ -21,7 +21,7 @@ export const EpicApi = {
 
   update: (epicId: string, payload: Partial<Epic>) => api.put<Epic>(`/api/epics/${epicId}`, payload),
 
-  getHistory: (epicId: string) => api.get<EpicAudit[]>(`/api/epics/${epicId}/history`),
+  getHistory: (epicId: string) => api.get<AuditLog[]>(`/api/epics/${epicId}/history`),
 
   advance: (epicId: string, epicAgentId: string) =>
     api.post<Epic>(`/api/epics/${epicId}/advance`, { epicAgentId }),

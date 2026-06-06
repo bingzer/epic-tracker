@@ -24,6 +24,6 @@ public class EpicEntity
     public DateTime UpdatedAt { get; set; }
 
     public ICollection<SpecEntity> Specs { get; set; } = [];
-    public ICollection<EpicAuditEntity> Audits { get; set; } = [];
+    public ICollection<AuditLogEntity> AuditLogs { get; set; } = [];
 }
 

@@ -132,36 +132,34 @@ internal static class EpicMapper
             : null;
     }
 
-    internal static EpicAudit ToEpicAudit(EpicAuditEntity entity)
+    internal static AuditLog ToAuditLog(AuditLogEntity entity)
     {
-        return new EpicAudit
+        return new AuditLog
         {
             Id = entity.Id,
+            Timestamp = entity.Timestamp,
+            Action = entity.Action,
+            EpicState = entity.EpicState,
+            SpecState = entity.SpecState,
             EpicId = entity.EpicId,
-            EpicAgentId = entity.EpicAgentId,
-            FromState = entity.FromState,
-            ToState = entity.ToState,
-            EpicAgentInstruction = entity.EpicAgentInstruction,
-            Timestamp = entity.Timestamp
+            SpecId = entity.SpecId,
+            Actor = entity.Actor,
+            Message = entity.Message
         };
     }
 
-    internal static EpicAuditEntity ToAudit(string epicId, string epicAgentId, string fromState, Epic epic)
+    internal static AuditLogEntity MakeAuditLog(string action, string epicState, string epicId, string? specId = null, string? specState = null, string? actor = null, object? message = null)
     {
-        return new EpicAuditEntity
+        return new AuditLogEntity
         {
-            EpicId = epicId,
-            EpicAgentId = epicAgentId,
-            FromState = fromState,
-            ToState = epic.CurrentStateName,
-            EpicAgentInstruction = epic.EpicAgentInstruction,
             Timestamp = DateTime.UtcNow,
-            HumanInLoop = epic.HumanInLoop is not null
-                ? JsonSerializer.Serialize(epic.HumanInLoop)
-                : null,
-            AgentSwarm = epic.AgentSwarm is not null
-                ? JsonSerializer.Serialize(epic.AgentSwarm)
-                : null
+            Action = action,
+            EpicState = epicState,
+            SpecState = specState,
+            EpicId = epicId,
+            SpecId = specId,
+            Actor = actor,
+            Message = message is not null ? JsonSerializer.Serialize(message) : null
         };
     }
 }

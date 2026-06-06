@@ -6,7 +6,7 @@ public class EpicTrackerDbContext(DbContextOptions<EpicTrackerDbContext> options
 {
     public DbSet<EpicEntity> Epics => Set<EpicEntity>();
     public DbSet<SpecEntity> Specs => Set<SpecEntity>();
-    public DbSet<EpicAuditEntity> EpicAudits => Set<EpicAuditEntity>();
+    public DbSet<AuditLogEntity> AuditLogs => Set<AuditLogEntity>();
 
     public async Task<EpicEntity> FindEpicOrThrow(string epicId, CancellationToken cancellationToken = default)
     {
@@ -42,7 +42,7 @@ public class EpicTrackerDbContext(DbContextOptions<EpicTrackerDbContext> options
             e.HasIndex(x => x.Slug).IsUnique();
             e.Property(x => x.CodingAgentNames).HasColumnType("TEXT");
             e.HasMany(x => x.Specs).WithOne(x => x.Epic).HasForeignKey(x => x.EpicId);
-            e.HasMany(x => x.Audits).WithOne(x => x.Epic).HasForeignKey(x => x.EpicId);
+            e.HasMany(x => x.AuditLogs).WithOne(x => x.Epic).HasForeignKey(x => x.EpicId);
         });
 
         modelBuilder.Entity<SpecEntity>(e =>
@@ -50,11 +50,10 @@ public class EpicTrackerDbContext(DbContextOptions<EpicTrackerDbContext> options
             e.HasKey(x => x.Id);
         });
 
-        modelBuilder.Entity<EpicAuditEntity>(e =>
+        modelBuilder.Entity<AuditLogEntity>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedOnAdd();
         });
     }
 }
-

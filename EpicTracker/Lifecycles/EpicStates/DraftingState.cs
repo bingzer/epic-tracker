@@ -44,7 +44,11 @@ internal class DraftingState : EpicState
                     Brief: {epic.Brief}
                     Write a concise, high-level document capturing intent and goals only. Do NOT scan code, read files, or research the codebase.
                     Follow the governance document at {epic.EpicGovernancePath} for the required format.
-                    Once written, call update_epic({epic.Id}, IsDocDrafted, true) then call advance({epic.Id}).
+                    Once written:
+                    1. Rewrite the brief to be a clear 2-3 sentence description based on what you wrote in the epic doc. This replaces the original user input with a proper summary of scope and intent.
+                       Call update_epic({epic.Id}, Brief, <rewritten brief>).
+                    2. Call update_epic({epic.Id}, IsDocDrafted, true).
+                    3. Call advance({epic.Id}).
                     """);
         }
         

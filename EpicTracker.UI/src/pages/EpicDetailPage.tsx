@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { marked } from 'marked';
 import { useNavigate, useParams } from 'react-router-dom';
 import { EpicApi, SpecApi, DocApi } from '../epicApi';
-import type { Epic, EpicAudit, AgentAgreement, Spec } from '../types';
+import type { Epic, AuditLog, AgentAgreement, Spec } from '../types';
+import { AuditLogPanel } from '../components/AuditLogPanel';
 import { StateBadge } from '../components/StateBadge';
 import { EscalationPanel } from '../components/EscalationPanel';
 import { useSignalR } from '../hooks/useSignalR';
@@ -156,7 +157,7 @@ function InstructionBlock({ instruction, epicAgentName }: { instruction: string 
           <div className="mt-2.5 flex items-center gap-2">
             <span className="text-[10px] text-zinc-600">Epic Agent:</span>
             <span className="font-mono text-[10px] text-indigo-400">{epicAgentName}</span>
-            <a href={`openterm:${epicAgentName}`} className="text-[10px] text-indigo-500 hover:text-indigo-300 ml-1">↗ Open chat</a>
+            <a href={`openterm:${epicAgentName}`} className="text-base leading-none hover:opacity-70 transition-opacity ml-1" title="Open chat">💬</a>
           </div>
         </>
       )}
@@ -225,32 +226,44 @@ function SwarmPanelBlock({ epic }: { epic: Epic }) {
   );
 }
 
-function EpicSummaryCard({
+function AgentPill({ name }: { name: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full pl-2.5 pr-1 py-1 text-xs font-medium text-indigo-300">
+      {name}
+      <a
+        href={`openterm:${name}`}
+        className="text-base leading-none hover:opacity-70 transition-opacity"
+        title={`Chat with ${name}`}
+      >
+        💬
+      </a>
+    </span>
+  );
+}
+
+function EpicEditDialog({
   epic,
   onUpdated,
-  onViewDoc,
   onForceState,
+  onClose,
 }: {
   epic: Epic;
   onUpdated: (e: Epic) => void;
-  onViewDoc: (path: string) => void;
   onForceState: (state: string) => void;
+  onClose: () => void;
 }) {
-  const [editOpen, setEditOpen] = useState(false);
   const [epicName, setEpicName] = useState(epic.name ?? '');
   const [epicBrief, setEpicBrief] = useState(epic.brief ?? '');
   const [epicSlug, setEpicSlug] = useState(epic.slug ?? '');
   const [epicMockupPath, setEpicMockupPath] = useState(epic.mockupPath ?? '');
   const [agentInput, setAgentInput] = useState('');
   const [reviewerInput, setReviewerInput] = useState(epic.reviewerAgentName ?? '');
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const inputCls = 'w-full text-xs rounded-lg border border-zinc-700 bg-white/[0.04] px-2.5 py-1.5 text-zinc-100 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500';
 
   function flagCls(active: boolean): string {
-    if (active) {
-      return 'inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
-    }
-
+    if (active) return 'inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
     return 'inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-white/[0.04] text-zinc-400 border border-zinc-700';
   }
 
@@ -264,10 +277,8 @@ function EpicSummaryCard({
   }
 
   async function handleToggle(field: keyof Epic) {
-    const current = epic[field] as boolean;
-
     try {
-      const updated = await EpicApi.update(epic.id, { ...epic, [field]: !current });
+      const updated = await EpicApi.update(epic.id, { ...epic, [field]: !(epic[field] as boolean) });
       onUpdated(updated);
     } catch (e) {
       alert(String(e));
@@ -276,16 +287,12 @@ function EpicSummaryCard({
 
   async function handleAddAgent() {
     if (!agentInput.trim()) return;
-
     const parts = agentInput.split(',').map(s => s.trim()).filter(Boolean);
     const next = [...epic.codingAgentNames];
-
     for (const p of parts) {
       if (!next.includes(p)) next.push(p);
     }
-
     setAgentInput('');
-
     try {
       const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
       onUpdated(updated);
@@ -295,10 +302,8 @@ function EpicSummaryCard({
   }
 
   async function handleRemoveAgent(agent: string) {
-    const next = epic.codingAgentNames.filter(a => a !== agent);
-
     try {
-      const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
+      const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: epic.codingAgentNames.filter(a => a !== agent) });
       onUpdated(updated);
     } catch (e) {
       alert(String(e));
@@ -314,77 +319,25 @@ function EpicSummaryCard({
     }
   }
 
-  let editBtnLabel = 'Edit';
-
-  if (editOpen) {
-    editBtnLabel = 'Done';
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose();
   }
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Epic</p>
-        <button
-          onClick={() => setEditOpen(v => !v)}
-          className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors"
-        >
-          {editBtnLabel}
-        </button>
-      </div>
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+    >
+      <div className="w-full max-w-lg bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
 
-      <p className="text-sm font-bold text-zinc-100 mb-3 leading-snug">{epic.name}</p>
-
-      <div className="space-y-3">
-        <div>
-          <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Epic Agent</p>
-          <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
-            {epic.epicAgentName}
-            <a href={`openterm:${epic.epicAgentName}`} className="text-indigo-400 hover:text-indigo-200 text-[10px] leading-none">↗</a>
-          </span>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+          <p className="text-sm font-bold text-zinc-100">Edit Epic</p>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xl leading-none">×</button>
         </div>
 
-        <div>
-          <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Coding Agents</p>
-          <div className="flex flex-wrap gap-1.5">
-            {epic.codingAgentNames.map(a => (
-              <span key={a} className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
-                {a}
-                <a href={`openterm:${a}`} className="text-indigo-400 hover:text-indigo-200 text-[10px] leading-none">↗</a>
-              </span>
-            ))}
-          </div>
-        </div>
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
-        {epic.reviewerAgentName && (
-          <div>
-            <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Reviewer</p>
-            <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
-              {epic.reviewerAgentName}
-              <a href={`openterm:${epic.reviewerAgentName}`} className="text-indigo-400 hover:text-indigo-200 text-[10px] leading-none">↗</a>
-            </span>
-          </div>
-        )}
-
-        <div>
-          <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Flags</p>
-          <div className="flex flex-wrap gap-1.5">
-            <span className={flagCls(epic.needsMockup)}>
-              {epic.needsMockup ? '✓' : '○'} Needs Mockup
-            </span>
-            <span className={flagCls(epic.isDocDrafted)}>
-              {epic.isDocDrafted ? '✓' : '○'} Doc Drafted
-            </span>
-            {epic.needsMockup && (
-              <span className={flagCls(epic.isMockupDone)}>
-                {epic.isMockupDone ? '✓' : '○'} Mockup Done
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {editOpen && (
-        <div className="mt-4 pt-4 border-t border-zinc-800 space-y-3">
           <div>
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Name</label>
             <input
@@ -432,6 +385,12 @@ function EpicSummaryCard({
                   {epic.isMockupDone ? '✓' : '○'} Mockup Done
                 </button>
               )}
+              <button onClick={() => handleToggle('isACRequired')} className={flagCls(epic.isACRequired)}>
+                {epic.isACRequired ? '✓' : '○'} AC Required
+              </button>
+              <button onClick={() => handleToggle('isCodeReviewRequired')} className={flagCls(epic.isCodeReviewRequired)}>
+                {epic.isCodeReviewRequired ? '✓' : '○'} Code Review Required
+              </button>
             </div>
           </div>
 
@@ -441,7 +400,6 @@ function EpicSummaryCard({
               {epic.codingAgentNames.map(a => (
                 <span key={a} className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
                   {a}
-                  <a href={`openterm:${a}`} className="text-indigo-400 hover:text-indigo-200 text-[10px] leading-none">↗</a>
                   <button onClick={() => handleRemoveAgent(a)} className="text-zinc-500 hover:text-red-400 leading-none">×</button>
                 </span>
               ))}
@@ -496,41 +454,6 @@ function EpicSummaryCard({
           )}
 
           <div>
-            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Documents</label>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between bg-white/[0.03] border border-zinc-800 rounded-lg px-3 py-2">
-                <div className="min-w-0 mr-3">
-                  <p className="text-[10px] text-zinc-600 mb-0.5">Epic Document</p>
-                  <p className="font-mono text-[10px] text-indigo-300 truncate">{epic.epicDocumentPath || '—'}</p>
-                </div>
-                {epic.epicDocumentPath && (
-                  <button
-                    onClick={() => onViewDoc(epic.epicDocumentPath)}
-                    className="text-[11px] px-2 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 flex-shrink-0"
-                  >
-                    View
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between bg-white/[0.03] border border-zinc-800 rounded-lg px-3 py-2">
-                <div className="min-w-0 mr-3">
-                  <p className="text-[10px] text-zinc-600 mb-0.5">Governance</p>
-                  <p className="font-mono text-[10px] text-indigo-300 truncate">{epic.epicGovernancePath || '—'}</p>
-                </div>
-                {epic.epicGovernancePath && (
-                  <button
-                    onClick={() => onViewDoc(epic.epicGovernancePath)}
-                    className="text-[11px] px-2 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 flex-shrink-0"
-                  >
-                    View
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div>
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Force State</label>
             <select
               defaultValue=""
@@ -543,9 +466,117 @@ function EpicSummaryCard({
               ))}
             </select>
           </div>
+
         </div>
-      )}
+
+        <div className="px-5 py-4 border-t border-zinc-800 flex justify-end">
+          <button
+            onClick={onClose}
+            className="text-xs px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+          >
+            Done
+          </button>
+        </div>
+
+      </div>
     </div>
+  );
+}
+
+function EpicSummaryCard({
+  epic,
+  onUpdated,
+  onViewDoc,
+  onForceState,
+}: {
+  epic: Epic;
+  onUpdated: (e: Epic) => void;
+  onViewDoc: (path: string) => void;
+  onForceState: (state: string) => void;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+
+  function flagCls(active: boolean): string {
+    if (active) return 'inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+    return 'inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-white/[0.04] text-zinc-400 border border-zinc-700';
+  }
+
+  return (
+    <>
+      {editOpen && (
+        <EpicEditDialog
+          epic={epic}
+          onUpdated={onUpdated}
+          onForceState={onForceState}
+          onClose={() => setEditOpen(false)}
+        />
+      )}
+
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Epic</p>
+          <button
+            onClick={() => setEditOpen(true)}
+            className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors"
+          >
+            Edit
+          </button>
+        </div>
+
+        <p className="text-sm font-bold text-zinc-100 mb-3 leading-snug">{epic.name}</p>
+
+        <div className="space-y-3">
+          <div>
+            <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Epic Agent</p>
+            <AgentPill name={epic.epicAgentName} />
+          </div>
+
+          <div>
+            <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Coding Agents</p>
+            <div className="flex flex-wrap gap-1.5">
+              {epic.codingAgentNames.map(a => <AgentPill key={a} name={a} />)}
+            </div>
+          </div>
+
+          {epic.reviewerAgentName && (
+            <div>
+              <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Reviewer</p>
+              <AgentPill name={epic.reviewerAgentName} />
+            </div>
+          )}
+
+          <div>
+            <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-1.5">Flags</p>
+            <div className="flex flex-wrap gap-1.5">
+              <span className={flagCls(epic.needsMockup)}>{epic.needsMockup ? '✓' : '○'} Needs Mockup</span>
+              <span className={flagCls(epic.isDocDrafted)}>{epic.isDocDrafted ? '✓' : '○'} Doc Drafted</span>
+              {epic.needsMockup && (
+                <span className={flagCls(epic.isMockupDone)}>{epic.isMockupDone ? '✓' : '○'} Mockup Done</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            {epic.epicDocumentPath && (
+              <button
+                onClick={() => onViewDoc(epic.epicDocumentPath)}
+                className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                📄 Epic Doc
+              </button>
+            )}
+            {epic.epicGovernancePath && (
+              <button
+                onClick={() => onViewDoc(epic.epicGovernancePath)}
+                className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                📋 Governance
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -566,6 +597,8 @@ function SpecCard({
 }) {
   const [codingNow, setCodingNow] = useState(false);
   const [showForceState, setShowForceState] = useState(false);
+  const [pendingHIL, setPendingHIL] = useState<boolean | null>(null);
+  const [hilFeedback, setHilFeedback] = useState('');
 
   const progress = SPEC_STATE_PROGRESS[spec.currentStateName] ?? 0;
   const isDone = spec.currentStateName === 'done';
@@ -628,7 +661,7 @@ function SpecCard({
 
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className="font-mono text-[11px] text-indigo-300">{spec.assignedAgentName}</span>
-        <a href={`openterm:${spec.assignedAgentName}`} className="text-[10px] text-indigo-500 hover:text-indigo-300">↗</a>
+        <a href={`openterm:${spec.assignedAgentName}`} className="text-base leading-none hover:opacity-70 transition-opacity" title={`Chat with ${spec.assignedAgentName}`}>💬</a>
 
         {spec.reviewerAgentName && spec.currentStateName === 'code_review' && (
           <>
@@ -651,20 +684,49 @@ function SpecCard({
       {needsHumanReview && spec.humanInLoop && (
         <div className="mb-3 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
           <p className="mb-2">{spec.humanInLoop.questions}</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => onApproveHumanInLoop(spec.id, true, null)}
-              className="text-xs px-2 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25"
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => onApproveHumanInLoop(spec.id, false, null)}
-              className="text-xs px-2 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25"
-            >
-              Reject
-            </button>
-          </div>
+          {pendingHIL === null ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPendingHIL(true)}
+                className="text-xs px-2 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => setPendingHIL(false)}
+                className="text-xs px-2 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25"
+              >
+                Reject
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-400">
+                Confirm <span className={pendingHIL ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>{pendingHIL ? 'approval' : 'rejection'}</span>:
+              </p>
+              <textarea
+                value={hilFeedback}
+                onChange={e => setHilFeedback(e.target.value)}
+                placeholder="Optional feedback…"
+                rows={2}
+                className="w-full text-xs rounded border border-zinc-700 bg-white/5 text-zinc-200 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-zinc-600"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { onApproveHumanInLoop(spec.id, pendingHIL, hilFeedback.trim() || null); setPendingHIL(null); setHilFeedback(''); }}
+                  className={`text-xs px-2 py-1 rounded font-semibold ${pendingHIL ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25' : 'bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25'}`}
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => { setPendingHIL(null); setHilFeedback(''); }}
+                  className="text-xs px-2 py-1 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -712,68 +774,6 @@ function SpecCard({
   );
 }
 
-function AuditEntry({ entry }: { entry: EpicAudit }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="py-2 border-b border-zinc-800 last:border-b-0 text-xs">
-      <div
-        className={`grid gap-3 ${entry.epicAgentInstruction ? 'cursor-pointer hover:opacity-80' : ''}`}
-        style={{ gridTemplateColumns: '9rem 1fr 6rem' }}
-        onClick={() => entry.epicAgentInstruction && setExpanded(v => !v)}
-      >
-        <span className="font-mono text-zinc-600">{new Date(entry.timestamp).toLocaleString()}</span>
-        <span className="text-zinc-300 flex items-center gap-1.5">
-          <span className="text-violet-400">{entry.fromState}</span>
-          {' → '}
-          <span className="text-violet-300">{entry.toState}</span>
-          {entry.epicAgentInstruction && (
-            <span className="text-zinc-700 text-[9px] ml-1">{expanded ? '▲' : '▼'}</span>
-          )}
-        </span>
-        <span className="font-mono text-zinc-600 text-right">{entry.epicAgentId}</span>
-      </div>
-
-      {expanded && entry.epicAgentInstruction && (
-        <div className="mt-2 ml-0 border-l-2 border-indigo-500/40 pl-3 bg-indigo-500/[0.04] rounded-r py-2">
-          <p className="font-mono text-[11px] text-indigo-200/80 whitespace-pre-wrap leading-relaxed">
-            {entry.epicAgentInstruction}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AuditSection({ entries }: { entries: EpicAudit[] }) {
-  const [showAll, setShowAll] = useState(false);
-  const reversed = [...entries].reverse();
-  const visible = showAll ? reversed : reversed.slice(0, 5);
-
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Recent Activity</p>
-        {entries.length > 5 && (
-          <button
-            onClick={() => setShowAll(v => !v)}
-            className="text-[11px] text-indigo-400 hover:text-indigo-300"
-          >
-            {showAll ? 'Show less' : `View all ${entries.length} →`}
-          </button>
-        )}
-      </div>
-
-      {entries.length === 0 && (
-        <p className="text-xs text-zinc-600 py-2 text-center">No activity yet.</p>
-      )}
-
-      {visible.map(entry => (
-        <AuditEntry key={entry.id} entry={entry} />
-      ))}
-    </div>
-  );
-}
 
 // ---- Main Page ----
 
@@ -781,7 +781,7 @@ export default function EpicDetailPage() {
   const { epicId } = useParams<{ epicId: string }>();
   const navigate = useNavigate();
   const [epic, setEpic] = useState<Epic | null>(null);
-  const [auditLog, setAuditLog] = useState<EpicAudit[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawerPath, setDrawerPath] = useState<string | null>(null);
@@ -789,6 +789,7 @@ export default function EpicDetailPage() {
   const [swarmToState, setSwarmToState] = useState('');
   const [swarmSubmitting, setSwarmSubmitting] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   const load = useCallback(async () => {
     if (!epicId) return;
@@ -817,9 +818,9 @@ export default function EpicDetailPage() {
   useSignalR('/hubs/epic', {
     EpicUpdated: (...args: unknown[]) => {
       const e = args[0] as Epic;
-      if (e?.id === epicId) setEpic(e);
+      if (e?.id === epicId) { setEpic(e); loadAudit(); }
     },
-    SpecUpdated: () => { load(); },
+    SpecUpdated: () => { load(); loadAudit(); },
   });
 
   useEffect(() => { load(); loadAudit(); }, [load, loadAudit]);
@@ -850,12 +851,12 @@ export default function EpicDetailPage() {
 
   async function handleDeleteEpic() {
     if (!epicId) return;
-    if (!window.confirm('Delete this epic? This cannot be undone.')) return;
 
     try {
       await EpicApi.delete(epicId);
       navigate('/');
     } catch (e) {
+      setDeleteConfirm(false);
       alert(String(e));
     }
   }
@@ -944,12 +945,30 @@ export default function EpicDetailPage() {
               </button>
             )}
 
-            <button
-              onClick={handleDeleteEpic}
-              className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors"
-            >
-              Delete
-            </button>
+            {deleteConfirm ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-zinc-400">Delete epic?</span>
+                <button
+                  onClick={handleDeleteEpic}
+                  className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 transition-colors font-semibold"
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(false)}
+                  className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setDeleteConfirm(true)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors"
+              >
+                Delete
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1054,7 +1073,10 @@ export default function EpicDetailPage() {
         </div>
 
         {/* Audit log */}
-        <AuditSection entries={auditLog} />
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600 mb-3">Activity Log</p>
+          <AuditLogPanel entries={auditLog} />
+        </div>
 
       </div>
 

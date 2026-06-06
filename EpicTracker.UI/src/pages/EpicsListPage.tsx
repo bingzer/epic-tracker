@@ -279,6 +279,8 @@ function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void }) {
 }
 
 function EpicRow({ epic, onDelete }: { epic: Epic; onDelete?: () => void }) {
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 shadow-sm hover:border-gray-300 dark:hover:border-zinc-600 transition-colors">
       <div className="flex items-center gap-3 flex-wrap">
@@ -292,14 +294,34 @@ function EpicRow({ epic, onDelete }: { epic: Epic; onDelete?: () => void }) {
           </span>
         )}
         <span className="text-xs text-gray-400 dark:text-zinc-600 font-mono ml-auto">{epic.slug}</span>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="text-xs text-gray-400 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 transition-colors px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
-          aria-label={`Delete ${epic.name}`}
-        >
-          Delete
-        </button>
+        {deleteConfirm ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500 dark:text-zinc-400">Delete?</span>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-xs font-semibold px-2 py-0.5 rounded bg-red-600 text-white hover:bg-red-500 transition-colors"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteConfirm(false)}
+              className="text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setDeleteConfirm(true)}
+            className="text-xs text-gray-400 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 transition-colors px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+            aria-label={`Delete ${epic.name}`}
+          >
+            Delete
+          </button>
+        )}
       </div>
       {epic.brief && (
         <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400 line-clamp-2">{epic.brief}</p>
@@ -415,7 +437,6 @@ export default function EpicsListPage() {
               key={epic.id}
               epic={epic}
               onDelete={async () => {
-                if (!window.confirm(`Delete "${epic.name}"? This cannot be undone.`)) return;
                 try {
                   await EpicApi.delete(epic.id);
                   setEpics(prev => prev.filter(e => e.id !== epic.id));

@@ -35,8 +35,8 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return epic;
     }
 
-    [McpServerTool(Name = "get_epic_history"), Description("Returns the full audit log for an epic in chronological order. Each row records one Advance call: from/to state, agent instruction at that moment, and timestamp.")]
-    public Task<List<EpicAudit>> GetEpicHistory(
+    [McpServerTool(Name = "get_epic_history"), Description("Returns the full audit log for an epic in chronological order. Each row records an activity: action type, epic/spec state, actor, and a JSON message blob with event-specific details.")]
+    public Task<List<AuditLog>> GetEpicHistory(
         [Description("The ID of the epic.")] string epicId,
         CancellationToken cancellationToken = default)
         => service.GetEpicHistory(epicId, cancellationToken);

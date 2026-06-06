@@ -32,17 +32,20 @@ internal class ImplementationState : EpicState
                 instruction: $"""
                     Specs still in progress:
                     {pendingList}
-                    Ping each coding agent above for a status update.
-                    Call advance("{epic.Id}") when all specs reach "done".
+                    Do NOT message coding agents. The human controls when each spec starts via the "Code Now" button in the dashboard.
+                    Poll spec states via get_epic, then call advance("{epic.Id}") once all specs reach "done".
                     """);
         }
 
         var specList = string.Join("\n", epic.Specs.Where(s => !s.IsAbandoned).Select(s => $"- {s.Id} ({s.AssignedAgentName}): {s.SpecDocPath}"));
+        var deliverablePath = $"{epic.OutputDirectory}/deliverable.md";
 
         return RaiseHumanInLoop(
             context: context,
             questions: $"""
-                All specs are done. Please review and approve to close the epic, or reject to return to spec writing.
+                All specs are done. A deliverable summary has been compiled at {deliverablePath} — review it to see what changed and how to verify the work.
+
+                Approve to close the epic, or reject to return to spec writing.
 
                 Specs:
                 {specList}
@@ -50,8 +53,17 @@ internal class ImplementationState : EpicState
             approveToStateName: ClosedState.StateName,
             rejectToStateName: SpecWritingState.StateName,
             instruction: $"""
-                All specs done. HumanInLoop raised for final sign-off.
-                Call advance("{epic.Id}") then wait for tmux to wake you.
+                All specs are done. Before raising human review, you must compile a deliverable summary:
+
+                1. Message each coding agent via tmux asking them to provide a short summary of:
+                   - What they built or changed
+                   - Which files were created or modified (absolute paths)
+                   - How a human reviewer can verify their work (what to run, open, or check)
+                2. Collect their replies.
+                3. Write {deliverablePath} following the Deliverables format in governance.md. One section per spec.
+                4. Call advance("{epic.Id}") — this will raise human-in-loop pointing to the deliverable.
+
+                Do not call advance until the deliverable file is written.
                 """
         );
     }

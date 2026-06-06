@@ -12,6 +12,7 @@ public class Epic
     public string EpicGovernancePath => Path.Combine(BasePath, "epics", Slug, "governance.md");
     public string MockupDirectory => Path.Combine(BasePath, "epics", Slug, "mockups");
     public string SpecsDirectory => Path.Combine(BasePath, "epics", Slug, "specs");
+    public string OutputDirectory => Path.Combine(BasePath, "epics", Slug, "output");
     public bool NeedsMockup { get; set; }
     public bool IsDocDrafted { get; set; }
     public bool IsMockupDone { get; set; }

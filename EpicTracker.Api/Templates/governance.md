@@ -9,10 +9,11 @@ epics/<slug>/
   epic.md          — epic document (written during drafting)
   governance.md    — governance rules (this file)
   specs/           — one spec file per concern
-  output/          — deliverables, mockups, generated artifacts
+  mockups/         — mockups and design artifacts
+  output/          — deliverables and generated artifacts
 ```
 
-Tell every coding agent to save their spec file under `specs/` and their output under `output/`.
+Tell every coding agent to save their spec file under `specs/`, mockups under `mockups/`, and other output under `output/`.
 
 ## Your Role
 
@@ -95,6 +96,29 @@ One sentence describing what this spec delivers.
 ```
 
 Share this template with every coding agent when asking them to write a spec.
+
+## Deliverables
+
+When all specs are done, compile `output/deliverable.md` before raising human-in-loop. Message each coding agent via tmux to provide their summary, then stitch them together.
+
+Required format:
+
+```markdown
+# Deliverable: <epic name>
+
+## Summary
+One paragraph describing what was built overall.
+
+## Specs
+
+### <spec-id> — <spec name>
+**Agent:** <agent session name>
+**What changed:** Describe what was built or modified.
+**Files:** List absolute paths of created or modified files.
+**How to verify:** What should the reviewer run, open, or check to confirm the work is correct.
+```
+
+Do not write this file yourself — collect summaries from the coding agents who did the work.
 
 ## Epic States
 

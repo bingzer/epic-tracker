@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { EpicApi, type CreateEpicPayload } from '../epicApi';
 import type { Epic } from '../types';
 import { StateBadge } from '../components/StateBadge';
@@ -33,7 +33,7 @@ function Toggle({ id, checked, onChange, label, sublabel }: {
   );
 }
 
-function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void }) {
+function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void; }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [epicAgentName, setEpicAgentName] = useState('');
@@ -348,6 +348,7 @@ const filterTabs: { label: string; value: StatusFilter }[] = [
 ];
 
 export default function EpicsListPage() {
+  const navigate = useNavigate();
   const [epics, setEpics] = useState<Epic[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -395,7 +396,7 @@ export default function EpicsListPage() {
       </div>
 
       <div className="mb-4">
-        <CreateEpicModal onCreated={epic => setEpics(prev => sortByCreatedDesc([epic, ...prev]))} />
+        <CreateEpicModal onCreated={epic => navigate(`/epics/${epic.id}`)} />
       </div>
 
       <div className="mb-3">

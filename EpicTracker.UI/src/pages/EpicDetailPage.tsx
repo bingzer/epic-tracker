@@ -320,14 +320,13 @@ function SwarmPanelBlock({ epic }: { epic: Epic }) {
 
 function AgentPill({ name, statuses }: { name: string; statuses?: Record<string, AgentStatus> }) {
   const agent = statuses?.[name];
-  const isStale = agent?.lastSeen
-    ? (Date.now() - new Date(agent.lastSeen).getTime()) > 2 * 60 * 1000
-    : true;
-  const status = !agent || isStale ? 'offline' : (agent.lastStatus ?? 'offline');
+  const status = agent?.status ?? 'offline';
   const dotCls =
-    status === 'running' ? 'bg-emerald-400 shadow-[0_0_5px_1px_rgba(52,211,153,0.5)]' :
-    status === 'idle'    ? 'bg-amber-400' :
-                           'bg-zinc-600';
+    status === 'running'                                ? 'bg-emerald-400 shadow-[0_0_5px_1px_rgba(52,211,153,0.5)]' :
+    status === 'idle' || status === 'online'            ? 'bg-amber-400' :
+    status === 'waiting_permission'                     ? 'bg-blue-400' :
+    status === 'interrupted' || status === 'stale_permission' ? 'bg-red-400' :
+                                                          'bg-zinc-600';
   return (
     <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full pl-2 pr-1 py-1 text-xs font-medium text-indigo-300">
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotCls}`} title={status} />

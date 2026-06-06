@@ -51,7 +51,8 @@ export const EpicApi = {
 
 export interface AgentStatus {
   sessionName: string;
-  lastStatus: 'running' | 'idle' | 'offline';
+  status: 'offline' | 'online' | 'running' | 'idle' | 'waiting_permission' | 'stale_permission' | 'interrupted' | 'idle_stale';
+  lastStatus: string;
   lastSeen: string | null;
 }
 

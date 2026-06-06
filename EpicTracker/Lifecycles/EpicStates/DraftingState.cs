@@ -26,9 +26,8 @@ internal class DraftingState : EpicState
                 First, assess quality: is this brief specific enough to write an epic document from?
                 A brief like "stuff" or "fix things" is too vague — raise_human_in_loop to ask for more detail.
 
-                If the brief is workable, clean it up: fix spelling, grammar, and clarity.
-                Do NOT add scope or make assumptions — only polish what the user wrote.
-                Then call update_epic({epic.Id}, Brief, <polished brief>) and update_epic({epic.Id}, IsBriefRefined, true), then advance({epic.Id}).
+                If the brief is workable, rewrite it into a clear 2-3 sentence description that captures the intent, scope, and goals. Fix spelling and grammar. Do NOT add scope or make assumptions beyond what the user wrote.
+                Call update_epic({epic.Id}, Brief, <rewritten brief>) and update_epic({epic.Id}, IsBriefRefined, true), then advance({epic.Id}).
 
                 You may raise_human_in_loop at ANY point in the process if you need human input.
                 Use approveToStateName: "{DraftingState.StateName}" and rejectToStateName: "{DraftingState.StateName}" so the process restarts from drafting after human responds.
@@ -44,11 +43,7 @@ internal class DraftingState : EpicState
                     Brief: {epic.Brief}
                     Write a concise, high-level document capturing intent and goals only. Do NOT scan code, read files, or research the codebase.
                     Follow the governance document at {epic.EpicGovernancePath} for the required format.
-                    Once written:
-                    1. Rewrite the brief to be a clear 2-3 sentence description based on what you wrote in the epic doc. This replaces the original user input with a proper summary of scope and intent.
-                       Call update_epic({epic.Id}, Brief, <rewritten brief>).
-                    2. Call update_epic({epic.Id}, IsDocDrafted, true).
-                    3. Call advance({epic.Id}).
+                    Once written, call update_epic({epic.Id}, IsDocDrafted, true) then call advance({epic.Id}).
                     """);
         }
         

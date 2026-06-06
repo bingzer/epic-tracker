@@ -60,29 +60,63 @@ internal class AgentSwarmState : EpicState
 
         return Exit(
             context: context,
-            instruction: BuildInstruction(epic.Id, swarm)
+            instruction: BuildInstruction(epic.Id, epic.EpicAgentName, swarm)
         );
     }
 
-    private static string BuildInstruction(string epicId, AgentSwarm swarm)
+    private static string BuildInstruction(string epicId, string epicAgentName, AgentSwarm swarm)
     {
-        var agentList = string.Join(", ", swarm.Agreements.Select(a => a.AgentId));
+        var agents = swarm.Agreements.Select(a => a.AgentId).ToList();
+        var agentList = string.Join(", ", agents);
+        var isSingleAgent = agents.Count == 1;
 
-        var reVoteNote = swarm.Iteration > 1
-            ? $"This is re-vote round {swarm.Iteration}. At least one agent disagreed in the previous round. Tell them this is a follow-up vote, summarise what was disputed, and ask them to reconsider with that context."
-            : "This is the first vote.";
+        var discussRule = isSingleAgent
+            ? ""
+            : "- Discuss directly with the other participants via tmux-broker\n";
 
-        var instruction = $"""
-            You are coordinating an agent swarm. This is iteration {swarm.Iteration} of {MaxIterations}.
+        var processStep = isSingleAgent
+            ? "- You are the only participant. Send your assessment directly to the coordinator"
+            : "- Discuss with your peers until you have formed your assessment";
 
-            {reVoteNote}
+        var kickoff = $"""
+            You are participating in an agent swarm.
 
             Objective: {swarm.Objective}
 
-            Agents: {agentList}
+            Participants: {agentList}
+            Coordinator: {epicAgentName}
 
-            Once you have collected a response from each agent, call submit_agreement for each one on their behalf, then call advance("{epicId}").
-            Do not ask the user. Do not wait indefinitely — if an agent does not respond, submit a disagreement with a note that they were unreachable.
+            Rules:
+            {discussRule}- Stay focused on your domain knowledge and technical constraints
+            - Message the coordinator if you have questions about scope, business context, or anything outside your domain — the coordinator can escalate to a human if needed
+            - You do not need to reach a definitive conclusion — share what you know, what you can commit to, and what concerns or uncertainties remain
+
+            Process:
+            {processStep}
+            - When ready, send your assessment to the coordinator: AGREE, DISAGREE, or BLOCKED — with your reasoning
+            """;
+
+        var reVoteNote = swarm.Iteration > 1
+            ? $"This is re-vote round {swarm.Iteration}. At least one agent did not agree in the previous round. Summarize what was disputed when sending kickoffs."
+            : "";
+
+        var instruction = $"""
+            Agent swarm coordinator instructions (iteration {swarm.Iteration} of {MaxIterations}):
+
+            {(reVoteNote.Length > 0 ? reVoteNote + "\n\n" : "")}1. Send the following kickoff message to each participant ({agentList}) via tmux-broker:
+
+            ---
+            {kickoff}
+            ---
+
+            2. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
+
+            3. When all participants have sent their assessment:
+               - Update the epic document to record each agent's conclusion and key insights
+               - Call submit_agreement for each agent on their behalf
+               - Call advance("{epicId}")
+
+            4. If an agent does not respond, submit a disagreement with a note that they were unreachable.
             """;
 
         if (!string.IsNullOrWhiteSpace(swarm.HumanInput))

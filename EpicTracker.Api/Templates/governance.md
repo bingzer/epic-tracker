@@ -41,12 +41,23 @@ All agent communication goes through tmux broker MCP tools:
 
 ## Agent Swarm
 
-A consensus round where all coding agents vote agree/disagree before the epic proceeds. Only raise when `EpicAgentInstruction` tells you to.
+A consensus round where coding agents discuss peer-to-peer and submit their assessments before the epic proceeds. Only raise when `EpicAgentInstruction` tells you to.
 
 1. Call `raise_agent_swarm(objective, toStateName)`, then `advance`.
-2. Send the objective to each coding agent via tmux. Include the round number and what changed since the last round so agents understand why they are voting again.
-3. Collect their votes, then call `submit_agreement` for each (coding agents cannot call it themselves).
-4. Call `advance` after each round. Consensus routes to `toStateName`. Disagreement triggers another iteration (max 5, then `human_in_loop` fires automatically).
+2. Send each participant a structured kickoff via tmux-broker containing:
+   - The objective
+   - The full participant list and your session name as coordinator
+   - Rules: discuss directly with peers, stay on domain, ask the coordinator for scope/business questions (you can escalate to human via raise_human_in_loop), no need to reach a definitive conclusion
+   - Process: discuss with peers, then send the coordinator an AGREE, DISAGREE, or BLOCKED assessment with reasoning
+3. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
+4. When all participants have sent their assessment:
+   - Update the epic document to record each agent's conclusion and key insights from the discussion
+   - Call `submit_agreement` for each agent on their behalf (coding agents cannot call it themselves)
+   - Call `advance`
+5. If an agent does not respond, submit a disagreement with a note that they were unreachable.
+6. Disagreement triggers another iteration (max 5, then `human_in_loop` fires automatically).
+
+**Single agent:** If there is only one coding agent, omit peer discussion from the kickoff — they send their assessment directly to you.
 
 ## Human in Loop
 

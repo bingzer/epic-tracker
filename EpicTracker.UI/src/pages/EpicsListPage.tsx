@@ -1,9 +1,40 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { EpicApi, type CreateEpicPayload } from '../epicApi';
+import { EpicApi, AgentApi, type CreateEpicPayload } from '../epicApi';
 import type { Epic } from '../types';
 import { StateBadge } from '../components/StateBadge';
 import { useSignalR } from '../hooks/useSignalR';
+
+function useAgentNames() {
+  const [names, setNames] = useState<string[]>([]);
+  useEffect(() => {
+    AgentApi.list()
+      .then(list => setNames(list.map(a => a.sessionName).sort()))
+      .catch(() => {});
+  }, []);
+  return names;
+}
+
+function AgentSelect({ value, onChange, placeholder, required, className }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  className?: string;
+}) {
+  const names = useAgentNames();
+  return (
+    <select
+      required={required}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className={className}
+    >
+      <option value="">{placeholder ?? 'Select agent…'}</option>
+      {names.map(n => <option key={n} value={n}>{n}</option>)}
+    </select>
+  );
+}
 
 function Toggle({ id, checked, onChange, label, sublabel }: {
   id: string;
@@ -80,17 +111,10 @@ function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void; }) {
   }
 
   function handleAddAgent() {
-    const parts = agentInput.split(',').map(s => s.trim()).filter(Boolean);
-    const next = [...codingAgentNames];
-    for (const p of parts) {
-      if (!next.includes(p)) next.push(p);
-    }
-    setCodingAgentNames(next);
+    const name = agentInput.trim();
+    if (!name || codingAgentNames.includes(name)) return;
+    setCodingAgentNames([...codingAgentNames, name]);
     setAgentInput('');
-  }
-
-  function handleAgentKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') { e.preventDefault(); handleAddAgent(); }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -162,7 +186,7 @@ function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void; }) {
                   </div>
                   <div>
                     <label className={labelCls}>Epic Agent <span className="text-red-500">*</span></label>
-                    <input required value={epicAgentName} onChange={e => setEpicAgentName(e.target.value)} placeholder="epic-agent-id" className={inputCls} />
+                    <AgentSelect required value={epicAgentName} onChange={setEpicAgentName} placeholder="Select epic agent…" className={inputCls} />
                   </div>
                 </div>
 
@@ -181,13 +205,7 @@ function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void; }) {
                 <div>
                   <label className={labelCls}>Coding agents</label>
                   <div className="flex gap-2">
-                    <input
-                      value={agentInput}
-                      onChange={e => setAgentInput(e.target.value)}
-                      onKeyDown={handleAgentKeyDown}
-                      placeholder="agent-id — comma-separated or Enter"
-                      className={`${inputCls} flex-1`}
-                    />
+                    <AgentSelect value={agentInput} onChange={setAgentInput} placeholder="Add coding agent…" className={`${inputCls} flex-1`} />
                     <button
                       type="button"
                       onClick={handleAddAgent}
@@ -210,12 +228,7 @@ function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void; }) {
 
                 <div>
                   <label className={labelCls}>Code reviewer</label>
-                  <input
-                    value={reviewerAgentName}
-                    onChange={e => handleReviewerChange(e.target.value)}
-                    placeholder="reviewer-agent-id"
-                    className={inputCls}
-                  />
+                  <AgentSelect value={reviewerAgentName} onChange={handleReviewerChange} placeholder="Select reviewer…" className={inputCls} />
                 </div>
 
                 <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/40 p-4 space-y-3.5">

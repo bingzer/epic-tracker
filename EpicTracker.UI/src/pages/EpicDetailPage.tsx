@@ -360,9 +360,17 @@ function EpicEditDialog({
   const [epicMockupPath, setEpicMockupPath] = useState(epic.mockupPath ?? '');
   const [agentInput, setAgentInput] = useState('');
   const [reviewerInput, setReviewerInput] = useState(epic.reviewerAgentName ?? '');
+  const [allAgents, setAllAgents] = useState<string[]>([]);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const inputCls = 'w-full text-xs rounded-lg border border-zinc-700 bg-white/[0.04] px-2.5 py-1.5 text-zinc-100 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500';
+  useEffect(() => {
+    AgentApi.list()
+      .then(list => setAllAgents(list.map(a => a.sessionName).sort()))
+      .catch(() => {});
+  }, []);
+
+  const isClosed = epic.currentStateName === 'closed';
+  const inputCls = 'w-full text-xs rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-zinc-100 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed';
 
   function flagCls(active: boolean): string {
     if (active) return 'inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
@@ -388,12 +396,9 @@ function EpicEditDialog({
   }
 
   async function handleAddAgent() {
-    if (!agentInput.trim()) return;
-    const parts = agentInput.split(',').map(s => s.trim()).filter(Boolean);
-    const next = [...epic.codingAgentNames];
-    for (const p of parts) {
-      if (!next.includes(p)) next.push(p);
-    }
+    const name = agentInput.trim();
+    if (!name || epic.codingAgentNames.includes(name)) return;
+    const next = [...epic.codingAgentNames, name];
     setAgentInput('');
     try {
       const updated = await EpicApi.update(epic.id, { ...epic, codingAgentNames: next });
@@ -438,11 +443,18 @@ function EpicEditDialog({
           <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xl leading-none">×</button>
         </div>
 
+        {isClosed && (
+          <div className="mx-5 mt-4 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-400">
+            This epic is closed — editing is disabled.
+          </div>
+        )}
+
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
           <div>
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Name</label>
             <input
+              disabled={isClosed}
               value={epicName}
               onChange={e => setEpicName(e.target.value)}
               onBlur={() => handleTextField('name', epicName)}
@@ -454,6 +466,7 @@ function EpicEditDialog({
           <div>
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Slug</label>
             <input
+              disabled={isClosed}
               value={epicSlug}
               onChange={e => setEpicSlug(e.target.value)}
               onBlur={() => handleTextField('slug', epicSlug)}
@@ -465,6 +478,7 @@ function EpicEditDialog({
           <div>
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Brief</label>
             <textarea
+              disabled={isClosed}
               value={epicBrief}
               onChange={e => setEpicBrief(e.target.value)}
               onBlur={() => handleTextField('brief', epicBrief)}
@@ -476,21 +490,21 @@ function EpicEditDialog({
           <div>
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Flags</label>
             <div className="flex flex-wrap gap-1.5">
-              <button onClick={() => handleToggle('needsMockup')} className={flagCls(epic.needsMockup)}>
+              <button disabled={isClosed} onClick={() => handleToggle('needsMockup')} className={flagCls(epic.needsMockup) + (isClosed ? ' opacity-40 cursor-not-allowed' : '')}>
                 {epic.needsMockup ? '✓' : '○'} Needs Mockup
               </button>
-              <button onClick={() => handleToggle('isDocDrafted')} className={flagCls(epic.isDocDrafted)}>
+              <button disabled={isClosed} onClick={() => handleToggle('isDocDrafted')} className={flagCls(epic.isDocDrafted) + (isClosed ? ' opacity-40 cursor-not-allowed' : '')}>
                 {epic.isDocDrafted ? '✓' : '○'} Doc Drafted
               </button>
               {epic.needsMockup && (
-                <button onClick={() => handleToggle('isMockupDone')} className={flagCls(epic.isMockupDone)}>
+                <button disabled={isClosed} onClick={() => handleToggle('isMockupDone')} className={flagCls(epic.isMockupDone) + (isClosed ? ' opacity-40 cursor-not-allowed' : '')}>
                   {epic.isMockupDone ? '✓' : '○'} Mockup Done
                 </button>
               )}
-              <button onClick={() => handleToggle('isACRequired')} className={flagCls(epic.isACRequired)}>
+              <button disabled={isClosed} onClick={() => handleToggle('isACRequired')} className={flagCls(epic.isACRequired) + (isClosed ? ' opacity-40 cursor-not-allowed' : '')}>
                 {epic.isACRequired ? '✓' : '○'} AC Required
               </button>
-              <button onClick={() => handleToggle('isCodeReviewRequired')} className={flagCls(epic.isCodeReviewRequired)}>
+              <button disabled={isClosed} onClick={() => handleToggle('isCodeReviewRequired')} className={flagCls(epic.isCodeReviewRequired) + (isClosed ? ' opacity-40 cursor-not-allowed' : '')}>
                 {epic.isCodeReviewRequired ? '✓' : '○'} Code Review Required
               </button>
             </div>
@@ -502,42 +516,52 @@ function EpicEditDialog({
               {epic.codingAgentNames.map(a => (
                 <span key={a} className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-300">
                   {a}
-                  <button onClick={() => handleRemoveAgent(a)} className="text-zinc-500 hover:text-red-400 leading-none">×</button>
+                  {!isClosed && <button onClick={() => handleRemoveAgent(a)} className="text-zinc-500 hover:text-red-400 leading-none">×</button>}
                 </span>
               ))}
             </div>
-            <div className="flex gap-2">
-              <input
-                value={agentInput}
-                onChange={e => setAgentInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddAgent(); } }}
-                placeholder="agent-id"
-                className={inputCls + ' flex-1'}
-              />
-              <button
-                onClick={handleAddAgent}
-                className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 bg-white/[0.04] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors flex-shrink-0"
-              >
-                Add
-              </button>
-            </div>
+            {!isClosed && (
+              <div className="flex gap-2">
+                <select
+                  value={agentInput}
+                  onChange={e => setAgentInput(e.target.value)}
+                  className={inputCls + ' flex-1'}
+                >
+                  <option value="">Add coding agent…</option>
+                  {allAgents.filter(n => !epic.codingAgentNames.includes(n)).map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAddAgent}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 bg-white/[0.04] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors flex-shrink-0"
+                >
+                  Add
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Reviewer</label>
             <div className="flex gap-2">
-              <input
+              <select
+                disabled={isClosed}
                 value={reviewerInput}
                 onChange={e => setReviewerInput(e.target.value)}
-                placeholder="reviewer-agent-id"
                 className={inputCls + ' flex-1'}
-              />
-              <button
-                onClick={handleSaveReviewer}
-                className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 bg-white/[0.04] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors flex-shrink-0"
               >
-                Save
-              </button>
+                <option value="">None</option>
+                {allAgents.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              {!isClosed && (
+                <button
+                  onClick={handleSaveReviewer}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 bg-white/[0.04] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors flex-shrink-0"
+                >
+                  Save
+                </button>
+              )}
             </div>
           </div>
 
@@ -545,6 +569,7 @@ function EpicEditDialog({
             <div>
               <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Mockup Path</label>
               <input
+                disabled={isClosed}
                 value={epicMockupPath}
                 onChange={e => setEpicMockupPath(e.target.value)}
                 onBlur={() => handleTextField('mockupPath', epicMockupPath)}

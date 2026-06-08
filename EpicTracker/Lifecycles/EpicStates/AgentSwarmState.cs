@@ -22,6 +22,12 @@ internal class AgentSwarmState : EpicState
 
         var swarm = epic.AgentSwarm;
 
+        if (epic.HumanInLoop is not null)
+        {
+            swarm.HumanInput = epic.HumanInLoop.HumanInput;
+            epic.ResetHumanApproval();
+        }
+
         if (swarm.HasConsensus)
         {
             return MoveTo(swarm.ToStateName);
@@ -59,12 +65,6 @@ internal class AgentSwarmState : EpicState
                     Call advance("{epic.Id}") then wait for tmux to wake you.
                     """
             );
-        }
-
-        if (epic.HumanInLoop?.HumanInput is not null)
-        {
-            swarm.HumanInput = epic.HumanInLoop.HumanInput;
-            epic.ResetHumanApproval();
         }
 
         swarm.Iteration++;

@@ -307,7 +307,7 @@ function SpecProgress({ epic }: { epic: Epic }) {
       <div className="w-24 h-1 bg-zinc-800 rounded-full overflow-hidden shrink-0">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="font-mono text-xs text-zinc-500 whitespace-nowrap">{done} / {total}</span>
+      <span className="text-xs text-zinc-500 whitespace-nowrap">{done} / {total}</span>
     </div>
   );
 }
@@ -318,7 +318,7 @@ function EpicStateBadge({ epic }: { epic: Epic }) {
 
   if (state === 'closed') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold font-mono">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold">
         ✓ done
       </span>
     );
@@ -326,7 +326,7 @@ function EpicStateBadge({ epic }: { epic: Epic }) {
 
   if (attention) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold font-mono">
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
         {state.replace(/_/g, ' ')}
       </span>
@@ -344,7 +344,7 @@ function EpicStateBadge({ epic }: { epic: Epic }) {
   const cls = colorMap[state] ?? 'bg-zinc-700/60 border-zinc-600 text-zinc-400';
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-semibold font-mono ${cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-semibold ${cls}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-80" />
       {state.replace(/_/g, ' ')}
     </span>
@@ -357,7 +357,7 @@ function AgentDot({ name, agentStatuses }: { name: string; agentStatuses: Map<st
   return (
     <div className="flex items-center gap-1.5">
       <span className={`w-2 h-2 rounded-full shrink-0 ${online ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]' : 'bg-zinc-600'}`} />
-      <span className="font-mono text-xs text-zinc-500">{name}</span>
+      <span className="text-xs text-zinc-500">{name}</span>
     </div>
   );
 }
@@ -369,10 +369,10 @@ function CodingAgentChips({ names }: { names: string[] }) {
   return (
     <div className="flex items-center gap-1 flex-wrap">
       {visible.map(n => (
-        <span key={n} className="font-mono text-[11px] px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-500 whitespace-nowrap">{n}</span>
+        <span key={n} className="text-[11px] px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-400 whitespace-nowrap">{n}</span>
       ))}
       {extra > 0 && (
-        <span className="font-mono text-[11px] px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-600">+{extra}</span>
+        <span className="text-[11px] px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-500">+{extra}</span>
       )}
     </div>
   );
@@ -392,18 +392,18 @@ function EpicsTable({ epics, agentStatuses, onNavigate }: {
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-zinc-800 bg-zinc-900/60">
-            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5 w-[28%]">name</th>
-            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5 w-[20%]">state</th>
-            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5 w-[18%]">progress</th>
-            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5 w-[12%]">agent</th>
-            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5">coding agents</th>
+            <th className="text-left text-xs text-zinc-500 font-semibold px-4 py-2.5 w-[38%]">name</th>
+            <th className="text-left text-xs text-zinc-500 font-semibold px-4 py-2.5 w-[16%]">state</th>
+            <th className="text-left text-xs text-zinc-500 font-semibold px-4 py-2.5 w-[14%]">progress</th>
+            <th className="text-left text-xs text-zinc-500 font-semibold px-4 py-2.5 w-[10%]">agent</th>
+            <th className="text-left text-xs text-zinc-500 font-semibold px-4 py-2.5">coding agents</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-800/60">
           {attentionCount > 0 && (
             <tr>
               <td colSpan={5} className="px-4 py-1.5 bg-amber-500/5 border-b border-amber-500/10">
-                <span className="font-mono text-xs text-amber-500/70 uppercase tracking-wider">
+                <span className="text-xs text-amber-500/70 font-semibold uppercase tracking-wider">
                   {attentionCount} {attentionCount === 1 ? 'epic needs' : 'epics need'} attention
                 </span>
               </td>
@@ -423,11 +423,11 @@ function EpicsTable({ epics, agentStatuses, onNavigate }: {
                 }`}
               >
                 <td className="px-4 py-3.5">
-                  <span className={`font-bold text-sm ${isDone ? 'text-zinc-400 line-through decoration-zinc-600' : 'text-zinc-100'}`}>
+                  <span className={`font-bold text-sm ${isDone ? 'text-zinc-400' : 'text-zinc-100'}`}>
                     {epic.name ?? epic.id}
                   </span>
                   {epic.brief && (
-                    <p className="font-mono text-xs text-zinc-600 mt-0.5 line-clamp-1">{epic.brief}</p>
+                    <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed" style={{ minHeight: '2.5rem' }}>{epic.brief}</p>
                   )}
                 </td>
                 <td className="px-4 py-3.5">
@@ -508,14 +508,14 @@ export default function EpicsListPage() {
     },
   });
 
-  if (loading) return <div className="p-6 text-sm text-zinc-500 font-mono">Loading…</div>;
+  if (loading) return <div className="p-6 text-sm text-zinc-500">Loading…</div>;
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-end justify-between mb-8">
         <div>
           <h1 className="text-2xl font-extrabold text-zinc-100 tracking-tight">Epics</h1>
-          <p className="font-mono text-xs text-zinc-600 mt-0.5">
+          <p className="text-xs text-zinc-500 mt-0.5">
             {epics.length} total{visible.length !== epics.length ? ` · ${visible.length} shown` : ''}
           </p>
         </div>
@@ -532,7 +532,7 @@ export default function EpicsListPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search epics…"
-            className="w-full font-mono text-sm rounded-md border border-zinc-800 bg-zinc-900 pl-9 pr-4 py-2 text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600"
+            className="w-full text-sm rounded-md border border-zinc-800 bg-zinc-900 pl-9 pr-4 py-2 text-zinc-300 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600"
           />
         </div>
         <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-md p-1">
@@ -540,7 +540,7 @@ export default function EpicsListPage() {
             <button
               key={tab.value}
               onClick={() => setActiveFilter(tab.value)}
-              className={`font-mono px-3 py-1 text-xs rounded transition-colors font-semibold ${
+              className={`px-3 py-1 text-xs rounded transition-colors font-semibold ${
                 activeFilter === tab.value
                   ? 'bg-zinc-800 text-zinc-100'
                   : 'text-zinc-500 hover:text-zinc-300'

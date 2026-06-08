@@ -1,3 +1,4 @@
+// TODO: unused — superseded by SpecTableRow in EpicDetailPage, delete when confirmed safe
 import { useState } from 'react';
 import type { Spec } from '../types';
 import { StateBadge } from './StateBadge';

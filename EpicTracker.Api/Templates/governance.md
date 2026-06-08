@@ -51,7 +51,7 @@ A consensus round where coding agents discuss peer-to-peer via a broker channel 
    - The full participant list, your session name as coordinator, and the channel name
    - Rules: discuss in the channel, stay on domain, ask the coordinator for scope/business questions (you can escalate to human via raise_human_in_loop), no need to reach a definitive conclusion
    - Process: discuss in the channel, then post AGREE, DISAGREE, or BLOCKED with reasoning to the channel, then leave the channel
-4. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
+4. Step back and go idle. Do NOT call `advance`, poll, or message agents again. You are waiting — one agent reporting in early does not mean the swarm is done. Wait until ALL participants have posted their assessment.
 5. When all participants have posted their assessment to the channel:
    - Update the epic document to record each agent's conclusion and key insights from the discussion
    - Call `submit_agreement` for each agent on their behalf (coding agents cannot call it themselves)
@@ -147,6 +147,8 @@ Do not write this file yourself — collect summaries from the coding agents who
 | done           | Terminal                               |                                    |
 
 `update_spec` automatically advances the spec state after each field update — you do not need to call `advance_spec` after it.
+
+**Waiting for specs:** After instructing coding agents to write specs, go idle. Do NOT call `advance` until every spec you created is in a terminal state (`ready` or `abandoned`). Call `get_epic` and check `epic.Specs` — if any spec is still in-progress, wait. One agent finishing early does not mean all specs are done.
 
 **Do not message coding agents until `EpicAgentInstruction` explicitly tells you to.** The state machine gates coding behind a human "Code Now" click — acting before that instruction arrives bypasses the gate.
 

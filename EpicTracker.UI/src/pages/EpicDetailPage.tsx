@@ -710,7 +710,264 @@ function EpicSummaryCard({
   );
 }
 
-function SpecCard({
+function HilPanel({
+  spec,
+  onApproveHumanInLoop,
+}: {
+  spec: Spec;
+  onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
+}) {
+  const [feedback, setFeedback] = useState('');
+
+  return (
+    <div className="text-xs text-zinc-300 bg-white/[0.02] border-l-2 border-amber-500/50 rounded-r-lg pl-3 pr-3 py-2.5 space-y-2">
+      <p className="font-semibold text-zinc-400 text-[10px] tracking-widest uppercase">Human Review Required</p>
+      {spec.humanInLoop?.questions && (
+        <p className="text-zinc-400 leading-relaxed">{spec.humanInLoop.questions}</p>
+      )}
+      <textarea
+        value={feedback}
+        onChange={e => setFeedback(e.target.value)}
+        placeholder="Reason (optional)…"
+        rows={2}
+        className="w-full text-xs rounded border border-zinc-700 bg-white/5 text-zinc-200 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-500 placeholder:text-zinc-600"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={() => { onApproveHumanInLoop(spec.id, true, feedback.trim() || null); setFeedback(''); }}
+          className="text-xs px-2.5 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 font-semibold"
+        >
+          Approve
+        </button>
+        <button
+          onClick={() => { onApproveHumanInLoop(spec.id, false, feedback.trim() || null); setFeedback(''); }}
+          className="text-xs px-2.5 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 font-semibold"
+        >
+          Reject
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SpecDetailDialog({
+  spec,
+  epicId,
+  onClose,
+  onUpdated,
+  onViewDoc,
+  onApproveHumanInLoop,
+  onForceState,
+}: {
+  spec: Spec;
+  epicId: string;
+  onClose: () => void;
+  onUpdated: () => void;
+  onViewDoc: (path: string) => void;
+  onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
+  onForceState: (specId: string, stateName: string) => void;
+}) {
+  const [codingNow, setCodingNow] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const progress = SPEC_STATE_PROGRESS[spec.currentStateName] ?? 0;
+  const isDone = spec.currentStateName === 'done';
+  const isReady = spec.currentStateName === 'ready';
+  const needsHumanReview = spec.currentStateName === 'human_in_loop' || (spec.humanInLoop !== null && spec.humanInLoop.isApproved === null);
+
+  async function handleCodeNow() {
+    setCodingNow(true);
+    try {
+      await SpecApi.codeNow(spec.id);
+      onUpdated();
+      onClose();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setCodingNow(false);
+    }
+  }
+
+  function handleForceStateSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const stateName = e.target.value;
+    if (!stateName) return;
+    if (!window.confirm(`Force spec to state "${stateName}"?`)) return;
+    onForceState(spec.id, stateName);
+  }
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose();
+  }
+
+  const rowCls = 'text-[10px] font-semibold tracking-widest uppercase text-zinc-600';
+  const valCls = 'text-xs text-zinc-300 font-mono';
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+    >
+      <div className="w-full max-w-lg bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
+
+        <div className="flex items-start justify-between px-5 py-4 border-b border-zinc-800">
+          <div>
+            <p className="text-sm font-bold text-zinc-100 leading-snug">{specDisplayName(spec.id, epicId)}</p>
+            <p className="font-mono text-[10px] text-zinc-600 mt-0.5">{spec.id}</p>
+          </div>
+          <div className="flex items-center gap-2 ml-4 shrink-0">
+            <StateBadge state={spec.currentStateName} />
+            <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xl leading-none ml-1">×</button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+          {/* Progress */}
+          <div>
+            <p className={rowCls + ' mb-1.5'}>Progress</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-[3px] rounded-full bg-zinc-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-zinc-600 flex-shrink-0">
+                {isDone ? '✓ Done' : `${progress}%`}
+              </span>
+            </div>
+          </div>
+
+          {/* Agents */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className={rowCls + ' mb-1'}>Assigned Agent</p>
+              {spec.assignedAgentName ? (
+                <div className="flex items-center gap-1.5">
+                  <span className={valCls}>{spec.assignedAgentName}</span>
+                  <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70" title="Open chat">💬</a>
+                </div>
+              ) : <span className="text-xs text-zinc-600">—</span>}
+            </div>
+            <div>
+              <p className={rowCls + ' mb-1'}>Reviewer</p>
+              {spec.reviewerAgentName ? (
+                <span className="text-xs font-mono text-orange-400">{spec.reviewerAgentName}</span>
+              ) : <span className="text-xs text-zinc-600">—</span>}
+            </div>
+          </div>
+
+          {/* Spec doc */}
+          {spec.specDocPath && (
+            <div>
+              <p className={rowCls + ' mb-1'}>Spec Doc</p>
+              <button
+                onClick={() => { onViewDoc(spec.specDocPath!); onClose(); }}
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-mono truncate max-w-full text-left"
+              >
+                {spec.specDocPath}
+              </button>
+            </div>
+          )}
+
+          {/* HIL panel */}
+          {needsHumanReview && (
+            <HilPanel spec={spec} onApproveHumanInLoop={(id, approved, feedback) => { onApproveHumanInLoop(id, approved, feedback); onClose(); }} />
+          )}
+
+          {/* Code Now */}
+          {isReady && (
+            <button
+              onClick={handleCodeNow}
+              disabled={codingNow}
+              className="w-full text-xs font-semibold py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+            >
+              {codingNow ? 'Starting…' : '▶ Code Now'}
+            </button>
+          )}
+
+          {/* Force state */}
+          <div>
+            <p className={rowCls + ' mb-1.5'}>Force State</p>
+            <select
+              defaultValue=""
+              onChange={handleForceStateSelect}
+              className="w-full text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 px-2.5 py-1.5 focus:outline-none cursor-pointer"
+            >
+              <option value="" disabled>Select state…</option>
+              {SPEC_STATES.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+        </div>
+
+        <div className="px-5 py-4 border-t border-zinc-800 flex justify-end">
+          <button
+            onClick={onClose}
+            className="text-xs px-4 py-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function CodeNowRow({ spec, onUpdated }: { spec: Spec; onUpdated: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [codingNow, setCodingNow] = useState(false);
+
+  async function handleConfirm() {
+    setCodingNow(true);
+    try {
+      await SpecApi.codeNow(spec.id);
+      onUpdated();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setCodingNow(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
+      <span className="text-xs text-emerald-400/70">Ready to code</span>
+      {!confirming ? (
+        <button
+          onClick={() => setConfirming(true)}
+          className="text-xs font-semibold px-3 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-colors"
+        >
+          ▶ Code Now
+        </button>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-400">Sure?</span>
+          <button
+            onClick={handleConfirm}
+            disabled={codingNow}
+            className="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors"
+          >
+            {codingNow ? '…' : 'Yes'}
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            className="text-xs px-2.5 py-1 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SpecTableRow({
   spec,
   epicId,
   onUpdated,
@@ -725,182 +982,116 @@ function SpecCard({
   onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
   onForceState: (specId: string, stateName: string) => void;
 }) {
-  const [codingNow, setCodingNow] = useState(false);
-  const [showForceState, setShowForceState] = useState(false);
-  const [pendingHIL, setPendingHIL] = useState<boolean | null>(null);
-  const [hilFeedback, setHilFeedback] = useState('');
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const progress = SPEC_STATE_PROGRESS[spec.currentStateName] ?? 0;
   const isDone = spec.currentStateName === 'done';
+  const needsHumanReview = spec.currentStateName === 'human_in_loop' || (spec.humanInLoop !== null && spec.humanInLoop.isApproved === null);
   const isReady = spec.currentStateName === 'ready';
-  const needsHumanReview = spec.humanInLoop !== null && spec.humanInLoop.isApproved === null;
-
-  let cardCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors';
-
-  if (isDone) {
-    cardCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 opacity-[0.65]';
-  }
-
-  if (spec.isAbandoned) {
-    cardCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 opacity-40';
-  }
-
-  let progressLabel = `${progress}%`;
-
-  if (isDone) {
-    progressLabel = 'Complete';
-  }
-
-  let codeNowLabel = '▶ Code Now';
-
-  if (codingNow) {
-    codeNowLabel = '…';
-  }
-
-  async function handleCodeNow() {
-    setCodingNow(true);
-
-    try {
-      await SpecApi.codeNow(spec.id);
-      onUpdated();
-    } catch (e) {
-      alert(String(e));
-    } finally {
-      setCodingNow(false);
-    }
-  }
-
-  function handleForceStateSelect(e: React.ChangeEvent<HTMLSelectElement>) {
-    const stateName = e.target.value;
-
-    if (!stateName) return;
-    if (!window.confirm(`Force spec to state "${stateName}"?`)) return;
-
-    onForceState(spec.id, stateName);
-    setShowForceState(false);
-  }
+  const rowOpacity = spec.isAbandoned ? 'opacity-35' : isDone ? 'opacity-50' : '';
+  const hasSubRow = needsHumanReview || isReady;
 
   return (
-    <div className={cardCls}>
-      <div className="flex items-start justify-between gap-3 mb-2.5">
-        <p className="text-[13px] font-semibold text-zinc-100 leading-snug">
-          {specDisplayName(spec.id, epicId)}
-        </p>
-        <StateBadge state={spec.currentStateName} />
-      </div>
+    <>
+      {detailOpen && (
+        <SpecDetailDialog
+          spec={spec}
+          epicId={epicId}
+          onClose={() => setDetailOpen(false)}
+          onUpdated={onUpdated}
+          onViewDoc={onViewDoc}
+          onApproveHumanInLoop={onApproveHumanInLoop}
+          onForceState={onForceState}
+        />
+      )}
 
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="font-mono text-[11px] text-indigo-300">{spec.assignedAgentName}</span>
-        <a href={`openterm:${spec.assignedAgentName}`} className="text-base leading-none hover:opacity-70 transition-opacity" title={`Chat with ${spec.assignedAgentName}`}>💬</a>
+      {/* Main row */}
+      <tr className={`hover:bg-white/[0.02] transition-colors ${rowOpacity} ${hasSubRow ? '' : 'border-b border-zinc-800'}`}>
+        {/* Name */}
+        <td className="py-2 pl-4 pr-3">
+          <div>
+            <div className="text-[12px] font-medium text-zinc-200 leading-snug">
+              {specDisplayName(spec.id, epicId)}
+            </div>
+            <div className="font-mono text-[10px] text-zinc-600 leading-snug">{spec.id}</div>
+          </div>
+        </td>
 
-        {spec.reviewerAgentName && spec.currentStateName === 'code_review' && (
-          <>
-            <span className="text-[10px] text-zinc-600">Reviewer:</span>
-            <span className="font-mono text-[11px] text-orange-400">{spec.reviewerAgentName}</span>
-          </>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="flex-1 h-[3px] rounded-full bg-zinc-800 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <span className="text-[10px] text-zinc-600 whitespace-nowrap flex-shrink-0">{progressLabel}</span>
-      </div>
-
-      {needsHumanReview && spec.humanInLoop && (
-        <div className="mb-3 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
-          <p className="mb-2">{spec.humanInLoop.questions}</p>
-          {pendingHIL === null ? (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPendingHIL(true)}
-                className="text-xs px-2 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25"
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => setPendingHIL(false)}
-                className="text-xs px-2 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25"
-              >
-                Reject
-              </button>
+        {/* Agent */}
+        <td className="py-2 px-3 whitespace-nowrap">
+          {spec.assignedAgentName ? (
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">{spec.assignedAgentName}</span>
+              <a
+                href={`openterm:${spec.assignedAgentName}`}
+                className="text-sm leading-none hover:opacity-70 transition-opacity flex-shrink-0"
+                title={`Chat with ${spec.assignedAgentName}`}
+              >💬</a>
             </div>
           ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-zinc-400">
-                Confirm <span className={pendingHIL ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>{pendingHIL ? 'approval' : 'rejection'}</span>:
-              </p>
-              <textarea
-                value={hilFeedback}
-                onChange={e => setHilFeedback(e.target.value)}
-                placeholder="Optional feedback…"
-                rows={2}
-                className="w-full text-xs rounded border border-zinc-700 bg-white/5 text-zinc-200 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-zinc-600"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { onApproveHumanInLoop(spec.id, pendingHIL, hilFeedback.trim() || null); setPendingHIL(null); setHilFeedback(''); }}
-                  className={`text-xs px-2 py-1 rounded font-semibold ${pendingHIL ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25' : 'bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25'}`}
-                >
-                  Confirm
-                </button>
-                <button
-                  onClick={() => { setPendingHIL(null); setHilFeedback(''); }}
-                  className="text-xs px-2 py-1 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <span className="text-[11px] text-zinc-600">—</span>
           )}
-        </div>
+        </td>
+
+        {/* State */}
+        <td className="py-2 px-3 whitespace-nowrap">
+          <StateBadge state={spec.currentStateName} />
+        </td>
+
+        {/* Progress */}
+        <td className="py-2 px-3">
+          <div className="flex items-center gap-2 min-w-[120px]">
+            <div className="flex-1 h-[3px] rounded-full bg-zinc-800 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-zinc-600 w-12 text-right flex-shrink-0">
+              {isDone ? '✓ Done' : `${progress}%`}
+            </span>
+          </div>
+        </td>
+
+        {/* Actions */}
+        <td className="py-2 pl-3 pr-4 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 justify-end">
+            {spec.specDocPath && (
+              <button
+                onClick={() => onViewDoc(spec.specDocPath!)}
+                className="text-[10px] px-2 py-0.5 rounded bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                doc
+              </button>
+            )}
+            <button
+              onClick={() => setDetailOpen(true)}
+              className="text-[10px] px-2 py-0.5 rounded bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              …
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      {/* Auto-shown HIL row */}
+      {needsHumanReview && (
+        <tr className={`border-b border-zinc-800 ${rowOpacity}`}>
+          <td colSpan={5} className="px-4 pb-3 pt-0">
+            <HilPanel spec={spec} onApproveHumanInLoop={onApproveHumanInLoop} />
+          </td>
+        </tr>
       )}
 
-      <div className="flex gap-2 flex-wrap">
-        {isReady && (
-          <button
-            onClick={handleCodeNow}
-            disabled={codingNow}
-            className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
-          >
-            {codeNowLabel}
-          </button>
-        )}
-
-        {spec.specDocPath && (
-          <button
-            onClick={() => onViewDoc(spec.specDocPath!)}
-            className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            View spec doc
-          </button>
-        )}
-
-        <button
-          onClick={() => setShowForceState(v => !v)}
-          className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
-        >
-          Force state
-        </button>
-      </div>
-
-      {showForceState && (
-        <select
-          defaultValue=""
-          onChange={handleForceStateSelect}
-          className="mt-2 text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 px-2 py-1.5 focus:outline-none w-full"
-        >
-          <option value="" disabled>Select state →</option>
-          {SPEC_STATES.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+      {/* Auto-shown Code Now row */}
+      {spec.currentStateName === 'ready' && (
+        <tr className={`border-b border-zinc-800 ${rowOpacity}`}>
+          <td colSpan={5} className="px-4 pb-3 pt-0">
+            <CodeNowRow spec={spec} onUpdated={onUpdated} />
+          </td>
+        </tr>
       )}
-    </div>
+    </>
   );
 }
 
@@ -1172,8 +1363,8 @@ export default function EpicDetailPage() {
           </div>
 
           {/* Right column — Epic Board */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
               <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Epic Board — Specs</p>
               <button
                 disabled
@@ -1183,23 +1374,54 @@ export default function EpicDetailPage() {
               </button>
             </div>
 
-            {epic.specs.length === 0 && (
-              <p className="text-sm text-zinc-600 py-6 text-center">No specs yet.</p>
-            )}
+            {epic.specs.length === 0 ? (
+              <p className="text-sm text-zinc-600 py-8 text-center">No specs yet.</p>
+            ) : (
+              <>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-800">
+                      <th className="text-left text-[10px] font-semibold tracking-widest uppercase text-zinc-600 py-2 pl-4 pr-3">Spec</th>
+                      <th className="text-left text-[10px] font-semibold tracking-widest uppercase text-zinc-600 py-2 px-3">Agent</th>
+                      <th className="text-left text-[10px] font-semibold tracking-widest uppercase text-zinc-600 py-2 px-3">State</th>
+                      <th className="text-left text-[10px] font-semibold tracking-widest uppercase text-zinc-600 py-2 px-3">Progress</th>
+                      <th className="py-2 pl-3 pr-4" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {epic.specs.map(s => (
+                      <SpecTableRow
+                        key={s.id}
+                        spec={s}
+                        epicId={epic.id}
+                        onUpdated={load}
+                        onViewDoc={setDrawerPath}
+                        onApproveHumanInLoop={handleApproveSpecHumanInLoop}
+                        onForceState={handleForceSpecState}
+                      />
+                    ))}
+                  </tbody>
+                </table>
 
-            <div className="space-y-2.5">
-              {epic.specs.map(s => (
-                <SpecCard
-                  key={s.id}
-                  spec={s}
-                  epicId={epic.id}
-                  onUpdated={load}
-                  onViewDoc={setDrawerPath}
-                  onApproveHumanInLoop={handleApproveSpecHumanInLoop}
-                  onForceState={handleForceSpecState}
-                />
-              ))}
-            </div>
+                <div className="px-4 py-2 border-t border-zinc-800 flex items-center gap-3 flex-wrap">
+                  <span className="text-[10px] text-zinc-600">{epic.specs.length} specs</span>
+                  {(['drafting', 'ready', 'coding', 'code_review', 'ac', 'done'] as const).map(state => {
+                    const count = epic.specs.filter(s => s.currentStateName === state).length;
+                    if (count === 0) return null;
+                    return (
+                      <span key={state} className="text-[10px] text-zinc-500">
+                        {count} <span className="text-zinc-600">{state.replace('_', ' ')}</span>
+                      </span>
+                    );
+                  })}
+                  {epic.specs.filter(s => s.humanInLoop?.isApproved === null).length > 0 && (
+                    <span className="text-[10px] text-amber-500 ml-auto">
+                      ⚠ {epic.specs.filter(s => s.humanInLoop?.isApproved === null).length} need review
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
         </div>

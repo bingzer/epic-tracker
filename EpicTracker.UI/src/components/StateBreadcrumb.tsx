@@ -1,3 +1,4 @@
+// TODO: unused — delete when confirmed safe
 const EPIC_STATES = ['drafting', 'mockup', 'waterproofing', 'spec_writing', 'implementation', 'closed'];
 const SPEC_STATES = ['spec_drafting', 'ready', 'coding', 'code_review', 'ac', 'done'];
 

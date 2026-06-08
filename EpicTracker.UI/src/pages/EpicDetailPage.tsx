@@ -710,41 +710,121 @@ function EpicSummaryCard({
   );
 }
 
-function HilPanel({
+function HilDialog({
   spec,
+  onClose,
   onApproveHumanInLoop,
 }: {
   spec: Spec;
+  onClose: () => void;
   onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
 }) {
   const [feedback, setFeedback] = useState('');
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose();
+  }
+
+  function handleResolve(approved: boolean) {
+    onApproveHumanInLoop(spec.id, approved, feedback.trim() || null);
+    onClose();
+  }
 
   return (
-    <div className="text-xs text-zinc-300 bg-white/[0.02] border-l-2 border-amber-500/50 rounded-r-lg pl-3 pr-3 py-2.5 space-y-2">
-      <p className="font-semibold text-zinc-400 text-[10px] tracking-widest uppercase">Human Review Required</p>
-      {spec.humanInLoop?.questions && (
-        <p className="text-zinc-400 leading-relaxed">{spec.humanInLoop.questions}</p>
-      )}
-      <textarea
-        value={feedback}
-        onChange={e => setFeedback(e.target.value)}
-        placeholder="Reason (optional)…"
-        rows={2}
-        className="w-full text-xs rounded border border-zinc-700 bg-white/5 text-zinc-200 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-500 placeholder:text-zinc-600"
-      />
-      <div className="flex gap-2">
-        <button
-          onClick={() => { onApproveHumanInLoop(spec.id, true, feedback.trim() || null); setFeedback(''); }}
-          className="text-xs px-2.5 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 font-semibold"
-        >
-          Approve
-        </button>
-        <button
-          onClick={() => { onApproveHumanInLoop(spec.id, false, feedback.trim() || null); setFeedback(''); }}
-          className="text-xs px-2.5 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 font-semibold"
-        >
-          Reject
-        </button>
+    <div ref={overlayRef} onClick={handleOverlayClick} className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+          <p className="text-sm font-bold text-zinc-100">Human Review</p>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xl leading-none">×</button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          {spec.humanInLoop?.questions && (
+            <p className="text-xs text-zinc-400 leading-relaxed">{spec.humanInLoop.questions}</p>
+          )}
+          <textarea
+            value={feedback}
+            onChange={e => setFeedback(e.target.value)}
+            placeholder="Reason (optional)…"
+            rows={3}
+            className="w-full text-xs rounded-lg border border-zinc-700 bg-white/5 text-zinc-200 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-600 placeholder:text-zinc-600"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleResolve(true)}
+              className="flex-1 text-xs font-semibold py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            >
+              ✓ Approve
+            </button>
+            <button
+              onClick={() => handleResolve(false)}
+              className="flex-1 text-xs font-semibold py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              ✗ Reject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CodeNowDialog({
+  spec,
+  epicId,
+  onClose,
+  onUpdated,
+}: {
+  spec: Spec;
+  epicId: string;
+  onClose: () => void;
+  onUpdated: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose();
+  }
+
+  async function handleConfirm() {
+    setBusy(true);
+    try {
+      await SpecApi.codeNow(spec.id);
+      onUpdated();
+      onClose();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div ref={overlayRef} onClick={handleOverlayClick} className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+          <p className="text-sm font-bold text-zinc-100">Start Coding</p>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xl leading-none">×</button>
+        </div>
+        <div className="px-5 py-4 space-y-4">
+          <p className="text-xs text-zinc-400">Start coding <span className="font-semibold text-zinc-200">{specDisplayName(spec.id, epicId)}</span>?</p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleConfirm}
+              disabled={busy}
+              className="flex-1 text-xs font-semibold py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+            >
+              {busy ? '…' : '▶ Yes, start coding'}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-xs px-4 py-2 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -754,38 +834,22 @@ function SpecDetailDialog({
   spec,
   epicId,
   onClose,
-  onUpdated,
   onViewDoc,
-  onApproveHumanInLoop,
   onForceState,
 }: {
   spec: Spec;
   epicId: string;
   onClose: () => void;
-  onUpdated: () => void;
   onViewDoc: (path: string) => void;
-  onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
   onForceState: (specId: string, stateName: string) => void;
 }) {
-  const [codingNow, setCodingNow] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
-
   const progress = SPEC_STATE_PROGRESS[spec.currentStateName] ?? 0;
   const isDone = spec.currentStateName === 'done';
-  const isReady = spec.currentStateName === 'ready';
-  const needsHumanReview = spec.currentStateName === 'human_in_loop' || (spec.humanInLoop !== null && spec.humanInLoop.isApproved === null);
+  const lbl = 'text-[10px] font-semibold tracking-widest uppercase text-zinc-600';
 
-  async function handleCodeNow() {
-    setCodingNow(true);
-    try {
-      await SpecApi.codeNow(spec.id);
-      onUpdated();
-      onClose();
-    } catch (e) {
-      alert(String(e));
-    } finally {
-      setCodingNow(false);
-    }
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose();
   }
 
   function handleForceStateSelect(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -795,19 +859,8 @@ function SpecDetailDialog({
     onForceState(spec.id, stateName);
   }
 
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose();
-  }
-
-  const rowCls = 'text-[10px] font-semibold tracking-widest uppercase text-zinc-600';
-  const valCls = 'text-xs text-zinc-300 font-mono';
-
   return (
-    <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-    >
+    <div ref={overlayRef} onClick={handleOverlayClick} className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
 
         <div className="flex items-start justify-between px-5 py-4 border-b border-zinc-800">
@@ -823,146 +876,58 @@ function SpecDetailDialog({
 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
-          {/* Progress */}
           <div>
-            <p className={rowCls + ' mb-1.5'}>Progress</p>
+            <p className={lbl + ' mb-1.5'}>Progress</p>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-[3px] rounded-full bg-zinc-800 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all"
-                  style={{ width: `${progress}%` }}
-                />
+                <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style={{ width: `${progress}%` }} />
               </div>
-              <span className="text-[10px] text-zinc-600 flex-shrink-0">
-                {isDone ? '✓ Done' : `${progress}%`}
-              </span>
+              <span className="text-[10px] text-zinc-600 flex-shrink-0">{isDone ? '✓ Done' : `${progress}%`}</span>
             </div>
           </div>
 
-          {/* Agents */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className={rowCls + ' mb-1'}>Assigned Agent</p>
+              <p className={lbl + ' mb-1'}>Assigned Agent</p>
               {spec.assignedAgentName ? (
                 <div className="flex items-center gap-1.5">
-                  <span className={valCls}>{spec.assignedAgentName}</span>
-                  <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70" title="Open chat">💬</a>
+                  <span className="text-xs font-mono text-zinc-300">{spec.assignedAgentName}</span>
+                  <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70">💬</a>
                 </div>
               ) : <span className="text-xs text-zinc-600">—</span>}
             </div>
             <div>
-              <p className={rowCls + ' mb-1'}>Reviewer</p>
-              {spec.reviewerAgentName ? (
-                <span className="text-xs font-mono text-orange-400">{spec.reviewerAgentName}</span>
-              ) : <span className="text-xs text-zinc-600">—</span>}
+              <p className={lbl + ' mb-1'}>Reviewer</p>
+              {spec.reviewerAgentName
+                ? <span className="text-xs font-mono text-orange-400">{spec.reviewerAgentName}</span>
+                : <span className="text-xs text-zinc-600">—</span>}
             </div>
           </div>
 
-          {/* Spec doc */}
           {spec.specDocPath && (
             <div>
-              <p className={rowCls + ' mb-1'}>Spec Doc</p>
-              <button
-                onClick={() => { onViewDoc(spec.specDocPath!); onClose(); }}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-mono truncate max-w-full text-left"
-              >
+              <p className={lbl + ' mb-1'}>Spec Doc</p>
+              <button onClick={() => { onViewDoc(spec.specDocPath!); onClose(); }} className="text-xs text-indigo-400 hover:text-indigo-300 font-mono truncate max-w-full text-left">
                 {spec.specDocPath}
               </button>
             </div>
           )}
 
-          {/* HIL panel */}
-          {needsHumanReview && (
-            <HilPanel spec={spec} onApproveHumanInLoop={(id, approved, feedback) => { onApproveHumanInLoop(id, approved, feedback); onClose(); }} />
-          )}
-
-          {/* Code Now */}
-          {isReady && (
-            <button
-              onClick={handleCodeNow}
-              disabled={codingNow}
-              className="w-full text-xs font-semibold py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
-            >
-              {codingNow ? 'Starting…' : '▶ Code Now'}
-            </button>
-          )}
-
-          {/* Force state */}
           <div>
-            <p className={rowCls + ' mb-1.5'}>Force State</p>
-            <select
-              defaultValue=""
-              onChange={handleForceStateSelect}
-              className="w-full text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 px-2.5 py-1.5 focus:outline-none cursor-pointer"
-            >
+            <p className={lbl + ' mb-1.5'}>Force State</p>
+            <select defaultValue="" onChange={handleForceStateSelect} className="w-full text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 px-2.5 py-1.5 focus:outline-none cursor-pointer">
               <option value="" disabled>Select state…</option>
-              {SPEC_STATES.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
+              {SPEC_STATES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
         </div>
 
         <div className="px-5 py-4 border-t border-zinc-800 flex justify-end">
-          <button
-            onClick={onClose}
-            className="text-xs px-4 py-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
-          >
-            Close
-          </button>
+          <button onClick={onClose} className="text-xs px-4 py-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors">Close</button>
         </div>
 
       </div>
-    </div>
-  );
-}
-
-function CodeNowRow({ spec, onUpdated }: { spec: Spec; onUpdated: () => void }) {
-  const [confirming, setConfirming] = useState(false);
-  const [codingNow, setCodingNow] = useState(false);
-
-  async function handleConfirm() {
-    setCodingNow(true);
-    try {
-      await SpecApi.codeNow(spec.id);
-      onUpdated();
-    } catch (e) {
-      alert(String(e));
-    } finally {
-      setCodingNow(false);
-      setConfirming(false);
-    }
-  }
-
-  return (
-    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
-      <span className="text-xs text-emerald-400/70">Ready to code</span>
-      {!confirming ? (
-        <button
-          onClick={() => setConfirming(true)}
-          className="text-xs font-semibold px-3 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-colors"
-        >
-          ▶ Code Now
-        </button>
-      ) : (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-400">Sure?</span>
-          <button
-            onClick={handleConfirm}
-            disabled={codingNow}
-            className="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors"
-          >
-            {codingNow ? '…' : 'Yes'}
-          </button>
-          <button
-            onClick={() => setConfirming(false)}
-            className="text-xs px-2.5 py-1 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -982,39 +947,33 @@ function SpecTableRow({
   onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
   onForceState: (specId: string, stateName: string) => void;
 }) {
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [dialog, setDialog] = useState<'detail' | 'hil' | 'code' | null>(null);
 
   const progress = SPEC_STATE_PROGRESS[spec.currentStateName] ?? 0;
   const isDone = spec.currentStateName === 'done';
   const needsHumanReview = spec.currentStateName === 'human_in_loop' || (spec.humanInLoop !== null && spec.humanInLoop.isApproved === null);
   const isReady = spec.currentStateName === 'ready';
   const rowOpacity = spec.isAbandoned ? 'opacity-35' : isDone ? 'opacity-50' : '';
-  const hasSubRow = needsHumanReview || isReady;
+
+  const btnBase = 'text-[10px] px-2 py-0.5 rounded border transition-colors';
 
   return (
     <>
-      {detailOpen && (
-        <SpecDetailDialog
-          spec={spec}
-          epicId={epicId}
-          onClose={() => setDetailOpen(false)}
-          onUpdated={onUpdated}
-          onViewDoc={onViewDoc}
-          onApproveHumanInLoop={onApproveHumanInLoop}
-          onForceState={onForceState}
-        />
+      {dialog === 'detail' && (
+        <SpecDetailDialog spec={spec} epicId={epicId} onClose={() => setDialog(null)} onViewDoc={onViewDoc} onForceState={onForceState} />
+      )}
+      {dialog === 'hil' && (
+        <HilDialog spec={spec} onClose={() => setDialog(null)} onApproveHumanInLoop={(id, approved, feedback) => { onApproveHumanInLoop(id, approved, feedback); setDialog(null); }} />
+      )}
+      {dialog === 'code' && (
+        <CodeNowDialog spec={spec} epicId={epicId} onClose={() => setDialog(null)} onUpdated={onUpdated} />
       )}
 
-      {/* Main row */}
-      <tr className={`hover:bg-white/[0.02] transition-colors ${rowOpacity} ${hasSubRow ? '' : 'border-b border-zinc-800'}`}>
+      <tr className={`border-b border-zinc-800 hover:bg-white/[0.02] transition-colors ${rowOpacity}`}>
         {/* Name */}
         <td className="py-2 pl-4 pr-3">
-          <div>
-            <div className="text-[12px] font-medium text-zinc-200 leading-snug">
-              {specDisplayName(spec.id, epicId)}
-            </div>
-            <div className="font-mono text-[10px] text-zinc-600 leading-snug">{spec.id}</div>
-          </div>
+          <div className="text-[12px] font-medium text-zinc-200 leading-snug">{specDisplayName(spec.id, epicId)}</div>
+          <div className="font-mono text-[10px] text-zinc-600 leading-snug">{spec.id}</div>
         </td>
 
         {/* Agent */}
@@ -1022,15 +981,9 @@ function SpecTableRow({
           {spec.assignedAgentName ? (
             <div className="flex items-center gap-1.5">
               <span className="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">{spec.assignedAgentName}</span>
-              <a
-                href={`openterm:${spec.assignedAgentName}`}
-                className="text-sm leading-none hover:opacity-70 transition-opacity flex-shrink-0"
-                title={`Chat with ${spec.assignedAgentName}`}
-              >💬</a>
+              <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70 transition-opacity flex-shrink-0" title={`Chat with ${spec.assignedAgentName}`}>💬</a>
             </div>
-          ) : (
-            <span className="text-[11px] text-zinc-600">—</span>
-          )}
+          ) : <span className="text-[11px] text-zinc-600">—</span>}
         </td>
 
         {/* State */}
@@ -1038,59 +991,29 @@ function SpecTableRow({
           <StateBadge state={spec.currentStateName} />
         </td>
 
-        {/* Progress */}
+        {/* Progress — bar only, no % */}
         <td className="py-2 px-3">
-          <div className="flex items-center gap-2 min-w-[120px]">
-            <div className="flex-1 h-[3px] rounded-full bg-zinc-800 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <span className="text-[10px] text-zinc-600 w-12 text-right flex-shrink-0">
-              {isDone ? '✓ Done' : `${progress}%`}
-            </span>
+          <div className="w-24 h-[3px] rounded-full bg-zinc-800 overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style={{ width: `${progress}%` }} />
           </div>
         </td>
 
         {/* Actions */}
         <td className="py-2 pl-3 pr-4 whitespace-nowrap">
           <div className="flex items-center gap-1.5 justify-end">
-            {spec.specDocPath && (
-              <button
-                onClick={() => onViewDoc(spec.specDocPath!)}
-                className="text-[10px] px-2 py-0.5 rounded bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
-              >
-                doc
-              </button>
+            {needsHumanReview && (
+              <button onClick={() => setDialog('hil')} className={`${btnBase} bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20`}>hil</button>
             )}
-            <button
-              onClick={() => setDetailOpen(true)}
-              className="text-[10px] px-2 py-0.5 rounded bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
-            >
-              …
-            </button>
+            {isReady && (
+              <button onClick={() => setDialog('code')} className={`${btnBase} bg-emerald-500/10 border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20`}>code</button>
+            )}
+            {spec.specDocPath && (
+              <button onClick={() => onViewDoc(spec.specDocPath!)} className={`${btnBase} bg-white/[0.04] border-zinc-700 text-zinc-500 hover:text-zinc-300`}>doc</button>
+            )}
+            <button onClick={() => setDialog('detail')} className={`${btnBase} bg-white/[0.04] border-zinc-700 text-zinc-500 hover:text-zinc-300`}>…</button>
           </div>
         </td>
       </tr>
-
-      {/* Auto-shown HIL row */}
-      {needsHumanReview && (
-        <tr className={`border-b border-zinc-800 ${rowOpacity}`}>
-          <td colSpan={5} className="px-4 pb-3 pt-0">
-            <HilPanel spec={spec} onApproveHumanInLoop={onApproveHumanInLoop} />
-          </td>
-        </tr>
-      )}
-
-      {/* Auto-shown Code Now row */}
-      {spec.currentStateName === 'ready' && (
-        <tr className={`border-b border-zinc-800 ${rowOpacity}`}>
-          <td colSpan={5} className="px-4 pb-3 pt-0">
-            <CodeNowRow spec={spec} onUpdated={onUpdated} />
-          </td>
-        </tr>
-      )}
     </>
   );
 }

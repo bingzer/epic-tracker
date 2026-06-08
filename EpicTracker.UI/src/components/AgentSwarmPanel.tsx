@@ -1,3 +1,4 @@
+// TODO: unused — delete when confirmed safe
 import type { AgentAgreement, Epic } from '../types';
 
 const SWARM_STATES = new Set(['waterproofing', 'agent_swarm']);

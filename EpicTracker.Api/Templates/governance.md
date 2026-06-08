@@ -42,23 +42,25 @@ All agent communication goes through tmux broker MCP tools:
 
 ## Agent Swarm
 
-A consensus round where coding agents discuss peer-to-peer and submit their assessments before the epic proceeds. Only raise when `EpicAgentInstruction` tells you to.
+A consensus round where coding agents discuss peer-to-peer via a broker channel and submit their assessments before the epic proceeds. Only raise when `EpicAgentInstruction` tells you to.
 
 1. Call `raise_agent_swarm(objective, toStateName)`, then `advance`.
-2. Send each participant a structured kickoff via tmux-broker containing:
+2. Create channel `swarm-epic-{epicId}` via `create_channel`. Invite all participants (coding agents + yourself) via `invite_to_channel`.
+3. Post a structured kickoff to the channel via `post_to_channel` containing:
    - The objective
-   - The full participant list and your session name as coordinator
-   - Rules: discuss directly with peers, stay on domain, ask the coordinator for scope/business questions (you can escalate to human via raise_human_in_loop), no need to reach a definitive conclusion
-   - Process: discuss with peers, then send the coordinator an AGREE, DISAGREE, or BLOCKED assessment with reasoning
-3. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
-4. When all participants have sent their assessment:
+   - The full participant list, your session name as coordinator, and the channel name
+   - Rules: discuss in the channel, stay on domain, ask the coordinator for scope/business questions (you can escalate to human via raise_human_in_loop), no need to reach a definitive conclusion
+   - Process: discuss in the channel, then post AGREE, DISAGREE, or BLOCKED with reasoning to the channel, then leave the channel
+4. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
+5. When all participants have posted their assessment to the channel:
    - Update the epic document to record each agent's conclusion and key insights from the discussion
    - Call `submit_agreement` for each agent on their behalf (coding agents cannot call it themselves)
+   - Leave the channel via `leave_channel` — you are the last to leave, which deletes the channel
    - Call `advance`
-5. If an agent does not respond, submit a disagreement with a note that they were unreachable.
-6. Disagreement triggers another iteration (max 5, then `human_in_loop` fires automatically).
+6. If an agent does not respond, submit a disagreement with a note that they were unreachable.
+7. Disagreement triggers another iteration (max 5, then `human_in_loop` fires automatically). On re-vote rounds, the channel already exists — post the kickoff directly without recreating it.
 
-**Single agent:** If there is only one coding agent, omit peer discussion from the kickoff — they send their assessment directly to you.
+**Single agent:** If there is only one coding agent, omit peer discussion from the kickoff — they post their assessment directly to the channel.
 
 ## Human in Loop
 

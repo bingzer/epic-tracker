@@ -1,63 +1,37 @@
-# tmux-broker Message Protocol
+Version: 4
 
-You are registered as session `epictrackerdev`.
+# tmux-broker Protocol — epictrackerdev
 
-## Token format
-
-When you see a token at the **very start** of your input (no leading text or whitespace):
+## Inbound tokens
 
 ```
-[sender → epictrackerdev #hexid]
+[sender → epictrackerdev #hexid]   ← direct message
+[sender → @channel #hexid]        ← channel post (you are a member of @channel)
 ```
 
-Call `get_message` with the full token to fetch the payload. If `requiresReply` is true, reply autonomously via `send_message` with `replyToHexId` set and `from` set to your session name — do NOT ask the user. If false, no action needed.
+For direct messages: call `get_message(token)`. If `requiresReply: true`, reply autonomously with `send_message(to: sender, replyToHexId: hexId, from: "epictrackerdev", payload: ...)`. If false, no action.
 
-> **Token delivery:** The broker inserts this token at the very start of your input automatically. You do not need to copy or paste it — just call `get_message` with the token you see at the start of your turn.
+For channel posts: call `get_message(token, from: "epictrackerdev")` — the `from` param is required so the broker can verify membership. `requiresReply` is always false for channel posts.
 
-> **Important:** Always pass `from: "epictrackerdev"` explicitly in every `send_message` call. The default is `"unknown"`, which causes reply validation to fail with `"only the original recipient may reply"`.
+## Outbound
 
-## Delivery
+- Direct: `send_message(to, payload, from: "epictrackerdev")`
+- Channel post: `post_to_channel(channelId, payload, from: "epictrackerdev")`
+- Channel setup: `create_channel`, `invite_to_channel`, `list_channels`, `leave_channel`
 
-Messages are fire-and-forget (UDP-like). Delivery is not guaranteed — tokens can be lost if your
-session is restarting or busy. There is no retry. Senders are aware of this.
+## Reaching the human
 
-## Sending
+`human` is a reserved, always-valid session name backed by the broker UI — not a tmux pane.
 
-Call `send_message(to, payload)` to send. It is async — do not wait or poll for a reply.
-The reply arrives as a new token in a future turn. It could be seconds, minutes, or longer.
-Each message gets exactly one reply.
+- To contact Ricky directly: `send_message(to: "human", from: "epictrackerdev", payload: ..., requiresReply: true)`
+- Set `requiresReply: true` when you need a response. Ricky sees the message in the UI inbox and replies from there.
+- Channel posts from Ricky arrive as `[human → @channel #hexid]` — handle them like any other sender.
+- Never try to `start_agent` or `stop_agent` for `human` — it has no tmux session.
 
-## The `from` parameter
+## Rules
 
-Several tools accept a `from` parameter (your session name). Always pass it — the broker uses
-it to refresh your `lastSeen` timestamp, which controls your Online/Offline status in the dashboard.
-
-| Tool | `from` required? | Effect if omitted |
-|---|---|---|
-| `register_agent` | n/a (uses `sessionName`) | lastSeen always updated |
-| `send_message` | Yes | lastSeen not updated; you may show Offline |
-| `broadcast_message` | Yes | lastSeen not updated; you may show Offline |
-| `get_message` | Yes (pass your session name) | lastSeen not updated; you may show Offline |
-| `list_agents` | Yes | lastSeen not updated; you may show Offline |
-| `clear_all` | Yes | lastSeen not updated; you may show Offline |
-
-> Always pass `from: "epictrackerdev"` on every tool call that accepts it.
-
-## Tool responses
-
-| Tool | Returns |
-|---|---|
-| `register_agent` (new agent) | Full blob: `protocolFileContent`, `bootstrapBlock`, `steps` |
-| `register_agent` (known agent) | Slim ack: `ok`, `sessionName`, `readProtocol: true` — read local protocol file |
-| `register_agent` (force: true) | Full blob regardless of known/new status |
-| `send_message` | `ok: true` |
-| `broadcast_message` | `sent: N`, `failed: [sessionName]` |
-| `get_message` (inbound) | `payload`, `requiresReply` |
-| `get_message` (reply notification) | `response`, `requiresReply: false` |
-| `list_agents` | Array of agent objects with status |
-
-## Troubleshooting
-
-If you experience issues (messages not delivering, registration errors, unexpected behavior), call
-`register_agent` again with the same session name. Re-registration is safe and idempotent — it
-refreshes your session without changing your name or losing your identity.
+- Always pass `from: "epictrackerdev"` on every tool call that accepts it — keeps your lastSeen fresh.
+- Replies are point-to-point; channel tag is preserved in the reply token automatically.
+- For channel messages, the token recipient is the channel itself (`@channel`), not your session name — the broker delivers it to all members.
+- Re-registration is safe and idempotent — call `register_agent` any time to recover.
+- On every `register_agent` call, read the `Version:` line from this file (regex `^Version: (\d+)`) and pass it as `myVersion`. The broker returns the full protocol blob automatically if your version is outdated.

@@ -41,8 +41,8 @@ public class Epic
 
     /// <summary>
     /// Raises a new agent swarm. Participants are all <see cref="CodingAgentNames"/> plus the <see cref="EpicAgentName"/>.
-    /// Sets <see cref="EpicAgentInstruction"/> to <paramref name="instruction"/> to tell the epic agent to message each
-    /// participant via tmux, collect AGREE/DISAGREE responses, call <c>submit_agreement</c> for each, then call <c>advance</c>.
+    /// Sets <see cref="EpicAgentInstruction"/> to <paramref name="instruction"/> to tell the epic agent to create a broker
+    /// channel, invite participants, coordinate via channel posts, call <c>submit_agreement</c> for each, leave the channel, then call <c>advance</c>.
     /// </summary>
     public void RaiseAgentSwarm(string objective, string toStateName, string instruction)
     {

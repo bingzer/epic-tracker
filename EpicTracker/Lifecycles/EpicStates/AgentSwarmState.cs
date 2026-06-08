@@ -66,17 +66,18 @@ internal class AgentSwarmState : EpicState
 
     private static string BuildInstruction(string epicId, string epicAgentName, AgentSwarm swarm)
     {
+        var channelId = $"swarm-epic-{epicId}";
         var agents = swarm.Agreements.Select(a => a.AgentId).ToList();
         var agentList = string.Join(", ", agents);
         var isSingleAgent = agents.Count == 1;
 
         var discussRule = isSingleAgent
             ? ""
-            : "- Discuss directly with the other participants via tmux-broker\n";
+            : $"- Discuss with the other participants in channel `{channelId}`\n";
 
         var processStep = isSingleAgent
-            ? "- You are the only participant. Send your assessment directly to the coordinator"
-            : "- Discuss with your peers until you have formed your assessment";
+            ? "- You are the only participant. Post your assessment directly to the channel"
+            : $"- Discuss in channel `{channelId}` until you have formed your assessment";
 
         var kickoff = $"""
             You are participating in an agent swarm.
@@ -85,6 +86,7 @@ internal class AgentSwarmState : EpicState
 
             Participants: {agentList}
             Coordinator: {epicAgentName}
+            Channel: {channelId}
 
             Rules:
             {discussRule}- Stay focused on your domain knowledge and technical constraints
@@ -93,17 +95,18 @@ internal class AgentSwarmState : EpicState
 
             Process:
             {processStep}
-            - When ready, send your assessment to the coordinator: AGREE, DISAGREE, or BLOCKED — with your reasoning
+            - When ready, post your assessment to the channel: AGREE, DISAGREE, or BLOCKED — with your reasoning
+            - Leave the channel after posting your assessment
             """;
 
         var reVoteNote = swarm.Iteration > 1
-            ? $"This is re-vote round {swarm.Iteration}. At least one agent did not agree in the previous round. Summarize what was disputed when sending kickoffs."
+            ? $"This is re-vote round {swarm.Iteration}. At least one agent did not agree in the previous round. Summarize what was disputed when posting the kickoff."
             : "";
 
         var instruction = $"""
             Agent swarm coordinator instructions (iteration {swarm.Iteration} of {MaxIterations}):
 
-            {(reVoteNote.Length > 0 ? reVoteNote + "\n\n" : "")}1. Send the following kickoff message to each participant ({agentList}) via tmux-broker:
+            {(reVoteNote.Length > 0 ? reVoteNote + "\n\n" : "")}1. Post the following kickoff message to channel `{channelId}` via post_to_channel:
 
             ---
             {kickoff}
@@ -111,9 +114,10 @@ internal class AgentSwarmState : EpicState
 
             2. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
 
-            3. When all participants have sent their assessment:
+            3. When all participants have posted their assessment to the channel:
                - Update the epic document to record each agent's conclusion and key insights
                - Call submit_agreement for each agent on their behalf
+               - Leave channel `{channelId}` via leave_channel (you are the last to leave — this deletes the channel)
                - Call advance("{epicId}")
 
             4. If an agent does not respond, submit a disagreement with a note that they were unreachable.

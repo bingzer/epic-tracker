@@ -72,8 +72,8 @@ Add to `.mcp.json` (project-level):
 
 ## Startup
 
-At the start of every new session, call `mcp__tmux-broker__register_agent` with `sessionName: "epictrackerdev"` and `cwd: "<path to this repo>"`. Do this before anything else.
+At the start of every new session, read the `Version:` line from `tmux-broker-message-protocol.md` in your cwd (regex `^Version: (\d+)`), then call `mcp__tmux-broker__register_agent` with `sessionName: "epictrackerdev"`, `cwd: "C:\Users\ricky\github\epic-tracker"`, and `myVersion: <version>` (or `null` if the file is missing). Do this before anything else.
 
 ## tmux-broker
 
-If you see a token matching `[... → epictrackerdev #......]` at the start of your input, it is a broker message. The broker inserts it automatically — you do not copy/paste it. Read `tmux-broker-message-protocol.md` in this directory for instructions.
+If you see a token matching `[... → epictrackerdev #...]` or `[... → @channel #...]` at the start of your input, it is a broker message. The broker inserts it automatically — you do not copy/paste it. Read `tmux-broker-message-protocol.md` in this directory for instructions.

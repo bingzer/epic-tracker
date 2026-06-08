@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EpicApi, AgentApi, type CreateEpicPayload } from '../epicApi';
 import type { Epic } from '../types';
-import { StateBadge } from '../components/StateBadge';
 import { useSignalR } from '../hooks/useSignalR';
 
 function useAgentNames() {
@@ -291,59 +290,163 @@ function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void; }) {
   );
 }
 
-function EpicRow({ epic, onDelete }: { epic: Epic; onDelete?: () => void }) {
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
+function needsAttention(epic: Epic): boolean {
+  return epic.currentStateName === 'human_in_loop' ||
+    (epic.humanInLoop != null && epic.humanInLoop.isApproved === null);
+}
+
+function SpecProgress({ epic }: { epic: Epic }) {
+  const total = epic.specs.length;
+  const done = epic.specs.filter(s => s.currentStateName === 'done').length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const isDone = epic.currentStateName === 'closed';
+  const color = isDone ? 'bg-emerald-500' : 'bg-blue-500';
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 shadow-sm hover:border-gray-300 dark:hover:border-zinc-600 transition-colors">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link to={`/epics/${epic.id}`} className="font-medium text-gray-900 dark:text-zinc-100 hover:underline">
-          {epic.name}
-        </Link>
-        <StateBadge state={epic.currentStateName} />
-        {epic.humanInLoop && epic.humanInLoop.isApproved === null && (
-          <span className="text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded">
-            HUMAN REVIEW
-          </span>
-        )}
-        <span className="text-xs text-gray-400 dark:text-zinc-600 font-mono ml-auto">{epic.slug}</span>
-        {deleteConfirm ? (
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-500 dark:text-zinc-400">Delete?</span>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="text-xs font-semibold px-2 py-0.5 rounded bg-red-600 text-white hover:bg-red-500 transition-colors"
-            >
-              Confirm
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeleteConfirm(false)}
-              className="text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setDeleteConfirm(true)}
-            className="text-xs text-gray-400 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 transition-colors px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
-            aria-label={`Delete ${epic.name}`}
-          >
-            Delete
-          </button>
-        )}
+    <div className="flex items-center gap-2.5">
+      <div className="w-24 h-1 bg-zinc-800 rounded-full overflow-hidden shrink-0">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      {epic.brief && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400 line-clamp-2">{epic.brief}</p>
+      <span className="font-mono text-xs text-zinc-500 whitespace-nowrap">{done} / {total}</span>
+    </div>
+  );
+}
+
+function EpicStateBadge({ epic }: { epic: Epic }) {
+  const state = epic.currentStateName;
+  const attention = needsAttention(epic);
+
+  if (state === 'closed') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold font-mono">
+        ✓ done
+      </span>
+    );
+  }
+
+  if (attention) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold font-mono">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+        {state.replace(/_/g, ' ')}
+      </span>
+    );
+  }
+
+  const colorMap: Record<string, string> = {
+    implementation: 'bg-orange-500/15 border-orange-500/25 text-orange-400',
+    spec_writing:   'bg-blue-500/15 border-blue-500/25 text-blue-400',
+    waterproofing:  'bg-purple-500/15 border-purple-500/25 text-purple-400',
+    mockup:         'bg-pink-500/15 border-pink-500/25 text-pink-400',
+    drafting:       'bg-zinc-700/60 border-zinc-600 text-zinc-400',
+    agent_swarm:    'bg-cyan-500/15 border-cyan-500/25 text-cyan-400',
+  };
+  const cls = colorMap[state] ?? 'bg-zinc-700/60 border-zinc-600 text-zinc-400';
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-semibold font-mono ${cls}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-80" />
+      {state.replace(/_/g, ' ')}
+    </span>
+  );
+}
+
+function AgentDot({ name, agentStatuses }: { name: string; agentStatuses: Map<string, string> }) {
+  const status = agentStatuses.get(name);
+  const online = status && status !== 'offline';
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`w-2 h-2 rounded-full shrink-0 ${online ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]' : 'bg-zinc-600'}`} />
+      <span className="font-mono text-xs text-zinc-500">{name}</span>
+    </div>
+  );
+}
+
+function CodingAgentChips({ names }: { names: string[] }) {
+  const MAX = 3;
+  const visible = names.slice(0, MAX);
+  const extra = names.length - MAX;
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {visible.map(n => (
+        <span key={n} className="font-mono text-[11px] px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-500 whitespace-nowrap">{n}</span>
+      ))}
+      {extra > 0 && (
+        <span className="font-mono text-[11px] px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-600">+{extra}</span>
       )}
-      <div className="mt-1.5 flex gap-3 text-xs text-gray-400 dark:text-zinc-500">
-        <span>{epic.specs.length} spec{epic.specs.length !== 1 ? 's' : ''}</span>
-        {epic.codingAgentNames.length > 0 && <span>{epic.codingAgentNames.join(', ')}</span>}
-        <span>Agent: {epic.epicAgentName}</span>
-      </div>
+    </div>
+  );
+}
+
+function EpicsTable({ epics, agentStatuses, onNavigate }: {
+  epics: Epic[];
+  agentStatuses: Map<string, string>;
+  onNavigate: (id: string) => void;
+}) {
+  const attention = epics.filter(needsAttention);
+  const rest = epics.filter(e => !needsAttention(e));
+  const attentionCount = attention.length;
+
+  return (
+    <div className="rounded-lg border border-zinc-800 overflow-hidden">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="border-b border-zinc-800 bg-zinc-900/60">
+            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5 w-[28%]">name</th>
+            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5 w-[20%]">state</th>
+            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5 w-[18%]">progress</th>
+            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5 w-[12%]">agent</th>
+            <th className="font-mono text-left text-xs text-zinc-600 font-medium px-4 py-2.5">coding agents</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-800/60">
+          {attentionCount > 0 && (
+            <tr>
+              <td colSpan={5} className="px-4 py-1.5 bg-amber-500/5 border-b border-amber-500/10">
+                <span className="font-mono text-xs text-amber-500/70 uppercase tracking-wider">
+                  {attentionCount} {attentionCount === 1 ? 'epic needs' : 'epics need'} attention
+                </span>
+              </td>
+            </tr>
+          )}
+          {[...attention, ...rest].map(epic => {
+            const isDone = epic.currentStateName === 'closed';
+            const isAttention = needsAttention(epic);
+            return (
+              <tr
+                key={epic.id}
+                onClick={() => onNavigate(epic.id)}
+                className={`cursor-pointer transition-colors ${
+                  isAttention ? 'bg-amber-500/[0.03] hover:bg-amber-500/[0.06]' :
+                  isDone      ? 'opacity-50 hover:opacity-75 hover:bg-white/[0.02]' :
+                                'hover:bg-white/[0.02]'
+                }`}
+              >
+                <td className="px-4 py-3.5">
+                  <span className={`font-bold text-sm ${isDone ? 'text-zinc-400 line-through decoration-zinc-600' : 'text-zinc-100'}`}>
+                    {epic.name ?? epic.id}
+                  </span>
+                  {epic.brief && (
+                    <p className="font-mono text-xs text-zinc-600 mt-0.5 line-clamp-1">{epic.brief}</p>
+                  )}
+                </td>
+                <td className="px-4 py-3.5">
+                  <EpicStateBadge epic={epic} />
+                </td>
+                <td className="px-4 py-3.5">
+                  <SpecProgress epic={epic} />
+                </td>
+                <td className="px-4 py-3.5">
+                  <AgentDot name={epic.epicAgentName} agentStatuses={agentStatuses} />
+                </td>
+                <td className="px-4 py-3.5">
+                  <CodingAgentChips names={epic.codingAgentNames} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -366,6 +469,13 @@ export default function EpicsListPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<StatusFilter>('open');
+  const [agentStatuses, setAgentStatuses] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    AgentApi.list()
+      .then(list => setAgentStatuses(new Map(list.map(a => [a.sessionName, a.status]))))
+      .catch(() => {});
+  }, []);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -388,9 +498,7 @@ export default function EpicsListPage() {
       const updated = args[0] as Epic;
       setEpics(prev => {
         const exists = prev.some(e => e.id === updated.id);
-        if (exists) {
-          return sortByCreatedDesc(prev.map(e => e.id === updated.id ? updated : e));
-        }
+        if (exists) return sortByCreatedDesc(prev.map(e => e.id === updated.id ? updated : e));
         return sortByCreatedDesc([updated, ...prev]);
       });
     },
@@ -400,68 +508,56 @@ export default function EpicsListPage() {
     },
   });
 
-  if (loading) return <div className="p-6 text-sm text-gray-400 dark:text-zinc-500">Loading…</div>;
+  if (loading) return <div className="p-6 text-sm text-zinc-500 font-mono">Loading…</div>;
 
   return (
-    <div className="p-5 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">Epics</h1>
-      </div>
-
-      <div className="mb-4">
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="flex items-end justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-extrabold text-zinc-100 tracking-tight">Epics</h1>
+          <p className="font-mono text-xs text-zinc-600 mt-0.5">
+            {epics.length} total{visible.length !== epics.length ? ` · ${visible.length} shown` : ''}
+          </p>
+        </div>
         <CreateEpicModal onCreated={epic => navigate(`/epics/${epic.id}`)} />
       </div>
 
-      <div className="mb-3">
-        <input
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search epics…"
-          className="w-full text-sm rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-3 py-1.5 text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div role="tablist" aria-label="Filter by status" className="flex gap-1 mb-4">
-        {filterTabs.map(tab => (
-          <button
-            key={tab.value}
-            role="tab"
-            aria-selected={activeFilter === tab.value}
-            onClick={() => setActiveFilter(tab.value)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-              activeFilter === tab.value
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search epics…"
+            className="w-full font-mono text-sm rounded-md border border-zinc-800 bg-zinc-900 pl-9 pr-4 py-2 text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600"
+          />
+        </div>
+        <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-md p-1">
+          {filterTabs.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveFilter(tab.value)}
+              className={`font-mono px-3 py-1 text-xs rounded transition-colors font-semibold ${
+                activeFilter === tab.value
+                  ? 'bg-zinc-800 text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {visible.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
-          <p className="text-sm text-gray-400 dark:text-zinc-500">{epics.length === 0 ? 'No epics yet.' : 'No epics match your filters.'}</p>
+        <div className="rounded-lg border border-zinc-800 p-10 text-center">
+          <p className="font-mono text-sm text-zinc-600">{epics.length === 0 ? 'No epics yet.' : 'No epics match your filters.'}</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {visible.map(epic => (
-            <EpicRow
-              key={epic.id}
-              epic={epic}
-              onDelete={async () => {
-                try {
-                  await EpicApi.delete(epic.id);
-                  setEpics(prev => prev.filter(e => e.id !== epic.id));
-                } catch (err) {
-                  console.error('Failed to delete epic:', err);
-                  alert(err instanceof Error ? err.message : 'Delete failed');
-                }
-              }}
-            />
-          ))}
-        </div>
+        <EpicsTable epics={visible} agentStatuses={agentStatuses} onNavigate={id => navigate(`/epics/${id}`)} />
       )}
     </div>
   );

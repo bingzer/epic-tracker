@@ -52,18 +52,12 @@ internal class SpecWritingState : EpicState
                     {specList}
                     """,
                 whenApprovedStateName: Name,
-                instruction: $"""
-                    Agent swarm raised to review all specs.
-
-                    1. Create channel `swarm-epic-{epic.Id}` via create_channel, then invite all participants: {string.Join(", ", epic.CodingAgentNames.Append(epic.EpicAgentName))}.
-                    2. Post the kickoff (per governance.md swarm protocol) to the channel via post_to_channel. Remind participants: coding agents cannot call MCP tools themselves — they post AGREE/DISAGREE to the channel and you submit on their behalf.
-                    3. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
-                    4. When all participants have posted their assessment to the channel:
-                       - Call submit_agreement for each agent on their behalf
-                       - Leave channel `swarm-epic-{epic.Id}` via leave_channel (you are the last to leave — this deletes the channel)
-                       - Call advance("{epic.Id}")
-                    Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told.
-                    """
+                instruction: AgentSwarmState.BuildCoordinatorInstruction(
+                    epicId: epic.Id,
+                    allParticipants: string.Join(", ", epic.CodingAgentNames.Append(epic.EpicAgentName)),
+                    preamble: "Agent swarm raised to review all specs. Remind participants: coding agents cannot call MCP tools themselves — they post AGREE/DISAGREE to the channel and you submit on their behalf.",
+                    footer: "Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told."
+                )
             );
         }
 

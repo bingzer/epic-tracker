@@ -29,10 +29,21 @@ internal class AgentSwarmState : EpicState
 
         if (!swarm.IsComplete)
         {
+            var voted = swarm.Agreements
+                .Where(a => a.HasAgreed.HasValue)
+                .Select(a => $"{a.AgentId} ({(a.HasAgreed == true ? "AGREE" : "DISAGREE")}{(string.IsNullOrWhiteSpace(a.Note) ? "" : $" — \"{a.Note}\"")})");
+
+            var pending = swarm.Agreements
+                .Where(a => !a.HasAgreed.HasValue)
+                .Select(a => a.AgentId);
+
             return Exit(
                 context: context,
                 instruction: $"""
-                    Not all agents have voted yet. Submit the remaining agreements via submit_agreement, then call advance("{epic.Id}").
+                    Not all agents have voted yet.
+                    Voted: {string.Join(", ", voted)}
+                    Pending: {string.Join(", ", pending)}
+                    Submit the remaining agreements via submit_agreement, then call advance("{epic.Id}").
                     """);
         }
 
@@ -62,6 +73,29 @@ internal class AgentSwarmState : EpicState
             context: context,
             instruction: BuildInstruction(epic.Id, epic.EpicAgentName, swarm)
         );
+    }
+
+    internal static string BuildCoordinatorInstruction(string epicId, string allParticipants, string preamble, bool updateEpicDoc = false, string? footer = null)
+    {
+        var channelId = $"swarm-epic-{epicId}";
+
+        var updateStep = updateEpicDoc
+            ? "- Update the epic document to record each agent's conclusion and key insights\n               "
+            : "";
+
+        var footerLine = string.IsNullOrWhiteSpace(footer) ? "" : $"\n{footer}";
+
+        return $"""
+            {preamble}
+
+            1. Create channel `{channelId}` via create_channel, then invite all participants: {allParticipants}.
+            2. Post the kickoff (per governance.md swarm protocol) to the channel via post_to_channel.
+            3. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
+            4. When all participants have posted their assessment to the channel:
+               {updateStep}- Call submit_agreement for each agent on their behalf
+               - Leave channel `{channelId}` via leave_channel (you are the last to leave — this deletes the channel)
+               - Call advance("{epicId}"){footerLine}
+            """;
     }
 
     private static string BuildInstruction(string epicId, string epicAgentName, AgentSwarm swarm)

@@ -17,6 +17,11 @@ internal class WaterproofingState : EpicState
             return new MockupState();
         }
 
+        if (epic.AgentSwarmHasConsensus())
+        {
+            epic.ResetAgentSwarm();
+        }
+
         if (epic.NeedsAgentSwarm())
         {
             epic.WaterproofingIterations++;
@@ -51,18 +56,12 @@ internal class WaterproofingState : EpicState
                     Do NOT begin any implementation.
                     """,
                 whenApprovedStateName: Name,
-                instruction: $"""
-                    Agent swarm raised for waterproofing (iteration {epic.WaterproofingIterations} of {context.Options.MaxWaterproofingIterations}).
-
-                    1. Create channel `swarm-epic-{epic.Id}` via create_channel, then invite all participants: {allParticipants}.
-                    2. Post the kickoff (per governance.md swarm protocol) to the channel via post_to_channel.
-                    3. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
-                    4. When all participants have posted their assessment to the channel:
-                       - Update the epic document to record each agent's conclusion and key insights
-                       - Call submit_agreement for each agent on their behalf
-                       - Leave channel `swarm-epic-{epic.Id}` via leave_channel (you are the last to leave — this deletes the channel)
-                       - Call advance("{epic.Id}")
-                    """
+                instruction: AgentSwarmState.BuildCoordinatorInstruction(
+                    epicId: epic.Id,
+                    allParticipants: allParticipants,
+                    preamble: $"Agent swarm raised for waterproofing (iteration {epic.WaterproofingIterations} of {context.Options.MaxWaterproofingIterations}).",
+                    updateEpicDoc: true
+                )
             );
         }
         

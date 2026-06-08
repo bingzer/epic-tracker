@@ -373,7 +373,9 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        await tmux.SendKeys(entity.EpicAgentName, $"Human {(request.IsApproved ? "approved" : "rejected")} epic {epicId}. Call advance.", cancellationToken);
+        var decision = request.IsApproved ? "approved" : "rejected";
+        var note = string.IsNullOrWhiteSpace(request.HumanInput) ? "" : $" Note: {request.HumanInput}";
+        await tmux.SendKeys(entity.EpicAgentName, $"Human {decision} epic {epicId}.{note} Call advance(\"{epicId}\") to continue.", cancellationToken);
     }
 
     /// <summary>
@@ -427,8 +429,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
         var message = entity.CurrentStateName == DraftingState.StateName
-            ? $"Let's work on epic {entity.Id}. Use the epic-tracker MCP tool: call get_epic(\"{entity.Id}\") to read the current state and instruction, then call advance(\"{entity.Id}\") to begin."
-            : $"Please continue epic {entity.Id}. Use the epic-tracker MCP tool: call get_epic(\"{entity.Id}\") to read the current state and instruction, then call advance(\"{entity.Id}\") to proceed.";
+            ? $"Work on epic \"{entity.Id}\". Call get_epic(\"{entity.Id}\") to read the current state and instruction, then call advance(\"{entity.Id}\") to begin."
+            : $"Continue epic \"{entity.Id}\". Call get_epic(\"{entity.Id}\") to read the current state and instruction, then call advance(\"{entity.Id}\") to proceed.";
 
         db.AuditLogs.Add(EpicMapper.MakeAuditLog(
             action: AuditAction.EpicNudged,

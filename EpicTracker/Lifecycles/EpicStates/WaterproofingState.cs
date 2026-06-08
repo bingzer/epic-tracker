@@ -17,11 +17,6 @@ internal class WaterproofingState : EpicState
             return new MockupState();
         }
 
-        if (epic.AgentSwarmHasConsensus())
-        {
-            epic.ResetAgentSwarm();
-        }
-
         if (epic.NeedsAgentSwarm())
         {
             epic.WaterproofingIterations++;
@@ -65,6 +60,8 @@ internal class WaterproofingState : EpicState
             );
         }
         
+        epic.ResetAgentSwarm();
+
         return new SpecWritingState();
     }
 }

@@ -202,7 +202,7 @@ function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void; }) {
                 </div>
 
                 <div>
-                  <label className={labelCls}>Coding agents</label>
+                  <label className={labelCls}>Coding agents <span className="text-red-500">*</span></label>
                   <div className="flex gap-2">
                     <AgentSelect value={agentInput} onChange={setAgentInput} placeholder="Add coding agent…" className={`${inputCls} flex-1`} />
                     <button
@@ -275,7 +275,7 @@ function CreateEpicModal({ onCreated }: { onCreated: (epic: Epic) => void; }) {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || codingAgentNames.length === 0}
                     className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
                     {submitting ? 'Creating…' : 'Create epic'}
@@ -295,40 +295,68 @@ function needsAttention(epic: Epic): boolean {
     (epic.humanInLoop != null && epic.humanInLoop.isApproved === null);
 }
 
-function SpecProgress({ epic }: { epic: Epic }) {
+const EPIC_STATE_BASE_PCT: Record<string, number> = {
+  drafting:       5,
+  mockup:         15,
+  waterproofing:  30,
+  spec_writing:   45,
+  implementation: 55,
+  agent_swarm:    55,
+  human_in_loop:  55,
+  closed:         100,
+};
+
+function epicProgress(epic: Epic): number {
+  if (epic.currentStateName === 'closed') return 100;
+
+  const displayState = ['human_in_loop', 'agent_swarm'].includes(epic.currentStateName)
+    ? (epic.lastKnownStateName ?? epic.currentStateName)
+    : epic.currentStateName;
+
+  const base = EPIC_STATE_BASE_PCT[displayState] ?? 5;
+
+  if (displayState !== 'implementation') return base;
+
   const total = epic.specs.length;
+  if (total === 0) return base;
+
   const done = epic.specs.filter(s => s.currentStateName === 'done').length;
-  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const specPct = done / total;
+
+  return Math.round(base + specPct * 40);
+}
+
+function SpecProgress({ epic }: { epic: Epic }) {
+  const pct = epicProgress(epic);
   const isDone = epic.currentStateName === 'closed';
   const color = isDone ? 'bg-emerald-500' : 'bg-blue-500';
+  const total = epic.specs.length;
+  const done = epic.specs.filter(s => s.currentStateName === 'done').length;
 
   return (
     <div className="flex items-center gap-2.5">
       <div className="w-24 h-1 bg-zinc-800 rounded-full overflow-hidden shrink-0">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs text-zinc-500 whitespace-nowrap">{done} / {total}</span>
+      {total > 0 && (
+        <span className="text-xs text-zinc-500 whitespace-nowrap">{done} / {total}</span>
+      )}
     </div>
   );
 }
 
 function EpicStateBadge({ epic }: { epic: Epic }) {
   const state = epic.currentStateName;
-  const attention = needsAttention(epic);
+  const isHil = state === 'human_in_loop';
+  const isSwarm = state === 'agent_swarm';
+  const displayState = (isHil || isSwarm)
+    ? (epic.lastKnownStateName ?? state)
+    : state;
 
   if (state === 'closed') {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold">
         ✓ done
-      </span>
-    );
-  }
-
-  if (attention) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
-        {state.replace(/_/g, ' ')}
       </span>
     );
   }
@@ -341,13 +369,21 @@ function EpicStateBadge({ epic }: { epic: Epic }) {
     drafting:       'bg-zinc-700/60 border-zinc-600 text-zinc-400',
     agent_swarm:    'bg-cyan-500/15 border-cyan-500/25 text-cyan-400',
   };
-  const cls = colorMap[state] ?? 'bg-zinc-700/60 border-zinc-600 text-zinc-400';
+  const cls = colorMap[displayState] ?? 'bg-zinc-700/60 border-zinc-600 text-zinc-400';
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-semibold ${cls}`}>
-      <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-80" />
-      {state.replace(/_/g, ' ')}
-    </span>
+    <div className="flex flex-col gap-0.5">
+      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-semibold ${cls}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-80" />
+        {displayState.replace(/_/g, ' ')}
+      </span>
+      {isHil && (
+        <span className="text-[10px] text-sky-500/70 font-medium px-1">human in loop</span>
+      )}
+      {isSwarm && (
+        <span className="text-[10px] text-cyan-500/70 font-medium px-1">agent swarm</span>
+      )}
+    </div>
   );
 }
 
@@ -402,8 +438,8 @@ function EpicsTable({ epics, agentStatuses, onNavigate }: {
         <tbody className="divide-y divide-zinc-800/60">
           {attentionCount > 0 && (
             <tr>
-              <td colSpan={5} className="px-4 py-1.5 bg-amber-500/5 border-b border-amber-500/10">
-                <span className="text-xs text-amber-500/70 font-semibold uppercase tracking-wider">
+              <td colSpan={5} className="px-4 py-1.5 bg-orange-500/5 border-b border-orange-500/10">
+                <span className="text-xs text-orange-400/60 font-semibold uppercase tracking-wider">
                   {attentionCount} {attentionCount === 1 ? 'epic needs' : 'epics need'} attention
                 </span>
               </td>
@@ -417,7 +453,7 @@ function EpicsTable({ epics, agentStatuses, onNavigate }: {
                 key={epic.id}
                 onClick={() => onNavigate(epic.id)}
                 className={`cursor-pointer transition-colors ${
-                  isAttention ? 'bg-amber-500/[0.03] hover:bg-amber-500/[0.06]' :
+                  isAttention ? 'bg-orange-500/[0.03] hover:bg-orange-500/[0.05]' :
                   isDone      ? 'opacity-50 hover:opacity-75 hover:bg-white/[0.02]' :
                                 'hover:bg-white/[0.02]'
                 }`}

@@ -45,8 +45,8 @@ export const EpicApi = {
   forceState: (epicId: string, stateName: string) =>
     api.post<Epic>(`/api/epics/${epicId}/force-state`, { stateName }),
 
-  createSpec: (epicId: string, assignedAgentName: string, specDocPath: string | null, codeReviewRequired: boolean, reviewerAgentName: string | null) =>
-    api.post<Spec>(`/api/epics/${epicId}/specs`, { assignedAgentName, specDocPath, codeReviewRequired, reviewerAgentName }),
+  createSpec: (epicId: string, specName: string, assignedAgentName: string, specDocPath: string | null, isCodeReviewRequired: boolean, reviewerAgentName: string | null) =>
+    api.post<Spec>(`/api/epics/${epicId}/specs`, { specName, assignedAgentName, specDocPath, isCodeReviewRequired, reviewerAgentName }),
 };
 
 export interface AgentStatus {

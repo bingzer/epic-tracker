@@ -290,8 +290,9 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             Objective = request.Objective,
             ToStateName = request.ToStateName,
             Agreements = epic.CodingAgentNames
+                .Append(epic.EpicAgentName)
+                .Distinct()
                 .Select(id => new AgentAgreement { AgentId = id })
-                .Append(new AgentAgreement { AgentId = epic.EpicAgentName })
                 .ToList()
         };
 

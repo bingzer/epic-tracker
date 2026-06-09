@@ -23,6 +23,7 @@ const SPEC_STATE_PROGRESS: Record<string, number> = {
   drafting: 5,
   ready: 20,
   coding: 55,
+  spec_human_in_loop: 40,
   code_review: 75,
   ac: 88,
   done: 100,
@@ -323,7 +324,7 @@ function AgentPill({ name, statuses }: { name: string; statuses?: Record<string,
   const status = agent?.status ?? 'offline';
   const dotCls =
     status === 'running'                                ? 'bg-emerald-400 shadow-[0_0_5px_1px_rgba(52,211,153,0.5)]' :
-    status === 'idle' || status === 'online'            ? 'bg-amber-400' :
+    status === 'idle' || status === 'online'            ? 'bg-zinc-400' :
     status === 'waiting_permission'                     ? 'bg-blue-400' :
     status === 'interrupted' || status === 'stale_permission' ? 'bg-red-400' :
                                                           'bg-zinc-600';
@@ -643,17 +644,15 @@ function EpicSummaryCard({
       )}
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Epic</p>
+        <div className="flex items-start justify-between mb-4">
+          <p className="text-base font-bold text-zinc-100 leading-snug pr-2">{epic.name}</p>
           <button
             onClick={() => setEditOpen(true)}
-            className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors"
+            className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.07] transition-colors shrink-0"
           >
             Edit
           </button>
         </div>
-
-        <p className="text-sm font-bold text-zinc-100 mb-3 leading-snug">{epic.name}</p>
 
         <div className="space-y-3">
           <div>
@@ -932,6 +931,153 @@ function SpecDetailDialog({
   );
 }
 
+function NewSpecDialog({
+  epicId,
+  onCreated,
+  onClose,
+}: {
+  epicId: string;
+  onCreated: () => void;
+  onClose: () => void;
+}) {
+  const [specName, setSpecName] = useState('');
+  const [agentName, setAgentName] = useState('');
+  const [specDocPath, setSpecDocPath] = useState('');
+  const [codeReviewRequired, setCodeReviewRequired] = useState(false);
+  const [reviewerAgent, setReviewerAgent] = useState('');
+  const [allAgents, setAllAgents] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    AgentApi.list()
+      .then(list => setAllAgents(list.map(a => a.sessionName).sort()))
+      .catch(() => {});
+  }, []);
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose();
+  }
+
+  async function handleCreate() {
+    if (!specName.trim() || !agentName) return;
+
+    setBusy(true);
+
+    try {
+      await EpicApi.createSpec(
+        epicId,
+        specName.trim(),
+        agentName,
+        specDocPath.trim() || null,
+        codeReviewRequired,
+        reviewerAgent || null,
+      );
+      onCreated();
+      onClose();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inputCls = 'w-full text-xs rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-zinc-100 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500';
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+    >
+      <div className="w-full max-w-md bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl flex flex-col">
+
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+          <p className="text-sm font-bold text-zinc-100">New Spec</p>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xl leading-none">×</button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Spec Name</label>
+            <input
+              value={specName}
+              onChange={e => setSpecName(e.target.value)}
+              placeholder="e.g. add-login-page"
+              className={inputCls}
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Assigned Agent</label>
+            <select
+              value={agentName}
+              onChange={e => setAgentName(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">Select agent…</option>
+              {allAgents.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Spec Doc Path <span className="text-zinc-700 normal-case font-normal">(optional)</span></label>
+            <input
+              value={specDocPath}
+              onChange={e => setSpecDocPath(e.target.value)}
+              placeholder="/absolute/path/to/spec.md"
+              className={inputCls}
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCodeReviewRequired(v => !v)}
+              className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-colors ${codeReviewRequired ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/[0.04] text-zinc-400 border-zinc-700'}`}
+            >
+              {codeReviewRequired ? '✓' : '○'} Code Review Required
+            </button>
+          </div>
+
+          {codeReviewRequired && (
+            <div>
+              <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Reviewer Agent <span className="text-zinc-700 normal-case font-normal">(optional)</span></label>
+              <select
+                value={reviewerAgent}
+                onChange={e => setReviewerAgent(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">None</option>
+                {allAgents.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+          )}
+
+        </div>
+
+        <div className="px-5 py-4 border-t border-zinc-800 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="text-xs px-4 py-2 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={busy || !specName.trim() || !agentName}
+            className="text-xs px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {busy ? 'Creating…' : 'Create Spec'}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 function SpecTableRow({
   spec,
   epicId,
@@ -973,7 +1119,7 @@ function SpecTableRow({
         {/* Name */}
         <td className="py-2 pl-4 pr-3">
           <div className="text-[12px] font-medium text-zinc-200 leading-snug">{specDisplayName(spec.id, epicId)}</div>
-          <div className="font-mono text-[10px] text-zinc-600 leading-snug">{spec.id}</div>
+          <div className="font-mono text-[10px] text-zinc-500 leading-snug">{spec.id}</div>
         </td>
 
         {/* Agent */}
@@ -1002,7 +1148,7 @@ function SpecTableRow({
         <td className="py-2 pl-3 pr-4 whitespace-nowrap">
           <div className="flex items-center gap-1.5 justify-end">
             {needsHumanReview && (
-              <button onClick={() => setDialog('hil')} className={`${btnBase} bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20`}>hil</button>
+              <button onClick={() => setDialog('hil')} className={`${btnBase} bg-sky-500/10 border-sky-500/30 text-sky-400 hover:bg-sky-500/20`}>human</button>
             )}
             {isReady && (
               <button onClick={() => setDialog('code')} className={`${btnBase} bg-emerald-500/10 border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20`}>code</button>
@@ -1035,6 +1181,7 @@ export default function EpicDetailPage() {
   const [swarmSubmitting, setSwarmSubmitting] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [newSpecOpen, setNewSpecOpen] = useState(false);
   const agentStatuses = useAgentStatuses();
 
   const load = useCallback(async () => {
@@ -1357,6 +1504,9 @@ export default function EpicDetailPage() {
 
       </div>
 
+      {newSpecOpen && (
+        <NewSpecDialog epicId={epic.id} onCreated={load} onClose={() => setNewSpecOpen(false)} />
+      )}
       <MarkdownDrawer path={drawerPath} onClose={() => setDrawerPath(null)} />
       {governanceEditorOpen && epic.epicGovernancePath && (
         <GovernanceEditor path={epic.epicGovernancePath} onClose={() => setGovernanceEditorOpen(false)} />

@@ -88,6 +88,7 @@ internal static class EpicMapper
             IsReadyToCode = entity.IsReadyToCode,
             IsCodeDone = entity.IsCodeDone,
             IsCodeReviewApproved = entity.IsCodeReviewApproved,
+            CodeReviewIterations = entity.CodeReviewIterations,
             CurrentStateName = entity.CurrentStateName
         };
 
@@ -124,6 +125,7 @@ internal static class EpicMapper
         entity.IsReadyToCode = spec.IsReadyToCode;
         entity.IsCodeDone = spec.IsCodeDone;
         entity.IsCodeReviewApproved = spec.IsCodeReviewApproved;
+        entity.CodeReviewIterations = spec.CodeReviewIterations;
         entity.IsAcPassed = spec.IsAcPassed;
         entity.IsACRequired = spec.IsACRequired;
         entity.IsCodeReviewRequired = spec.IsCodeReviewRequired;

@@ -62,6 +62,23 @@ A consensus round where coding agents discuss peer-to-peer via a broker channel 
 
 **Single agent:** If there is only one coding agent, omit peer discussion from the kickoff — they post their assessment directly to the channel.
 
+## Code Review
+
+The epic agent owns the reviewer handoff. When a spec reaches `code_review`:
+
+1. Send the reviewer their assignment via tmux-broker (spec doc, output directory, AC to review against, required signal format).
+2. Wait for their verdict. They report directly to you — not to the coding agent.
+3. On approval → spec advances to `ac` (or `done` if AC not required).
+4. On rejection → spec routes back to `coding`. The iteration counter increments.
+5. After 5 rejections → `spec_human_in_loop` is raised. Human decides whether to override to AC or send back to coding.
+
+The reviewer must use this signal format when replying to you:
+```
+SPEC {specId} STATUS: reviewing
+SPEC {specId} STATUS: review-approved
+SPEC {specId} STATUS: review-rejected REASON: <reason>
+```
+
 ## Scope Changes
 
 A coding agent may discover mid-implementation that the work is larger than the spec describes. When this happens:
@@ -164,7 +181,7 @@ Do not write this file yourself — collect summaries from the coding agents who
 | spec_drafting       | IsSpecApproved = true + file on disk | ready                                               |
 | ready               | Human clicks "Code Now" in dashboard | coding                                              |
 | coding              | IsCodeDone = true                    | code_review or ac                                   |
-| code_review         | IsCodeReviewApproved set             | ac (approved) / coding (rejected)                   |
+| code_review         | IsCodeReviewApproved set             | ac (approved) / coding (rejected, up to 5x) / spec_human_in_loop (after 5 rejections) |
 | ac                  | IsAcPassed set                       | spec_human_in_loop (always — for human sign-off)    |
 | spec_human_in_loop  | Human approves or rejects            | approveToStateName / rejectToStateName              |
 | done                | Terminal                             |                                                     |
@@ -173,7 +190,9 @@ Do not write this file yourself — collect summaries from the coding agents who
 
 `update_spec` automatically advances the spec state after each field update — you do not need to call `advance_spec` after it.
 
-**Waiting for specs:** After instructing coding agents to write specs, go idle. Do NOT call `advance` until every spec you created is in a terminal state (`ready` or `abandoned`). Call `get_epic` and check `epic.Specs` — if any spec is still in-progress, wait. One agent finishing early does not mean all specs are done.
+**Waiting for specs (spec_writing phase only):** After instructing coding agents to write specs, go idle. Do NOT call `advance` until every spec you created is in a terminal state (`ready` or `abandoned`). Call `get_epic` and check `epic.Specs` — if any spec is still in-progress, wait. One agent finishing early does not mean all specs are done.
+
+**During implementation, manage each spec independently.** When a spec's `EpicAgentInstruction` arrives (via `update_spec` auto-advance), act on it immediately — do NOT wait for other specs to finish coding first. Each spec moves through `coding → code_review → ac → done` on its own timeline. You are coordinating multiple specs in parallel.
 
 **Do not message coding agents until `EpicAgentInstruction` explicitly tells you to.** The state machine gates coding behind a human "Code Now" click — acting before that instruction arrives bypasses the gate.
 

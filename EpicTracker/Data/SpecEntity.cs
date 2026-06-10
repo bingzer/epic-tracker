@@ -16,6 +16,7 @@ public class SpecEntity
     public bool IsReadyToCode { get; set; }
     public bool IsCodeDone { get; set; }
     public bool? IsCodeReviewApproved { get; set; }
+    public int CodeReviewIterations { get; set; }
     public string CurrentStateName { get; set; } = default!;
     public string? EpicAgentInstruction { get; set; }
     public string? HumanInLoop { get; set; }

@@ -45,24 +45,15 @@ internal class CodingSpecState : SpecState
 
         if (!spec.IsCodeDone)
         {
-            var reviewInstruction = context.IsCodeReviewRequired
-                ? $"""
-                    When implementation is complete:
-                    1. Send to you (epic agent): SPEC {spec.Id} STATUS: coding-done
-                    2. Send to {spec.ReviewerAgentName} DIRECTLY via tmux-broker — do not route through PM: their assignment with the spec doc at {spec.SpecDocPath} and all relevant context.
-                    """
-                : $"""
-                    When implementation is complete, send to you (epic agent): SPEC {spec.Id} STATUS: coding-done
-                    """;
-
             return Exit(
                 context: context,
                 instruction: $"""
                     Hand off spec {spec.Id} to {spec.AssignedAgentName} via tmux-broker. Tell them to implement the spec at {spec.SpecDocPath}.
-                    If this is a retry after a rejected code review, include the rejection reason from {spec.ReviewerAgentName}'s last message in your assignment to the coding agent.
+                    If this is a retry after a rejected code review, include the rejection reason from the last review in your assignment to the coding agent.
                     Output directory for this epic: {context.Epic.OutputDirectory}
-                    {reviewInstruction}
-                    When you receive SPEC {spec.Id} STATUS: coding-done, call update_spec({spec.Id}, IsCodeDone, true). That automatically advances the spec.
+                    Tell {spec.AssignedAgentName} to tick each item in the ## Development Plan section of the spec doc as they complete it (change - [ ] to - [x]).
+                    When implementation is complete, {spec.AssignedAgentName} sends to you (epic agent): SPEC {spec.Id} STATUS: coding-done
+                    When you receive that, call update_spec({spec.Id}, IsCodeDone, true). That automatically advances the spec.
                     Any testing done during implementation should be labeled as "implementation smoke test" — not as AC results. AC is formally verified in the ac state after code review.
                     Scope change protocol: Tell {spec.AssignedAgentName} — if they discover the work is larger than the spec describes, do NOT expand scope silently. Signal: SPEC {spec.Id} SCOPE CHANGE: <description>. You will flag it for human approval before they continue.
                     Governance: {context.Epic.EpicGovernancePath}

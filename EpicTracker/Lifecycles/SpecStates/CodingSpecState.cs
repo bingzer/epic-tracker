@@ -13,6 +13,8 @@ internal class CodingSpecState : SpecState
 
         var spec = context.Spec;
 
+        spec.LastKnownStateName = Name;
+
         if (spec.ScopeChange is not null)
         {
             var instruction = spec.ScopeChange.IsApproved switch

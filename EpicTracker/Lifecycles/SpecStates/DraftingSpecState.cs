@@ -11,6 +11,8 @@ internal class DraftingSpecState : SpecState
 
         var spec = context.Spec;
 
+        spec.LastKnownStateName = Name;
+
         if (!spec.IsSpecApproved)
         {
             return Exit(

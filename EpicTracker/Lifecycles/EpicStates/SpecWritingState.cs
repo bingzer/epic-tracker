@@ -30,6 +30,7 @@ internal class SpecWritingState : EpicState
                     Agents: {agentList}
                     Tell each agent: specs should be Goldilocks-sized — not too big (one spec per concern), not too small (don't split trivial changes). One spec per output file is a good heuristic.
                     Tell each agent: save the spec file using an absolute path and report back with the absolute path (e.g. C:\Users\... or /home/...) — relative paths will be rejected.
+                    Tell each agent: if their spec depends on another spec completing first (e.g. a shared module must exist before they can build on top of it), they should flag it in their reply. You can register the dependency via create_spec's dependsOn parameter (comma-separated spec IDs) or update it later with update_spec(specId, DependsOn, "spec-a,spec-b").
                     Do NOT dispatch any coding work yet — this is the spec writing phase only.
                     """
             );

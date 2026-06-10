@@ -11,6 +11,8 @@ internal class AcSpecState : SpecState
 
         var spec = context.Spec;
 
+        spec.LastKnownStateName = Name;
+
         if (spec.IsAcPassed is null)
         {
             return Exit(

@@ -547,6 +547,9 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             ReviewerAgentName = request.ReviewerAgentName,
             IsCodeReviewRequired = request.IsCodeReviewRequired,
             SpecDocPath = request.SpecDocPath,
+            DependsOn = request.DependsOn is { Count: > 0 }
+                ? JsonSerializer.Serialize(request.DependsOn)
+                : null,
             CurrentStateName = DraftingSpecState.StateName,
             CreatedAt = now,
             UpdatedAt = now
@@ -597,6 +600,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         entity.IsACRequired = spec.IsACRequired;
         entity.IsCodeReviewRequired = spec.IsCodeReviewRequired;
         entity.ReviewerAgentName = spec.ReviewerAgentName;
+        entity.DependsOn = spec.DependsOn.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(spec.DependsOn) : null;
         entity.UpdatedAt = DateTime.UtcNow;
 
         db.AuditLogs.Add(EpicMapper.MakeAuditLog(

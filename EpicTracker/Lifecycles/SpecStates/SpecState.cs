@@ -18,6 +18,13 @@ internal abstract class SpecState
 
     public async Task<SpecState> MoveNext(SpecContext context, CancellationToken cancellationToken = default)
     {
+        if (Name != DraftingSpecState.StateName && context.Epic.CurrentStateName != EpicStates.ImplementationState.StateName)
+        {
+            return Exit(
+                context: context,
+                instruction: $"Spec {context.Spec.Id} cannot advance: epic is in '{context.Epic.CurrentStateName}', not 'implementation'.");
+        }
+
         var next = await Next(context, cancellationToken);
 
         context.Logger.LogInformation(
@@ -58,6 +65,14 @@ internal abstract class SpecState
                 throw new InvalidOperationException($"SpecDocPath must be an absolute path. Got: '{value}'");
             }
             context.Spec.SpecDocPath = value;
+            return true;
+        }
+
+        if (fieldName == nameof(Spec.DependsOn))
+        {
+            context.Spec.DependsOn = string.IsNullOrWhiteSpace(value)
+                ? []
+                : [.. value.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0)];
             return true;
         }
 

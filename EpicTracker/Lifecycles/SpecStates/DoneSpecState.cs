@@ -9,6 +9,8 @@ internal class DoneSpecState : SpecState
     {
         await Task.CompletedTask;
 
+        context.Spec.LastKnownStateName = Name;
+
         return Exit(
             context: context,
             instruction: "Spec is complete. No further action needed."

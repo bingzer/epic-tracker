@@ -89,7 +89,11 @@ internal static class EpicMapper
             IsCodeDone = entity.IsCodeDone,
             IsCodeReviewApproved = entity.IsCodeReviewApproved,
             CodeReviewIterations = entity.CodeReviewIterations,
-            CurrentStateName = entity.CurrentStateName
+            CurrentStateName = entity.CurrentStateName,
+            LastKnownStateName = entity.LastKnownStateName,
+            DependsOn = entity.DependsOn is not null
+                ? JsonSerializer.Deserialize<List<string>>(entity.DependsOn) ?? []
+                : []
         };
 
         if (entity.EpicAgentInstruction is not null)
@@ -129,6 +133,12 @@ internal static class EpicMapper
         entity.IsAcPassed = spec.IsAcPassed;
         entity.IsACRequired = spec.IsACRequired;
         entity.IsCodeReviewRequired = spec.IsCodeReviewRequired;
+
+        entity.LastKnownStateName = spec.LastKnownStateName;
+
+        entity.DependsOn = spec.DependsOn.Count > 0
+            ? JsonSerializer.Serialize(spec.DependsOn)
+            : null;
 
         entity.HumanInLoop = spec.HumanInLoop is not null
             ? JsonSerializer.Serialize(spec.HumanInLoop)

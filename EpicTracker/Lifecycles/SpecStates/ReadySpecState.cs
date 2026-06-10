@@ -11,6 +11,27 @@ internal class ReadySpecState : SpecState
 
         var spec = context.Spec;
 
+        spec.LastKnownStateName = Name;
+
+        var unmetDeps = spec.DependsOn
+            .Select(depId => context.Epic.Specs.FirstOrDefault(s => s.Id == depId))
+            .Where(dep => dep is not null && dep.CurrentStateName != AcSpecState.StateName && dep.CurrentStateName != DoneSpecState.StateName)
+            .Select(dep => dep!)
+            .ToList();
+
+        if (unmetDeps.Count > 0)
+        {
+            var blocking = string.Join(", ", unmetDeps.Select(d => $"{d.Id} ({d.CurrentStateName})"));
+
+            return Exit(
+                context: context,
+                instruction: $"""
+                    Spec {spec.Id} is blocked by unmet dependencies: {blocking}.
+                    Wait until all dependencies reach 'ac' or 'done' before proceeding.
+                    Governance: {context.Epic.EpicGovernancePath}
+                    """);
+        }
+
         if (!spec.IsReadyToCode)
         {
             return Exit(
@@ -22,7 +43,7 @@ internal class ReadySpecState : SpecState
                     Governance: {context.Epic.EpicGovernancePath}
                     """);
         }
-        
+
         return new CodingSpecState();
     }
 }

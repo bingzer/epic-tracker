@@ -241,9 +241,15 @@ SPEC {specId} STATUS: review-rejected REASON: <reason>
 | State               | Blocks until                         | Then routes to                                      |
 |---------------------|--------------------------------------|-----------------------------------------------------|
 | spec_drafting       | IsSpecApproved = true + file on disk | ready                                               |
-| ready               | Human clicks "Code Now" in dashboard | coding                                              |
+| ready               | Human clicks "Code Now" AND all dependencies in `ac` or `done` | coding                       |
 | coding              | IsCodeDone = true                    | code_review or ac                                   |
 | code_review         | IsCodeReviewApproved set             | ac (approved) / coding (rejected, up to 5x) / spec_human_in_loop (after 5 rejections) |
 | ac                  | IsAcPassed set                       | spec_human_in_loop (always — for human sign-off)    |
 | spec_human_in_loop  | Human approves or rejects            | approveToStateName / rejectToStateName              |
 | done                | Terminal                             |                                                     |
+
+### Spec Dependencies
+
+A spec can depend on one or more other specs. A dependent spec stays blocked at `ready` until all dependencies reach `ac` or `done` — the "Code Now" button is disabled until then.
+
+Set via `create_spec` (`dependsOn`: comma-separated spec IDs) or update later with `update_spec(specId, DependsOn, "spec-a,spec-b")`. Pass an empty string to clear all dependencies.

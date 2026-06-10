@@ -38,6 +38,8 @@ export interface Spec {
   isCodeDone: boolean;
   isCodeReviewApproved: boolean | null;
   currentStateName: string;
+  lastKnownStateName: string | null;
+  dependsOn: string[];
   epicAgentInstruction: string | null;
   humanInLoop: HumanInLoop | null;
   agentSwarm: AgentSwarm | null;

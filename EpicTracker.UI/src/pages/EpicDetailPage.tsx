@@ -23,11 +23,19 @@ const SPEC_STATE_PROGRESS: Record<string, number> = {
   drafting: 5,
   ready: 20,
   coding: 55,
-  spec_human_in_loop: 40,
   code_review: 75,
   ac: 88,
   done: 100,
 };
+
+const TRANSIENT_SPEC_STATES = new Set(['spec_human_in_loop', 'agent_swarm']);
+
+function specProgress(spec: { currentStateName: string; lastKnownStateName?: string | null }): number {
+  const stateForProgress = TRANSIENT_SPEC_STATES.has(spec.currentStateName)
+    ? (spec.lastKnownStateName ?? spec.currentStateName)
+    : spec.currentStateName;
+  return SPEC_STATE_PROGRESS[stateForProgress] ?? 0;
+}
 
 function specDisplayName(id: string, epicId: string): string {
   const prefix = epicId + '-';
@@ -832,20 +840,48 @@ function CodeNowDialog({
 function SpecDetailDialog({
   spec,
   epicId,
+  allSpecs,
   onClose,
   onViewDoc,
   onForceState,
+  onUpdated,
 }: {
   spec: Spec;
   epicId: string;
+  allSpecs: Spec[];
   onClose: () => void;
   onViewDoc: (path: string) => void;
   onForceState: (specId: string, stateName: string) => void;
+  onUpdated: () => void;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const progress = SPEC_STATE_PROGRESS[spec.currentStateName] ?? 0;
+  const progress = specProgress(spec);
   const isDone = spec.currentStateName === 'done';
-  const lbl = 'text-[10px] font-semibold tracking-widest uppercase text-zinc-600';
+  const lbl = 'text-xs font-semibold tracking-widest uppercase text-zinc-500';
+
+  const siblings = allSpecs.filter(s => s.id !== spec.id && !s.isAbandoned);
+  const currentDeps = spec.dependsOn ?? [];
+  const availableToAdd = siblings.filter(s => !currentDeps.includes(s.id));
+  const [selectedDep, setSelectedDep] = useState('');
+
+  async function saveDeps(next: string[]) {
+    try {
+      await SpecApi.update(spec.id, { ...spec, dependsOn: next });
+      onUpdated();
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+
+  async function handleAddDep() {
+    if (!selectedDep) return;
+    setSelectedDep('');
+    await saveDeps([...currentDeps, selectedDep]);
+  }
+
+  async function handleRemoveDep(depId: string) {
+    await saveDeps(currentDeps.filter(id => id !== depId));
+  }
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose();
@@ -865,7 +901,7 @@ function SpecDetailDialog({
         <div className="flex items-start justify-between px-5 py-4 border-b border-zinc-800">
           <div>
             <p className="text-sm font-bold text-zinc-100 leading-snug">{specDisplayName(spec.id, epicId)}</p>
-            <p className="font-mono text-[10px] text-zinc-600 mt-0.5">{spec.id}</p>
+            <p className="font-mono text-xs text-zinc-500 mt-0.5">{spec.id}</p>
           </div>
           <div className="flex items-center gap-2 ml-4 shrink-0">
             <StateBadge state={spec.currentStateName} />
@@ -881,7 +917,7 @@ function SpecDetailDialog({
               <div className="flex-1 h-[3px] rounded-full bg-zinc-800 overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style={{ width: `${progress}%` }} />
               </div>
-              <span className="text-[10px] text-zinc-600 flex-shrink-0">{isDone ? '✓ Done' : `${progress}%`}</span>
+              <span className="text-xs text-zinc-500 flex-shrink-0">{isDone ? '✓ Done' : `${progress}%`}</span>
             </div>
           </div>
 
@@ -890,31 +926,68 @@ function SpecDetailDialog({
               <p className={lbl + ' mb-1'}>Assigned Agent</p>
               {spec.assignedAgentName ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-mono text-zinc-300">{spec.assignedAgentName}</span>
+                  <span className="text-sm font-mono text-zinc-300">{spec.assignedAgentName}</span>
                   <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70">💬</a>
                 </div>
-              ) : <span className="text-xs text-zinc-600">—</span>}
+              ) : <span className="text-sm text-zinc-500">—</span>}
             </div>
             <div>
               <p className={lbl + ' mb-1'}>Reviewer</p>
               {spec.reviewerAgentName
-                ? <span className="text-xs font-mono text-orange-400">{spec.reviewerAgentName}</span>
-                : <span className="text-xs text-zinc-600">—</span>}
+                ? <span className="text-sm font-mono text-orange-400">{spec.reviewerAgentName}</span>
+                : <span className="text-sm text-zinc-500">—</span>}
             </div>
           </div>
 
           {spec.specDocPath && (
             <div>
               <p className={lbl + ' mb-1'}>Spec Doc</p>
-              <button onClick={() => { onViewDoc(spec.specDocPath!); onClose(); }} className="text-xs text-indigo-400 hover:text-indigo-300 font-mono truncate max-w-full text-left">
+              <button onClick={() => { onViewDoc(spec.specDocPath!); onClose(); }} className="text-sm text-indigo-400 hover:text-indigo-300 font-mono truncate max-w-full text-left">
                 {spec.specDocPath}
               </button>
             </div>
           )}
 
+          {siblings.length > 0 && (
+            <div>
+              <p className={lbl + ' mb-1.5'}>Dependencies</p>
+              {currentDeps.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {currentDeps.map(depId => (
+                    <span key={depId} className="inline-flex items-center gap-1 text-xs font-mono px-2 py-1 rounded border bg-amber-500/15 border-amber-500/40 text-amber-300">
+                      {specDisplayName(depId, epicId)}
+                      <button onClick={() => handleRemoveDep(depId)} className="hover:text-red-400 transition-colors leading-none" title="Remove">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {availableToAdd.length > 0 && (
+                <div className="flex gap-1.5">
+                  <select
+                    value={selectedDep}
+                    onChange={e => setSelectedDep(e.target.value)}
+                    className="flex-1 text-sm rounded border border-zinc-700 bg-zinc-800 text-zinc-400 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="">Add dependency…</option>
+                    {availableToAdd.map(s => (
+                      <option key={s.id} value={s.id}>{specDisplayName(s.id, epicId)}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleAddDep}
+                    disabled={!selectedDep}
+                    className="text-sm px-3 py-1.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <p className={lbl + ' mb-1.5'}>Force State</p>
-            <select defaultValue="" onChange={handleForceStateSelect} className="w-full text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 px-2.5 py-1.5 focus:outline-none cursor-pointer">
+            <select defaultValue="" onChange={handleForceStateSelect} className="w-full text-sm rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 px-2.5 py-1.5 focus:outline-none cursor-pointer">
               <option value="" disabled>Select state…</option>
               {SPEC_STATES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -923,7 +996,7 @@ function SpecDetailDialog({
         </div>
 
         <div className="px-5 py-4 border-t border-zinc-800 flex justify-end">
-          <button onClick={onClose} className="text-xs px-4 py-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors">Close</button>
+          <button onClick={onClose} className="text-sm px-4 py-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors">Close</button>
         </div>
 
       </div>
@@ -1081,6 +1154,7 @@ function NewSpecDialog({
 function SpecTableRow({
   spec,
   epicId,
+  allSpecs,
   onUpdated,
   onViewDoc,
   onApproveHumanInLoop,
@@ -1088,6 +1162,7 @@ function SpecTableRow({
 }: {
   spec: Spec;
   epicId: string;
+  allSpecs: Spec[];
   onUpdated: () => void;
   onViewDoc: (path: string) => void;
   onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
@@ -1095,10 +1170,17 @@ function SpecTableRow({
 }) {
   const [dialog, setDialog] = useState<'detail' | 'hil' | 'code' | null>(null);
 
-  const progress = SPEC_STATE_PROGRESS[spec.currentStateName] ?? 0;
+  const progress = specProgress(spec);
   const isDone = spec.currentStateName === 'done';
   const needsHumanReview = spec.currentStateName === 'human_in_loop' || (spec.humanInLoop !== null && spec.humanInLoop.isApproved === null);
   const isReady = spec.currentStateName === 'ready';
+
+  const blockingDeps = isReady
+    ? spec.dependsOn
+        .map(depId => allSpecs.find(s => s.id === depId))
+        .filter((dep): dep is Spec => dep !== undefined && dep.currentStateName !== 'ac' && dep.currentStateName !== 'done')
+    : [];
+  const blockedByDeps = blockingDeps.length > 0;
   const rowOpacity = spec.isAbandoned ? 'opacity-35' : isDone ? 'opacity-50' : '';
 
   const btnBase = 'text-[10px] px-2 py-0.5 rounded border transition-colors';
@@ -1106,7 +1188,7 @@ function SpecTableRow({
   return (
     <>
       {dialog === 'detail' && (
-        <SpecDetailDialog spec={spec} epicId={epicId} onClose={() => setDialog(null)} onViewDoc={onViewDoc} onForceState={onForceState} />
+        <SpecDetailDialog spec={spec} epicId={epicId} allSpecs={allSpecs} onClose={() => setDialog(null)} onViewDoc={onViewDoc} onForceState={onForceState} onUpdated={onUpdated} />
       )}
       {dialog === 'hil' && (
         <HilDialog spec={spec} onClose={() => setDialog(null)} onApproveHumanInLoop={(id, approved, feedback) => { onApproveHumanInLoop(id, approved, feedback); setDialog(null); }} />
@@ -1150,7 +1232,14 @@ function SpecTableRow({
             {needsHumanReview && (
               <button onClick={() => setDialog('hil')} className={`${btnBase} bg-sky-500/10 border-sky-500/30 text-sky-400 hover:bg-sky-500/20`}>human</button>
             )}
-            {isReady && (
+            {isReady && blockedByDeps && (
+              <button
+                disabled
+                title={`Blocked by: ${blockingDeps.map(d => d.id).join(', ')}`}
+                className={`${btnBase} bg-emerald-500/10 border-emerald-500/25 text-emerald-400 cursor-not-allowed opacity-50`}
+              >code</button>
+            )}
+            {isReady && !blockedByDeps && (
               <button onClick={() => setDialog('code')} className={`${btnBase} bg-emerald-500/10 border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20`}>code</button>
             )}
             {spec.specDocPath && (
@@ -1464,6 +1553,7 @@ export default function EpicDetailPage() {
                         key={s.id}
                         spec={s}
                         epicId={epic.id}
+                        allSpecs={epic.specs}
                         onUpdated={load}
                         onViewDoc={setDrawerPath}
                         onApproveHumanInLoop={handleApproveSpecHumanInLoop}

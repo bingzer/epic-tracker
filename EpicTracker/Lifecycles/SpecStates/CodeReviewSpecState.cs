@@ -11,6 +11,8 @@ internal class CodeReviewSpecState : SpecState
 
         var spec = context.Spec;
 
+        spec.LastKnownStateName = Name;
+
         if (spec.IsCodeReviewApproved is null)
         {
             return Exit(

@@ -112,7 +112,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         CancellationToken cancellationToken = default)
         => service.GetSpec(specId, cancellationToken);
 
-    [McpServerTool(Name = "advance_spec"), Description("Advances the spec state machine one step. Call this when the coding agent has completed the current step.")]
+    [McpServerTool(Name = "advance_spec"), Description("Advances the spec state machine one step. Call this (as the epic agent) after acting on the current EpicAgentInstruction for a spec. Coding agents cannot call this — only the epic agent can.")]
     public async Task<AdvanceSpecResult> AdvanceSpec(
         [Description("The ID of the spec to advance.")] string specId,
         CancellationToken cancellationToken = default)
@@ -134,7 +134,18 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return result;
     }
 
-    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentName (string), ReviewerAgentName (string), SpecDocPath (string), IsACRequired (bool), IsCodeReviewRequired (bool), IsSpecDrafted (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool).")]
+    [McpServerTool(Name = "flag_scope_change"), Description("Flags a scope change on a spec. Blocks the spec from advancing until a human approves or rejects the scope expansion via raise_human_in_loop on the epic.")]
+    public async Task<Spec> FlagScopeChange(
+        [Description("The ID of the spec.")] string specId,
+        [Description("Description of the scope change discovered.")] string description,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await service.FlagScopeChange(specId, new FlagScopeChangeRequest(description), cancellationToken);
+        await hubContext.Clients.All.SendAsync("SpecUpdated", result, cancellationToken);
+        return result;
+    }
+
+    [McpServerTool(Name = "update_spec"), Description("Sets a single field on a spec. Available fields: AssignedAgentName (string), ReviewerAgentName (string), SpecDocPath (string), IsACRequired (bool), IsCodeReviewRequired (bool), IsCodeDone (bool), IsAcPassed (bool), IsCodeReviewApproved (bool), ScopeChangeApproved (bool).")]
     public async Task<UpdateSpecResult> UpdateSpec(
         [Description("The ID of the spec to update.")] string specId,
         [Description("The name of the field to set.")] string fieldName,

@@ -20,7 +20,10 @@ internal class HumanInLoopSpecState : SpecState
         {
             return Exit(
                 context: context,
-                instruction: $"Waiting for human response. Call advance_spec(\"{spec.Id}\") then wait for tmux to wake you."
+                instruction: $"""
+                    Waiting for human response. Call advance_spec("{spec.Id}") then wait for tmux to wake you.
+                    Governance: {context.Epic.EpicGovernancePath}
+                    """
             );
         }
 

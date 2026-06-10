@@ -21,6 +21,12 @@ public class Spec
     public string? EpicAgentInstruction { get; private set; }
     public HumanInLoop? HumanInLoop { get; set; }
     public AgentSwarm? AgentSwarm { get; set; }
+    public ScopeChange? ScopeChange { get; set; }
+    public bool? ScopeChangeApproved
+    {
+        get => ScopeChange?.IsApproved;
+        set { if (value.HasValue) ResolveScopeChange(value.Value, null); }
+    }
 
     public void SetEpicAgentInstruction(string instruction)
     {
@@ -44,6 +50,21 @@ public class Spec
     {
         HumanInLoop = null;
     }
+
+    public void FlagScopeChange(string description)
+    {
+        ScopeChange = new ScopeChange { Description = description };
+    }
+
+    public void ResolveScopeChange(bool approved, string? note)
+    {
+        if (ScopeChange is null) return;
+
+        ScopeChange.IsApproved = approved;
+        ScopeChange.HumanNote = note;
+    }
+
+    public bool HasPendingScopeChange() => ScopeChange?.IsApproved is null && ScopeChange is not null;
 
     public void RaiseHumanInLoop(string questions, string approveToStateName, string rejectToStateName, string instruction)
     {

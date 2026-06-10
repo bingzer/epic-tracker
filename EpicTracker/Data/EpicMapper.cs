@@ -106,6 +106,11 @@ internal static class EpicMapper
             spec.AgentSwarm = JsonSerializer.Deserialize<AgentSwarm>(entity.AgentSwarm);
         }
 
+        if (entity.ScopeChange is not null)
+        {
+            spec.ScopeChange = JsonSerializer.Deserialize<ScopeChange>(entity.ScopeChange);
+        }
+
         return spec;
     }
 
@@ -129,6 +134,10 @@ internal static class EpicMapper
 
         entity.AgentSwarm = spec.AgentSwarm is not null
             ? JsonSerializer.Serialize(spec.AgentSwarm)
+            : null;
+
+        entity.ScopeChange = spec.ScopeChange is not null
+            ? JsonSerializer.Serialize(spec.ScopeChange)
             : null;
     }
 

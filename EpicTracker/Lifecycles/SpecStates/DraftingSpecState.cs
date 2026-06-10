@@ -16,7 +16,8 @@ internal class DraftingSpecState : SpecState
             return Exit(
                 context: context,
                 instruction: $"""
-                    Spec {spec.Id} is not approved yet. Ask the approver to review the spec and approve it, then call advance_spec({spec.Id}).
+                    Spec {spec.Id} is not approved yet. Ask the approver to review the spec and approve it, then call advance_spec("{spec.Id}").
+                    Governance: {context.Epic.EpicGovernancePath}
                     """
             );
         }
@@ -28,6 +29,7 @@ internal class DraftingSpecState : SpecState
                 instruction: $"""
                     Spec {spec.Id} is approved but the spec document cannot be found at {spec.SpecDocPath}.
                     Ask {spec.AssignedAgentName} to confirm the correct path, then call update_spec({spec.Id}, SpecDocPath, <corrected path>). That automatically advances the spec.
+                    Governance: {context.Epic.EpicGovernancePath}
                     """
             );
         }
@@ -49,12 +51,6 @@ internal class DraftingSpecState : SpecState
         if (fieldName == nameof(Spec.IsACRequired))
         {
             context.Spec.IsACRequired = bool.Parse(value);
-            return true;
-        }
-
-        if (fieldName == nameof(Spec.IsCodeReviewRequired))
-        {
-            context.Spec.IsCodeReviewRequired = bool.Parse(value);
             return true;
         }
 

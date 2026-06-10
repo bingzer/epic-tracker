@@ -693,6 +693,45 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         return EpicMapper.ToSpec(entity);
     }
 
+    public async Task<Spec> FlagScopeChange(string specId, FlagScopeChangeRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = await db.FindSpecOrThrow(specId, cancellationToken);
+        var spec = EpicMapper.ToSpec(entity);
+
+        spec.FlagScopeChange(request.Description);
+
+        EpicMapper.SyncSpecToEntity(spec, entity);
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return spec;
+    }
+
+    public async Task<Spec> ApproveScopeChange(string specId, ApproveScopeChangeRequest request, CancellationToken cancellationToken = default)
+    {
+        var specEntity = await db.FindSpecOrThrow(specId, cancellationToken);
+        var epicEntity = await db.FindEpicOrThrow(specEntity.EpicId, cancellationToken);
+        var spec = EpicMapper.ToSpec(specEntity);
+
+        if (spec.ScopeChange is null)
+        {
+            throw new InvalidOperationException($"No active ScopeChange for spec {specId}.");
+        }
+
+        spec.ResolveScopeChange(request.IsApproved, request.HumanNote);
+
+        EpicMapper.SyncSpecToEntity(spec, specEntity);
+        specEntity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var decision = request.IsApproved ? "approved" : "rejected";
+        await tmux.SendKeys(epicEntity.EpicAgentName, $"Scope change {decision} for spec {specId}. Call advance_spec(\"{specId}\") to continue.", cancellationToken);
+
+        return await AdvanceSpec(specId, cancellationToken);
+    }
+
     /// <summary>
     /// Advances the spec lifecycle one step. Called by the Epic Agent via MCP.
     /// </summary>

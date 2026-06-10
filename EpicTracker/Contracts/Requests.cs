@@ -32,3 +32,7 @@ public record CreateEpicRequest(
 public record ForceSpecStateRequest(string StateName);
 
 public record ForceEpicStateRequest(string StateName);
+
+public record FlagScopeChangeRequest(string Description);
+
+public record ApproveScopeChangeRequest(bool IsApproved, string? HumanNote);

@@ -19,6 +19,7 @@ internal class ReadySpecState : SpecState
                     Spec {spec.Id} is now in 'ready' state — waiting for a human to click "Code Now" in the dashboard.
                     Do NOT message the coding agent to begin coding yet.
                     Remind the coding agent assigned to this spec not to begin coding until you explicitly tell them to.
+                    Governance: {context.Epic.EpicGovernancePath}
                     """);
         }
         

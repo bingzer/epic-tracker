@@ -62,6 +62,20 @@ A consensus round where coding agents discuss peer-to-peer via a broker channel 
 
 **Single agent:** If there is only one coding agent, omit peer discussion from the kickoff — they post their assessment directly to the channel.
 
+## Scope Changes
+
+A coding agent may discover mid-implementation that the work is larger than the spec describes. When this happens:
+
+1. The coding agent signals: `SPEC {specId} SCOPE CHANGE: <description>`
+2. You call `flag_scope_change(specId, description)` — this blocks the spec from advancing.
+3. You raise `human_in_loop` on the epic with the scope change details for human approval.
+4. tmux wakes you when the human decides.
+5. Call `update_spec(specId, ScopeChangeApproved, true/false)` — this automatically unblocks the spec.
+   - Approved → coding agent updates the spec doc to reflect the new scope, then continues.
+   - Rejected → coding agent sticks to the original scope.
+
+Do not let a coding agent silently expand scope. If they signal a scope change, stop and flag it before they continue.
+
 ## Human in Loop
 
 Pauses the epic for a human decision via the dashboard. Only raise when `EpicAgentInstruction` tells you to.
@@ -91,7 +105,15 @@ One sentence describing what this spec delivers.
 - Bullet list of what is explicitly excluded.
 
 ## Acceptance Criteria
-- Testable, observable conditions that define done.
+- [ ] Testable, observable condition 1
+- [ ] Testable, observable condition 2
+
+## Development Plan
+- [ ] Implementation step 1
+- [ ] Implementation step 2
+
+## Deliverables
+- [ ] /absolute/path/to/deliverable.md
 
 ## Files Affected
 - Absolute paths to files that will be created or modified.
@@ -137,14 +159,17 @@ Do not write this file yourself — collect summaries from the coding agents who
 
 ## Spec States
 
-| State          | Blocks until                           | Then routes to                     |
-|----------------|----------------------------------------|------------------------------------|
-| spec_drafting  | IsSpecApproved = true + file on disk   | ready                              |
-| ready          | Human clicks "Code Now" in dashboard   | coding                             |
-| coding         | IsCodeDone = true                      | code_review or ac                  |
-| code_review    | IsCodeReviewApproved set               | ac (approved) / coding (rejected)  |
-| ac             | IsAcPassed set                         | human gate (true) / coding (false) |
-| done           | Terminal                               |                                    |
+| State               | Blocks until                         | Then routes to                                      |
+|---------------------|--------------------------------------|-----------------------------------------------------|
+| spec_drafting       | IsSpecApproved = true + file on disk | ready                                               |
+| ready               | Human clicks "Code Now" in dashboard | coding                                              |
+| coding              | IsCodeDone = true                    | code_review or ac                                   |
+| code_review         | IsCodeReviewApproved set             | ac (approved) / coding (rejected)                   |
+| ac                  | IsAcPassed set                       | spec_human_in_loop (always — for human sign-off)    |
+| spec_human_in_loop  | Human approves or rejects            | approveToStateName / rejectToStateName              |
+| done                | Terminal                             |                                                     |
+
+**AC always requires human sign-off.** When `IsAcPassed = true`, the spec enters `spec_human_in_loop` for a final human review before moving to `done`. When `IsAcPassed = false`, it also enters `spec_human_in_loop` — the human can override and mark as done, or send back to coding.
 
 `update_spec` automatically advances the spec state after each field update — you do not need to call `advance_spec` after it.
 

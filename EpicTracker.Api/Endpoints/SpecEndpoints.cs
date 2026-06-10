@@ -13,6 +13,7 @@ public class SpecEndpoints : ICarterModule
         app.MapPut("/specs/{id}", UpdateSpec);
         app.MapPost("/specs/{id}/advance", AdvanceSpec);
         app.MapPost("/specs/{id}/approve-human-in-loop", ApproveHumanInLoop);
+        app.MapPost("/specs/{id}/approve-scope-change", ApproveScopeChange);
         app.MapPost("/specs/{id}/force-state", ForceState);
         app.MapPost("/specs/{id}/ready", MarkReady);
     }
@@ -80,6 +81,18 @@ public class SpecEndpoints : ICarterModule
         CancellationToken cancellationToken)
     {
         var result = await service.MarkSpecReadyToCode(id, cancellationToken);
+        await hubContext.Clients.All.SendAsync("SpecUpdated", result, cancellationToken);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ApproveScopeChange(
+        string id,
+        ApproveScopeChangeRequest body,
+        EpicService service,
+        IHubContext<EpicHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.ApproveScopeChange(id, body, cancellationToken);
         await hubContext.Clients.All.SendAsync("SpecUpdated", result, cancellationToken);
         return Results.Ok(result);
     }

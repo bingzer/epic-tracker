@@ -20,6 +20,7 @@ public class SpecEntity
     public string? EpicAgentInstruction { get; set; }
     public string? HumanInLoop { get; set; }
     public string? AgentSwarm { get; set; }
+    public string? ScopeChange { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

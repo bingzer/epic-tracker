@@ -27,13 +27,37 @@ internal class ImplementationState : EpicState
         {
             var pendingList = string.Join("\n", pending.Select(s => $"- {s.Id} ({s.AssignedAgentName}): {s.CurrentStateName}"));
 
+            var hasReady = pending.Any(s => s.CurrentStateName == ReadySpecState.StateName);
+            var hasCodeReview = pending.Any(s => s.CurrentStateName == CodeReviewSpecState.StateName);
+
+            var notes = new List<string>();
+
+            if (hasReady)
+            {
+                notes.Add("Specs in 'ready' are waiting for a human to click \"Code Now\" — do NOT message their coding agents.");
+            }
+
+            if (hasCodeReview)
+            {
+                notes.Add("Specs in 'code_review' are waiting for a reviewer assignment — advance_spec will give you the assignment to send.");
+            }
+
+            var hasHumanInLoop = pending.Any(s => s.CurrentStateName == HumanInLoopSpecState.StateName);
+
+            if (hasHumanInLoop)
+            {
+                notes.Add("Specs in 'spec_human_in_loop' are paused waiting for a human decision in the dashboard — do not advance them.");
+            }
+
+            var notesBlock = notes.Count > 0 ? "\n" + string.Join("\n", notes) : string.Empty;
+
             return Exit(
                 context: context,
                 instruction: $"""
                     Specs still in progress:
-                    {pendingList}
-                    Do NOT message coding agents. The human controls when each spec starts via the "Code Now" button in the dashboard.
-                    Poll spec states via get_epic, then call advance("{epic.Id}") once all specs reach "done".
+                    {pendingList}{notesBlock}
+                    Call advance_spec for each pending spec to get its instruction and drive it forward.
+                    Once all specs reach "done", call advance("{epic.Id}").
                     """);
         }
 

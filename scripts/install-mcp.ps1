@@ -4,9 +4,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     exit 1
 }
 
-$default = "$env:USERPROFILE\github\epic-tracker"
-$input = Read-Host "Epic Tracker project directory [$default]"
-$projectDir = if ($input.Trim()) { $input.Trim() } else { $default }
+$projectDir = if ($PSScriptRoot) { Split-Path $PSScriptRoot -Parent } else { (Get-Location).Path }
 
 if (-not (Test-Path $projectDir)) {
     Write-Error "Directory not found: $projectDir"

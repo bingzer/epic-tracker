@@ -213,6 +213,8 @@ Do not begin coding until the epic agent explicitly assigns a spec. Do not call 
 
 Reviewer agents assess coding agent output against the spec's acceptance criteria. They report directly to the epic agent — not to the coding agent.
 
+When assigned a review, the epic agent will instruct you to message the coding agent first and ask which files changed, any reference docs consulted, and any extra conventions applied — so you can read those directly rather than scanning the whole codebase.
+
 Use this signal format when replying:
 
 ```

@@ -25,6 +25,12 @@ internal class CodeReviewSpecState : SpecState
                       - Implemented by: {spec.AssignedAgentName}
                       - Output directory: {context.Epic.OutputDirectory}
                       - Review against: ## Acceptance Criteria in the spec doc
+                      - Tell the reviewer to message {spec.AssignedAgentName} and ask:
+                          1. Which files were created or modified
+                          2. Any knowledge files or reference docs consulted
+                          3. Any additional coding conventions applied
+                        The reviewer must collect those answers before starting the review
+                        and read the named files directly — not scan the whole codebase.
                       - Reply to you (epic agent) with one of:
                           SPEC {spec.Id} STATUS: reviewing
                           SPEC {spec.Id} STATUS: review-approved

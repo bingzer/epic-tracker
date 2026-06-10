@@ -149,7 +149,7 @@ internal class AgentSwarmState : EpicState
             2. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
 
             3. When all participants have posted their assessment to the channel:
-               - Update the epic document to record each agent's conclusion and key insights
+               - Update the epic document: record each agent's conclusion and key insights under the Waterproofing section, and tick off any open questions that were resolved during this iteration
                - Call submit_agreement for each agent on their behalf
                - Leave channel `{channelId}` via leave_channel (you are the last to leave — this deletes the channel)
                - Call advance("{epicId}")

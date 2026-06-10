@@ -13,26 +13,57 @@ epics/<slug>/
   output/          — deliverables and generated artifacts
 ```
 
-Tell every coding agent to save their spec file under `specs/`, mockups under `mockups/`, and other output under `output/`.
+## Epic Document Format
 
-## Your Role
+The epic document (`epic.md`) is written during drafting and updated throughout the process. It must follow this structure:
 
-You are the coordinator. You drive the state machine, orchestrate agents, and surface decisions to humans. You do not write code, specs, or documents — you delegate everything to coding agents via tmux and track their work.
+```markdown
+# Epic: <title>
+
+## Goal
+One sentence describing what this epic delivers.
+
+## Background
+Why this is being done. Context, motivation, or problem being solved.
+
+## Scope
+- What is included.
+
+## Out of Scope
+- What is explicitly excluded.
+
+## Open Questions
+All open questions must be resolved during waterproofing before the epic can advance to spec_writing.
+- [ ] <question — can be added at any stage by any agent or human; tick off when resolved>  
+
+## Waterproofing
+
+### Iteration 1
+| Agent | Vote | Key Insight |
+|-------|------|-------------|
+| <agent> | AGREE / DISAGREE / BLOCKED | <insight> |
+```
 
 ## Agent Roles
 
 | Role           | Has MCP Tools? | Responsibility                  |
 |----------------|----------------|---------------------------------|
-| Epic Agent     | Yes (you)      | Drive state machine, coordinate |
+| Epic Agent     | Yes            | Drive state machine, coordinate |
 | Coding Agent   | No             | Implement specs, write docs     |
 | Reviewer Agent | No             | Review coding agent output      |
 
-Coding agents cannot call `advance`, `update_spec`, or any Epic Tracker tool. You must:
+---
 
-- Give them full context in your tmux message: spec ID, spec doc path, governance path, acceptance criteria, what done looks like.
+## Epic Agent
+
+The epic agent drives the state machine, orchestrates agents, and surfaces decisions to humans. It does not write code, specs, or documents — it delegates everything to coding agents via tmux and tracks their work.
+
+Coding agents cannot call `advance`, `update_spec`, or any Epic Tracker tool. The epic agent must:
+
+- Give them full context in the tmux message: spec ID, spec doc path, governance path, acceptance criteria, what done looks like.
 - Call `advance` and `update_spec` on their behalf after they signal completion.
 
-## Tmux Broker
+### Tmux Broker
 
 All agent communication goes through tmux broker MCP tools:
 
@@ -40,7 +71,7 @@ All agent communication goes through tmux broker MCP tools:
 - `send_message` — Send an assignment to an existing agent session.
 - `get_message` — Poll for a reply from an agent session.
 
-## Agent Swarm
+### Agent Swarm
 
 A consensus round where coding agents discuss peer-to-peer via a broker channel and submit their assessments before the epic proceeds. Only raise when `EpicAgentInstruction` tells you to.
 
@@ -62,30 +93,23 @@ A consensus round where coding agents discuss peer-to-peer via a broker channel 
 
 **Single agent:** If there is only one coding agent, omit peer discussion from the kickoff — they post their assessment directly to the channel.
 
-## Code Review
+### Code Review
 
 The epic agent owns the reviewer handoff. When a spec reaches `code_review`:
 
 1. Send the reviewer their assignment via tmux-broker (spec doc, output directory, AC to review against, required signal format).
-2. Wait for their verdict. They report directly to you — not to the coding agent.
+2. Wait for their verdict. They report directly to the epic agent — not to the coding agent.
 3. On approval → spec advances to `ac` (or `done` if AC not required).
 4. On rejection → spec routes back to `coding`. The iteration counter increments.
 5. After 5 rejections → `spec_human_in_loop` is raised. Human decides whether to override to AC or send back to coding.
 
-The reviewer must use this signal format when replying to you:
-```
-SPEC {specId} STATUS: reviewing
-SPEC {specId} STATUS: review-approved
-SPEC {specId} STATUS: review-rejected REASON: <reason>
-```
-
-## Scope Changes
+### Scope Changes
 
 A coding agent may discover mid-implementation that the work is larger than the spec describes. When this happens:
 
 1. The coding agent signals: `SPEC {specId} SCOPE CHANGE: <description>`
-2. You call `flag_scope_change(specId, description)` — this blocks the spec from advancing.
-3. You raise `human_in_loop` on the epic with the scope change details for human approval.
+2. Call `flag_scope_change(specId, description)` — this blocks the spec from advancing.
+3. Raise `human_in_loop` on the epic with the scope change details for human approval.
 4. tmux wakes you when the human decides.
 5. Call `update_spec(specId, ScopeChangeApproved, true/false)` — this automatically unblocks the spec.
    - Approved → coding agent updates the spec doc to reflect the new scope, then continues.
@@ -93,7 +117,7 @@ A coding agent may discover mid-implementation that the work is larger than the 
 
 Do not let a coding agent silently expand scope. If they signal a scope change, stop and flag it before they continue.
 
-## Human in Loop
+### Human in Loop
 
 Pauses the epic for a human decision via the dashboard. Only raise when `EpicAgentInstruction` tells you to.
 
@@ -102,7 +126,36 @@ Pauses the epic for a human decision via the dashboard. Only raise when `EpicAge
 3. tmux wakes you when the human decides.
 4. Call `get_epic` to read the decision, then `advance` to route forward.
 
-## Spec Format
+### Deliverables
+
+When all specs are done, compile `output/deliverable.md` before raising human-in-loop. Message each coding agent via tmux to provide their summary, then stitch them together.
+
+Required format:
+
+```markdown
+# Deliverable: <epic name>
+
+## Summary
+One paragraph describing what was built overall.
+
+## Specs
+
+### <spec-id> — <spec name>
+**Agent:** <agent session name>
+**What changed:** Describe what was built or modified.
+**Files:** List absolute paths of created or modified files.
+**How to verify:** What should the reviewer run, open, or check to confirm the work is correct.
+```
+
+Do not write this file yourself — collect summaries from the coding agents who did the work.
+
+---
+
+## Coding Agent
+
+Coding agents implement specs and write documents. They do not have access to Epic Tracker MCP tools — the epic agent calls `advance` and `update_spec` on their behalf.
+
+### Spec Format
 
 Each spec document must follow this structure:
 
@@ -136,30 +189,39 @@ One sentence describing what this spec delivers.
 - Absolute paths to files that will be created or modified.
 ```
 
-Share this template with every coding agent when asking them to write a spec.
+Save spec files under `specs/`, mockups under `mockups/`, and other output under `output/`. Always use absolute paths when reporting file locations back to the epic agent.
 
-## Deliverables
+### Signaling Completion
 
-When all specs are done, compile `output/deliverable.md` before raising human-in-loop. Message each coding agent via tmux to provide their summary, then stitch them together.
+When done with a spec, reply to the epic agent with:
 
-Required format:
-
-```markdown
-# Deliverable: <epic name>
-
-## Summary
-One paragraph describing what was built overall.
-
-## Specs
-
-### <spec-id> — <spec name>
-**Agent:** <agent session name>
-**What changed:** Describe what was built or modified.
-**Files:** List absolute paths of created or modified files.
-**How to verify:** What should the reviewer run, open, or check to confirm the work is correct.
+```
+SPEC {specId} STATUS: done
 ```
 
-Do not write this file yourself — collect summaries from the coding agents who did the work.
+To signal a scope change:
+
+```
+SPEC {specId} SCOPE CHANGE: <description>
+```
+
+Do not begin coding until the epic agent explicitly assigns a spec. Do not call any Epic Tracker MCP tools.
+
+---
+
+## Reviewer Agent
+
+Reviewer agents assess coding agent output against the spec's acceptance criteria. They report directly to the epic agent — not to the coding agent.
+
+Use this signal format when replying:
+
+```
+SPEC {specId} STATUS: reviewing
+SPEC {specId} STATUS: review-approved
+SPEC {specId} STATUS: review-rejected REASON: <reason>
+```
+
+---
 
 ## Epic States
 
@@ -185,15 +247,3 @@ Do not write this file yourself — collect summaries from the coding agents who
 | ac                  | IsAcPassed set                       | spec_human_in_loop (always — for human sign-off)    |
 | spec_human_in_loop  | Human approves or rejects            | approveToStateName / rejectToStateName              |
 | done                | Terminal                             |                                                     |
-
-**AC always requires human sign-off.** When `IsAcPassed = true`, the spec enters `spec_human_in_loop` for a final human review before moving to `done`. When `IsAcPassed = false`, it also enters `spec_human_in_loop` — the human can override and mark as done, or send back to coding.
-
-`update_spec` automatically advances the spec state after each field update — you do not need to call `advance_spec` after it.
-
-**Waiting for specs (spec_writing phase only):** After instructing coding agents to write specs, go idle. Do NOT call `advance` until every spec you created is in a terminal state (`ready` or `abandoned`). Call `get_epic` and check `epic.Specs` — if any spec is still in-progress, wait. One agent finishing early does not mean all specs are done.
-
-**During implementation, manage each spec independently.** When a spec's `EpicAgentInstruction` arrives (via `update_spec` auto-advance), act on it immediately — do NOT wait for other specs to finish coding first. Each spec moves through `coding → code_review → ac → done` on its own timeline. You are coordinating multiple specs in parallel.
-
-**Do not message coding agents until `EpicAgentInstruction` explicitly tells you to.** The state machine gates coding behind a human "Code Now" click — acting before that instruction arrives bypasses the gate.
-
-`IsSpecApproved` is set by the epic agent swarm consensus in `spec_writing` — do not set it manually.

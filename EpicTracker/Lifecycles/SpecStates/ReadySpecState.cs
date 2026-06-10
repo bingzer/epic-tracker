@@ -13,15 +13,9 @@ internal class ReadySpecState : SpecState
 
         spec.LastKnownStateName = Name;
 
-        var unmetDeps = spec.DependsOn
-            .Select(depId => context.Epic.Specs.FirstOrDefault(s => s.Id == depId))
-            .Where(dep => dep is not null && dep.CurrentStateName != AcSpecState.StateName && dep.CurrentStateName != DoneSpecState.StateName)
-            .Select(dep => dep!)
-            .ToList();
-
-        if (unmetDeps.Count > 0)
+        if (TryGetBlockingDeps(spec, context.Epic.Specs, out var blockingDeps))
         {
-            var blocking = string.Join(", ", unmetDeps.Select(d => $"{d.Id} ({d.CurrentStateName})"));
+            var blocking = string.Join(", ", blockingDeps.Select(d => $"{d.Id} ({d.CurrentStateName})"));
 
             return Exit(
                 context: context,
@@ -45,5 +39,18 @@ internal class ReadySpecState : SpecState
         }
 
         return new CodingSpecState();
+    }
+
+    private static bool TryGetBlockingDeps(Spec spec, IEnumerable<Spec> allSpecs, out List<Spec> blockingDeps)
+    {
+        var resolved = new[] { AcSpecState.StateName, DoneSpecState.StateName };
+
+        blockingDeps = spec.DependsOn
+            .Select(depId => allSpecs.FirstOrDefault(s => s.Id == depId))
+            .Where(dep => dep is not null && !resolved.Contains(dep.CurrentStateName) && !resolved.Contains(dep.LastKnownStateName))
+            .Select(dep => dep!)
+            .ToList();
+
+        return blockingDeps.Count > 0;
     }
 }

@@ -84,4 +84,7 @@ export const SpecApi = {
     api.post<Spec>(`/api/specs/${specId}/force-state`, { stateName }),
 
   codeNow: (specId: string) => api.post<Spec>(`/api/specs/${specId}/ready`),
+
+  abandon: (specId: string, abandon: boolean) =>
+    api.post<Spec>(`/api/specs/${specId}/abandon`, { abandon }),
 };

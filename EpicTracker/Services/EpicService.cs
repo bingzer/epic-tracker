@@ -697,6 +697,29 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         return EpicMapper.ToSpec(entity);
     }
 
+    public async Task<Spec> AbandonSpec(string specId, bool abandon, CancellationToken cancellationToken = default)
+    {
+        var entity = await db.FindSpecOrThrow(specId, cancellationToken);
+        var epicEntity = await db.FindEpicOrThrow(entity.EpicId, cancellationToken);
+
+        entity.IsAbandoned = abandon;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        db.AuditLogs.Add(EpicMapper.MakeAuditLog(
+            action: AuditAction.SpecUpdated,
+            epicState: epicEntity.CurrentStateName,
+            epicId: entity.EpicId,
+            specId: specId,
+            specState: entity.CurrentStateName,
+            actor: "human",
+            message: new { specId, abandoned = abandon }
+        ));
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return EpicMapper.ToSpec(entity);
+    }
+
     public async Task<Spec> FlagScopeChange(string specId, FlagScopeChangeRequest request, CancellationToken cancellationToken = default)
     {
         var entity = await db.FindSpecOrThrow(specId, cancellationToken);

@@ -33,6 +33,11 @@ internal class HumanInLoopSpecState : SpecState
 
         spec.ResetHumanApproval();
 
+        if (toStateName == CodingSpecState.StateName)
+        {
+            spec.IsCodeDone = false;
+        }
+
         return MoveTo(toStateName);
     }
 }

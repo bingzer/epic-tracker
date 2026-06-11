@@ -837,6 +837,48 @@ function CodeNowDialog({
   );
 }
 
+function AbandonButton({ spec, onUpdated }: { spec: Spec; onUpdated: () => void }) {
+  const [busy, setBusy] = useState(false);
+
+  async function handleClick() {
+    const msg = spec.isAbandoned
+      ? `Restore spec "${spec.id}"?`
+      : `Abandon spec "${spec.id}"? It will be hidden from the board.`;
+    if (!window.confirm(msg)) return;
+    setBusy(true);
+    try {
+      await SpecApi.abandon(spec.id, !spec.isAbandoned);
+      onUpdated();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (spec.isAbandoned) {
+    return (
+      <button
+        onClick={handleClick}
+        disabled={busy}
+        className="text-sm px-3 py-1.5 rounded-lg border border-zinc-600 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 disabled:opacity-40 transition-colors"
+      >
+        {busy ? '…' : 'Restore'}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={busy}
+      className="text-sm px-3 py-1.5 rounded-lg border border-red-800 text-red-400 hover:bg-red-900/30 disabled:opacity-40 transition-colors"
+    >
+      {busy ? '…' : 'Abandon'}
+    </button>
+  );
+}
+
 function SpecDetailDialog({
   spec,
   epicId,
@@ -995,7 +1037,8 @@ function SpecDetailDialog({
 
         </div>
 
-        <div className="px-5 py-4 border-t border-zinc-800 flex justify-end">
+        <div className="px-5 py-4 border-t border-zinc-800 flex justify-between items-center">
+          <AbandonButton spec={spec} onUpdated={onUpdated} />
           <button onClick={onClose} className="text-sm px-4 py-2 rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors">Close</button>
         </div>
 
@@ -1178,7 +1221,11 @@ function SpecTableRow({
   const blockingDeps = isReady
     ? spec.dependsOn
         .map(depId => allSpecs.find(s => s.id === depId))
-        .filter((dep): dep is Spec => dep !== undefined && dep.currentStateName !== 'ac' && dep.currentStateName !== 'done')
+        .filter((dep): dep is Spec => {
+          if (dep === undefined) return false;
+          const resolved = ['ac', 'done'];
+          return !resolved.includes(dep.currentStateName) && !resolved.includes(dep.lastKnownStateName ?? '');
+        })
     : [];
   const blockedByDeps = blockingDeps.length > 0;
   const rowOpacity = spec.isAbandoned ? 'opacity-35' : isDone ? 'opacity-50' : '';

@@ -16,3 +16,4 @@
 | 12 | **Tabbed epic detail page** — tabs: `Epic Details` / `Epic Board` / `Audit Log` / `Agent`. Human review above tabs. Agent swarm in Agent tab. | Medium | 🔲 Todo | — |
 | 13 | **Breadcrumbs during transient states** — shows full trail with last real state highlighted + amber pill for transient. Derived from audit log. | Medium | ✅ Done | — |
 | 14 | **General UI improvements** — ongoing, opportunistic. | — | 🔲 Ongoing | — |
+| 15 | **Peer review flag per spec** — `IsPeerReviewRequired` bool on each spec. When set, after coding is done, all other coding agents in the epic (not the implementer) must review the spec before it advances to code_review/AC. New `peer_review` spec state. Epic agent coordinates via tmux. | Medium | 🔲 Todo | What happens on peer review failure — back to coding? Should final sign-off rejection also reset peer review? |

@@ -10,9 +10,18 @@ internal class ClosedState : EpicState
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask;
+        if (!context.FileSystem.FileExists(context.Epic.EpicDeliverablesPath))
+        {
+            return Exit(
+                context: context,
+                instruction: $"Cannot close this epic: deliverables.md is missing. " +
+                             $"Create {context.Epic.EpicDeliverablesPath} documenting what was built and delivered, then call advance again."
+            );
+        }
 
         context.Epic.LastKnownStateName = Name;
+
+        await context.Broker.DeleteChannel($"epic-{context.Epic.Id}", context.Epic.EpicAgentName, cancellationToken);
 
         return Exit(
             context: context,

@@ -694,6 +694,12 @@ function EpicSummaryCard({
           </div>
 
           <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              onClick={() => EpicApi.openDirectory(epic.id)}
+              className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              📁 Epic Directory
+            </button>
             {epic.epicDocumentPath && (
               <button
                 onClick={() => onViewDoc(epic.epicDocumentPath)}
@@ -901,6 +907,27 @@ function SpecDetailDialog({
   const isDone = spec.currentStateName === 'done';
   const lbl = 'text-xs font-semibold tracking-widest uppercase text-zinc-500';
 
+  const FLAG_CONFIGS: { field: keyof Spec; label: string }[] = [
+    { field: 'isSpecDrafted', label: 'Spec Drafted' },
+    { field: 'isSpecApproved', label: 'Spec Approved' },
+    { field: 'isCodeDone', label: 'Code Done' },
+    { field: 'isAcPassed', label: 'AC Passed' },
+    { field: 'isACRequired', label: 'AC Required' },
+    { field: 'isCodeReviewRequired', label: 'Code Review Required' },
+    { field: 'isCodeReviewApproved', label: 'Code Review Approved' },
+    { field: 'isAbandoned', label: 'Abandoned' },
+  ];
+
+  async function handleToggleFlag(field: keyof Spec) {
+    const current = spec[field] as boolean | null;
+    try {
+      await SpecApi.update(spec.id, { ...spec, [field]: !current });
+      onUpdated();
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+
   const siblings = allSpecs.filter(s => s.id !== spec.id && !s.isAbandoned);
   const currentDeps = spec.dependsOn ?? [];
   const availableToAdd = siblings.filter(s => !currentDeps.includes(s.id));
@@ -960,6 +987,24 @@ function SpecDetailDialog({
                 <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style={{ width: `${progress}%` }} />
               </div>
               <span className="text-xs text-zinc-500 flex-shrink-0">{isDone ? '✓ Done' : `${progress}%`}</span>
+            </div>
+          </div>
+
+          <div>
+            <p className={lbl + ' mb-1.5'}>Flags</p>
+            <div className="flex flex-wrap gap-1.5">
+              {FLAG_CONFIGS.map(cfg => {
+                const val = spec[cfg.field] as boolean | null;
+                const active = val === true;
+                const cls = active
+                  ? 'px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                  : 'px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors bg-zinc-800 text-zinc-500 border border-zinc-700 hover:bg-zinc-700 hover:text-zinc-300';
+                return (
+                  <button key={cfg.field} onClick={() => handleToggleFlag(cfg.field)} className={cls}>
+                    {active ? '✓ ' : ''}{cfg.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1214,7 +1259,6 @@ function SpecTableRow({
   const [dialog, setDialog] = useState<'detail' | 'hil' | 'code' | null>(null);
 
   const progress = specProgress(spec);
-  const isDone = spec.currentStateName === 'done';
   const needsHumanReview = spec.currentStateName === 'human_in_loop' || (spec.humanInLoop !== null && spec.humanInLoop.isApproved === null);
   const isReady = spec.currentStateName === 'ready';
 
@@ -1228,7 +1272,7 @@ function SpecTableRow({
         })
     : [];
   const blockedByDeps = blockingDeps.length > 0;
-  const rowOpacity = spec.isAbandoned ? 'opacity-35' : isDone ? 'opacity-50' : '';
+  const rowOpacity = spec.isAbandoned ? 'opacity-35' : '';
 
   const btnBase = 'text-[10px] px-2 py-0.5 rounded border transition-colors';
 

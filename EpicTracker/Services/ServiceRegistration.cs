@@ -24,6 +24,7 @@ public static class ServiceRegistration
         });
 
         services.AddScoped<EpicService>();
+        services.AddHttpClient<BrokerService>();
         services.AddSingleton<TmuxService>();
         services.AddSingleton<IFileSystem, FileSystem>();
         services.AddSingleton<EpicScaffolding>();

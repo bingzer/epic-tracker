@@ -9,4 +9,5 @@ internal class EpicContext
     public required ILogger Logger { get; init; }
     public required IFileSystem FileSystem { get; init; }
     public required EpicTrackerOptions Options { get; init; }
+    public required BrokerService Broker { get; init; }
 }

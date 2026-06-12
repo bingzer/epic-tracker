@@ -38,23 +38,26 @@ internal class WaterproofingState : EpicState
                 );
             }
 
-            var allParticipants = string.Join(", ", epic.CodingAgentNames.Append(epic.EpicAgentName));
+            var participants = epic.CodingAgentNames.Append(epic.EpicAgentName).ToList();
+            var objective = $"""
+                Read the epic document at {epic.EpicDocumentPath}.
+                Your role: contribute your domain knowledge and technical constraints relevant to this epic.
+                Share what you know that affects feasibility, scope, or approach — things the epic agent cannot know without your expertise.
+                DISAGREE if the epic does not yet reflect your input or contains something technically incorrect.
+                AGREE only when the epic accurately represents the technical reality as you understand it (LGTM).
+                Do NOT begin any implementation.
+                """;
 
             return RaiseAgentSwarm(
                 context: context,
-                objective: $"""
-                    Read the epic document at {epic.EpicDocumentPath}.
-                    Your role: contribute your domain knowledge and technical constraints relevant to this epic.
-                    Share what you know that affects feasibility, scope, or approach — things the epic agent cannot know without your expertise.
-                    DISAGREE if the epic does not yet reflect your input or contains something technically incorrect.
-                    AGREE only when the epic accurately represents the technical reality as you understand it (LGTM).
-                    Do NOT begin any implementation.
-                    """,
+                objective: objective,
                 whenApprovedStateName: Name,
                 instruction: AgentSwarmState.BuildCoordinatorInstruction(
                     epicId: epic.Id,
-                    allParticipants: allParticipants,
-                    preamble: $"Agent swarm raised for waterproofing (iteration {epic.WaterproofingIterations} of {context.Options.MaxWaterproofingIterations}).",
+                    participants: participants,
+                    epicAgentName: epic.EpicAgentName,
+                    preamble: objective,
+                    iteration: epic.WaterproofingIterations,
                     updateEpicDoc: true
                 )
             );

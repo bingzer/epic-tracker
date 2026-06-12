@@ -13,6 +13,7 @@ public class Epic
     public string MockupDirectory => Path.Combine(BasePath, "epics", Slug, "mockups");
     public string SpecsDirectory => Path.Combine(BasePath, "epics", Slug, "specs");
     public string OutputDirectory => Path.Combine(BasePath, "epics", Slug, "output");
+    public string EpicDeliverablesPath => Path.Combine(BasePath, "epics", Slug, "deliverables.md");
     public bool NeedsMockup { get; set; }
     public bool IsDocDrafted { get; set; }
     public bool IsMockupDone { get; set; }
@@ -51,8 +52,9 @@ public class Epic
             Objective = objective,
             ToStateName = toStateName,
             Agreements = CodingAgentNames
+                .Append(EpicAgentName)
+                .Distinct()
                 .Select(id => new AgentAgreement { AgentId = id })
-                .Append(new AgentAgreement { AgentId = EpicAgentName })
                 .ToList()
         };
 

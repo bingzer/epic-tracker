@@ -42,6 +42,8 @@ export const EpicApi = {
 
   delete: (epicId: string) => api.delete(`/api/epics/${epicId}`),
 
+  openDirectory: (epicId: string) => api.post<void>(`/api/epics/${epicId}/open-directory`),
+
   forceState: (epicId: string, stateName: string) =>
     api.post<Epic>(`/api/epics/${epicId}/force-state`, { stateName }),
 

@@ -109,7 +109,7 @@ export function SpecRow({ spec, onApproveHumanInLoop, onForceState, onViewDoc, o
 
   return (
     <div
-      className={`rounded-xl border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 transition-colors hover:border-gray-200 dark:hover:border-zinc-700 ${isDone ? 'opacity-60' : ''}`}
+      className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 transition-colors hover:border-gray-200 dark:hover:border-zinc-700"
     >
       {/* Header row: title/id + state badge */}
       <div className="flex items-start justify-between gap-3 mb-3">

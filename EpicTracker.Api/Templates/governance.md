@@ -75,23 +75,16 @@ All agent communication goes through tmux broker MCP tools:
 
 A consensus round where coding agents discuss peer-to-peer via a broker channel and submit their assessments before the epic proceeds. Only raise when `EpicAgentInstruction` tells you to.
 
-1. Call `raise_agent_swarm(objective, toStateName)`, then `advance`.
-2. Create channel `swarm-epic-{epicId}` via `create_channel`. Invite all participants (coding agents + yourself) via `invite_to_channel`.
-3. Post a structured kickoff to the channel via `post_to_channel` containing:
-   - The objective
-   - The full participant list, your session name as coordinator, and the channel name
-   - Rules: discuss in the channel, stay on domain, ask the coordinator for scope/business questions (you can escalate to human via raise_human_in_loop), no need to reach a definitive conclusion
-   - Process: discuss in the channel, then post AGREE, DISAGREE, or BLOCKED with reasoning to the channel, then leave the channel
-4. Step back and go idle. Do NOT call `advance`, poll, or message agents again. You are waiting — one agent reporting in early does not mean the swarm is done. Wait until ALL participants have posted their assessment.
-5. When all participants have posted their assessment to the channel:
-   - Update the epic document to record each agent's conclusion and key insights from the discussion
-   - Call `submit_agreement` for each agent on their behalf (coding agents cannot call it themselves)
-   - Leave the channel via `leave_channel` — you are the last to leave, which deletes the channel
-   - Call `advance`
-6. If an agent does not respond, submit a disagreement with a note that they were unreachable.
-7. Disagreement triggers another iteration (max 5, then `human_in_loop` fires automatically). On re-vote rounds, the channel already exists — post the kickoff directly without recreating it.
+The state machine handles channel creation, member invites, and kickoff message posting automatically. Your role as coordinator is:
 
-**Single agent:** If there is only one coding agent, omit peer discussion from the kickoff — they post their assessment directly to the channel.
+1. Call `raise_agent_swarm(objective, toStateName)`, then `advance` — channel, invites, and kickoff message are all handled automatically by the server.
+2. Step back and go idle. Do NOT call `advance`, poll, or message agents again. Wait until ALL participants have posted `VOTE: AGREE | DISAGREE | BLOCKED`.
+3. When all participants have voted:
+   - Update the epic document to record each agent's conclusion and key insights
+   - Call `submit_agreement` for each agent on their behalf (coding agents cannot call it themselves)
+   - Call `advance`
+4. If an agent does not respond, submit a disagreement with a note that they were unreachable.
+5. Disagreement triggers another iteration (max 5, then `human_in_loop` fires automatically).
 
 ### Code Review
 

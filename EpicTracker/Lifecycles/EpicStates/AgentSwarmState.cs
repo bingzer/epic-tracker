@@ -11,8 +11,6 @@ internal class AgentSwarmState : EpicState
 
     protected override async Task<EpicState> Next(EpicContext context, CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask;
-
         var epic = context.Epic;
 
         if (epic.AgentSwarm is null)
@@ -33,7 +31,7 @@ internal class AgentSwarmState : EpicState
             return MoveTo(swarm.ToStateName);
         }
 
-        if (!swarm.IsComplete)
+        if (!swarm.IsComplete && swarm.KickoffPosted)
         {
             var voted = swarm.Agreements
                 .Where(a => a.HasAgreed.HasValue)
@@ -68,6 +66,25 @@ internal class AgentSwarmState : EpicState
         }
 
         swarm.Iteration++;
+        swarm.KickoffPosted = false;
+
+        var channelId = $"epic-{epic.Id}";
+        await context.Broker.CreateChannel(channelId, epic.EpicAgentName, cancellationToken);
+        foreach (var agreement in swarm.Agreements)
+        {
+            await context.Broker.InviteToChannel(channelId, agreement.AgentId, epic.EpicAgentName, cancellationToken);
+        }
+
+        var kickoff = BuildKickoffMessage(
+            objective: swarm.Objective,
+            participants: swarm.Agreements.Select(a => a.AgentId).ToList(),
+            epicAgentName: epic.EpicAgentName,
+            channelId: channelId,
+            iteration: swarm.Iteration,
+            agentDomainFocus: swarm.AgentDomainFocus);
+
+        await context.Broker.PostToChannel(channelId, epic.EpicAgentName, kickoff, cancellationToken);
+        swarm.KickoffPosted = true;
 
         return Exit(
             context: context,
@@ -75,9 +92,60 @@ internal class AgentSwarmState : EpicState
         );
     }
 
-    internal static string BuildCoordinatorInstruction(string epicId, string allParticipants, string preamble, bool updateEpicDoc = false, string? footer = null)
+    internal static string BuildKickoffMessage(
+        string objective,
+        IReadOnlyList<string> participants,
+        string epicAgentName,
+        string channelId,
+        int iteration,
+        IReadOnlyDictionary<string, string>? agentDomainFocus = null)
     {
-        var channelId = $"swarm-epic-{epicId}";
+        var participantList = string.Join(", ", participants);
+        var discussionEnabled = participants.Count > 1;
+        var discussionLine = discussionEnabled
+            ? "yes — discuss peer-to-peer before voting"
+            : "no — post your verdict directly";
+
+        var domainFocusBlock = "";
+        if (agentDomainFocus is { Count: > 0 })
+        {
+            var lines = string.Join("\n", agentDomainFocus.Select(kv => $"- {kv.Key}: {kv.Value}"));
+            domainFocusBlock = $"\nDomain focus:\n{lines}\n";
+        }
+
+        return $"""
+            Agent Swarm Iteration #{iteration}.
+
+            Objective: {objective}
+
+            Participants ({participants.Count}): {participantList}
+            Coordinator: {epicAgentName} — direct scope/business questions here
+            Channel: #{channelId}
+            {domainFocusBlock}
+            Discussion: {discussionLine}
+
+            Reply format (post to this channel when ready):
+            VOTE: AGREE | DISAGREE | BLOCKED
+            REASON: <one paragraph>
+
+            BLOCKED means: "I cannot vote because I need X from the coordinator before I can assess." It is not a soft DISAGREE.
+
+            Do not wait for others before posting your verdict. After posting, leave the channel. The coordinator will collect all votes and advance the epic.
+            """;
+    }
+
+    internal static string BuildCoordinatorInstruction(
+        string epicId,
+        IReadOnlyList<string> participants,
+        string epicAgentName,
+        string preamble,
+        int iteration = 1,
+        IReadOnlyDictionary<string, string>? agentDomainFocus = null,
+        bool updateEpicDoc = false,
+        string? footer = null)
+    {
+        var channelId = $"epic-{epicId}";
+        var kickoff = BuildKickoffMessage(objective: preamble, participants: participants, epicAgentName: epicAgentName, channelId: channelId, iteration: iteration, agentDomainFocus: agentDomainFocus);
 
         var updateStep = updateEpicDoc
             ? "- Update the epic document to record each agent's conclusion and key insights\n               "
@@ -86,52 +154,23 @@ internal class AgentSwarmState : EpicState
         var footerLine = string.IsNullOrWhiteSpace(footer) ? "" : $"\n{footer}";
 
         return $"""
-            {preamble}
+            Channel `{channelId}` has been created and all participants have been invited automatically.
+            1. Post the following kickoff message to the channel via post_to_channel (from: {epicAgentName}):
 
-            1. Create channel `{channelId}` via create_channel, then invite all participants: {allParticipants}.
-            2. Post the kickoff (per governance.md swarm protocol) to the channel via post_to_channel.
-            3. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
-            4. When all participants have posted their assessment to the channel:
+            ---
+            {kickoff}
+            ---
+
+            2. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
+            3. When all participants have posted VOTE: AGREE | DISAGREE | BLOCKED to the channel:
                {updateStep}- Call submit_agreement for each agent on their behalf
-               - Leave channel `{channelId}` via leave_channel (you are the last to leave — this deletes the channel)
                - Call advance("{epicId}"){footerLine}
             """;
     }
 
     private static string BuildInstruction(string epicId, string epicAgentName, AgentSwarm swarm)
     {
-        var channelId = $"swarm-epic-{epicId}";
-        var agents = swarm.Agreements.Select(a => a.AgentId).ToList();
-        var agentList = string.Join(", ", agents);
-        var isSingleAgent = agents.Count == 1;
-
-        var discussRule = isSingleAgent
-            ? ""
-            : $"- Discuss with the other participants in channel `{channelId}`\n";
-
-        var processStep = isSingleAgent
-            ? "- You are the only participant. Post your assessment directly to the channel"
-            : $"- Discuss in channel `{channelId}` until you have formed your assessment";
-
-        var kickoff = $"""
-            You are participating in an agent swarm.
-
-            Objective: {swarm.Objective}
-
-            Participants: {agentList}
-            Coordinator: {epicAgentName}
-            Channel: {channelId}
-
-            Rules:
-            {discussRule}- Stay focused on your domain knowledge and technical constraints
-            - Message the coordinator if you have questions about scope, business context, or anything outside your domain — the coordinator can escalate to a human if needed
-            - You do not need to reach a definitive conclusion — share what you know, what you can commit to, and what concerns or uncertainties remain
-
-            Process:
-            {processStep}
-            - When ready, post your assessment to the channel: AGREE, DISAGREE, or BLOCKED — with your reasoning
-            - Leave the channel after posting your assessment
-            """;
+        var channelId = $"epic-{epicId}";
 
         var reVoteNote = swarm.Iteration > 1
             ? $"This is re-vote round {swarm.Iteration}. At least one agent did not agree in the previous round. Summarize what was disputed when posting the kickoff."
@@ -140,21 +179,16 @@ internal class AgentSwarmState : EpicState
         var instruction = $"""
             Agent swarm coordinator instructions (iteration {swarm.Iteration} of {MaxIterations}):
 
-            {(reVoteNote.Length > 0 ? reVoteNote + "\n\n" : "")}1. Post the following kickoff message to channel `{channelId}` via post_to_channel:
+            Channel `{channelId}` has been created, all participants have been invited, and the kickoff message has been posted automatically.
 
-            ---
-            {kickoff}
-            ---
+            {(reVoteNote.Length > 0 ? reVoteNote + "\n\n" : "")}1. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
 
-            2. Step back and observe. Only intervene if an agent asks you a question or agents appear stuck.
-
-            3. When all participants have posted their assessment to the channel:
-               - Update the epic document: record each agent's conclusion and key insights under the Waterproofing section, and tick off any open questions that were resolved during this iteration
+            2. When all participants have posted VOTE: AGREE | DISAGREE | BLOCKED to the channel:
+               - Update the epic document: record each agent's conclusion and key insights, tick off resolved open questions
                - Call submit_agreement for each agent on their behalf
-               - Leave channel `{channelId}` via leave_channel (you are the last to leave — this deletes the channel)
                - Call advance("{epicId}")
 
-            4. If an agent does not respond, submit a disagreement with a note that they were unreachable.
+            3. If an agent does not respond, submit a disagreement with a note that they were unreachable.
             """;
 
         if (!string.IsNullOrWhiteSpace(swarm.HumanInput))

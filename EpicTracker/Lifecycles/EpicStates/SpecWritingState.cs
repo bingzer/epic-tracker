@@ -42,22 +42,26 @@ internal class SpecWritingState : EpicState
         {
             var specList = string.Join("\n", pendingSpecs.Select(s => $"- {s.Id}: {s.SpecDocPath}"));
 
+            var participants = epic.CodingAgentNames.Append(epic.EpicAgentName).ToList();
+            var objective = $"""
+                Review all pending specs together. Reach consensus on the final spec list.
+                If a spec should be abandoned, tell the epic agent the spec ID and it will call update_spec to mark it abandoned.
+                If new specs are needed that were not thought of, tell the epic agent and it will call create_spec to register them.
+                Once all changes are made, all agents must agree the spec list is complete and correct.
+                Pending specs:
+                {specList}
+                """;
+
             return RaiseAgentSwarm(
                 context: context,
-                objective: $"""
-                    Review all pending specs together. Reach consensus on the final spec list.
-                    If a spec should be abandoned, tell the epic agent the spec ID and it will call update_spec to mark it abandoned.
-                    If new specs are needed that were not thought of, tell the epic agent and it will call create_spec to register them.
-                    Once all changes are made, all agents must agree the spec list is complete and correct.
-                    Pending specs:
-                    {specList}
-                    """,
+                objective: objective,
                 whenApprovedStateName: Name,
                 instruction: AgentSwarmState.BuildCoordinatorInstruction(
                     epicId: epic.Id,
-                    allParticipants: string.Join(", ", epic.CodingAgentNames.Append(epic.EpicAgentName)),
-                    preamble: "Agent swarm raised to review all specs. Remind participants: coding agents cannot call MCP tools themselves — they post AGREE/DISAGREE to the channel and you submit on their behalf.",
-                    footer: "Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told."
+                    participants: participants,
+                    epicAgentName: epic.EpicAgentName,
+                    preamble: objective,
+                    footer: "Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told. Coding agents cannot call MCP tools themselves — they post VOTE to the channel and you submit on their behalf."
                 )
             );
         }

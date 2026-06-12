@@ -28,35 +28,38 @@ internal class MockupState : EpicState
             );
         }
 
-        if (epic.NeedsHumanReview())
+        if (epic.NeedsAgentSwarm())
         {
-            return RaiseHumanInLoop(
+            var participants = epic.CodingAgentNames.Append(epic.EpicAgentName).ToList();
+            var objective = $"""
+                Review the mockup files at {epic.MockupDirectory}.
+                DISAGREE if the mockup does not meet requirements, has design gaps, or needs revision.
+                AGREE only when the mockup accurately represents what should be built.
+                Do NOT begin any implementation.
+                """;
+
+            return RaiseAgentSwarm(
                 context: context,
-                questions: $"""
-                    Mockup is ready for review at {epic.MockupDirectory}. Please approve to proceed to waterproofing, or reject with feedback.
-                    """,
-                approveToStateName: WaterproofingState.StateName,
-                rejectToStateName: Name,
-                instruction: $"""
-                    Mockup ready. HumanInLoop raised for human review. Call advance("{epic.Id}") then wait for tmux to wake you.
-                    """
+                objective: objective,
+                whenApprovedStateName: Name,
+                instruction: AgentSwarmState.BuildCoordinatorInstruction(
+                    epicId: epic.Id,
+                    participants: participants,
+                    epicAgentName: epic.EpicAgentName,
+                    preamble: objective
+                )
             );
         }
 
-        if (epic.IsHumanRejected())
+        if (!epic.AgentSwarmHasConsensus())
         {
-            epic.IsMockupDone = false;
-            epic.ResetHumanApproval();
-
-            return Exit(
-                context: context, 
-                instruction: $"""
-                    The mockup was rejected. Review the human's feedback and revise the mockup files at {epic.MockupDirectory}.
-                    Once revised, call update_epic with field IsMockupDone=true then call advance("{epic.Id}").
-                    """);
+            return new AgentSwarmState();
         }
-        
+
+        epic.ResetAgentSwarm();
+
         return new WaterproofingState();
+
     }
 
     protected override bool UpdateEpicFieldAt(EpicContext context, string fieldName, string value)

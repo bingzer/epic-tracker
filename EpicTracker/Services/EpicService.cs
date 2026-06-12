@@ -38,7 +38,7 @@ namespace EpicTracker.Services;
 /// </list>
 /// </para>
 /// </remarks>
-public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger, IFileSystem fileSystem, IOptions<EpicTrackerOptions> options, EpicScaffolding scaffolding)
+public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<EpicService> logger, IFileSystem fileSystem, IOptions<EpicTrackerOptions> options, EpicScaffolding scaffolding, BrokerService broker)
 {
     /// <summary>
     /// Creates a new epic and seeds it at the "drafting" state.
@@ -84,6 +84,8 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             actor: request.EpicAgentName,
             message: new { name = request.Name }
         ));
+
+        await broker.CreateChannel($"epic-{created.Id}", created.EpicAgentName, cancellationToken);
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -212,7 +214,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
         var epic = ToEpic(entity);
-        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem, Options = options.Value };
+        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem, Options = options.Value, Broker = broker };
         var currentState = EpicState.CreateEpicState(entity.CurrentStateName);
 
         if (!currentState.UpdateEpicField(epicContext, fieldName, value))
@@ -448,6 +450,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     public async Task DeleteEpic(string epicId, CancellationToken cancellationToken = default)
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
+        await broker.DeleteChannel($"epic-{epicId}", entity.EpicAgentName, cancellationToken);
         db.Epics.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
     }
@@ -473,7 +476,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         var fromState = epic.CurrentStateName;
 
-        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem, Options = options.Value };
+        var epicContext = new EpicContext { Epic = epic, Logger = logger, FileSystem = fileSystem, Options = options.Value, Broker = broker };
 
         var currentState = EpicState.CreateEpicState(epic.CurrentStateName);
         string previousName;

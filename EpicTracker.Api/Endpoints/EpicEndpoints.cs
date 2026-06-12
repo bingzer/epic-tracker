@@ -21,6 +21,7 @@ public class EpicEndpoints : ICarterModule
         app.MapPost("/epics/{id}/submit-agreement", SubmitAgreement);
         app.MapPost("/epics/{id}/wake-agent", WakeAgent);
         app.MapDelete("/epics/{id}", DeleteEpic);
+        app.MapPost("/epics/{id}/open-directory", OpenDirectory);
     }
 
     private static async Task<IResult> ListEpics(
@@ -153,6 +154,17 @@ public class EpicEndpoints : ICarterModule
         await service.DeleteEpic(id, cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicDeleted", id, cancellationToken);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> OpenDirectory(
+        string id,
+        EpicService service,
+        CancellationToken cancellationToken)
+    {
+        var epic = await service.GetEpic(id, cancellationToken);
+        var dir = Path.Combine(epic.BasePath, "epics", epic.Slug);
+        System.Diagnostics.Process.Start("explorer.exe", dir);
+        return Results.Ok();
     }
 
     private static async Task<IResult> SubmitAgreement(

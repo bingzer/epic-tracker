@@ -14,6 +14,8 @@ public class AgentSwarm
     public int Iteration { get; set; }
     public List<AgentAgreement> Agreements { get; set; } = [];
     public string ToStateName { get; set; } = default!;
+    public Dictionary<string, string>? AgentDomainFocus { get; set; }
+    public bool KickoffPosted { get; set; }
 
     public bool HasConsensus => Agreements.Count > 0 && Agreements.All(a => a.HasAgreed == true);
     public bool HasDisagreement => Agreements.Any(a => a.HasAgreed == false);

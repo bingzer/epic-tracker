@@ -224,7 +224,7 @@ SPEC {specId} STATUS: review-rejected REASON: <reason>
 |----------------|-------------------------------|------------------------|
 | drafting       | IsDocDrafted = true           | waterproofing          |
 | waterproofing  | Agent swarm consensus         | mockup or spec_writing |
-| mockup         | IsMockupDone + human approval | waterproofing          |
+| mockup         | IsMockupDone + agent swarm consensus | waterproofing    |
 | spec_writing   | Swarm consensus + human ok    | implementation         |
 | implementation | All specs done + human ok     | closed                 |
 | agent_swarm    | All agents vote               | toStateName            |

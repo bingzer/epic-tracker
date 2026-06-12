@@ -611,6 +611,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         entity.AssignedAgentName = spec.AssignedAgentName;
         entity.SpecDocPath = spec.SpecDocPath;
+        entity.IsSpecApproved = spec.IsSpecApproved;
         entity.IsSpecDrafted = spec.IsSpecDrafted;
         entity.IsCodeDone = spec.IsCodeDone;
         entity.IsCodeReviewApproved = spec.IsCodeReviewApproved;
@@ -633,7 +634,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return await AdvanceSpec(spec.Id, cancellationToken);
+        return EpicMapper.ToSpec(entity);
     }
 
     /// <summary>

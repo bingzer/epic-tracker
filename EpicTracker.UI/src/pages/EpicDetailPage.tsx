@@ -16,11 +16,10 @@ const ALL_EPIC_STATES = [
   'implementation', 'human_in_loop', 'agent_swarm', 'closed',
 ] as const;
 
-const SPEC_STATES = ['drafting', 'ready', 'coding', 'ac', 'code_review', 'human_in_loop', 'done'] as const;
+const SPEC_STATES = ['spec_drafting', 'ready', 'coding', 'ac', 'code_review', 'human_in_loop', 'done'] as const;
 
 const SPEC_STATE_PROGRESS: Record<string, number> = {
   spec_drafting: 5,
-  drafting: 5,
   ready: 20,
   coding: 55,
   code_review: 75,
@@ -1071,7 +1070,7 @@ function SpecDetailDialog({
                     onUpdated();
                   } catch (err) { alert(String(err)); }
                 }}
-                className="w-full text-xs rounded border border-zinc-700 bg-zinc-800 text-orange-300 font-mono px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full text-xs rounded border border-zinc-700 bg-zinc-800 text-zinc-300 font-mono px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">— none —</option>
                 {allAgents.map(a => <option key={a} value={a}>{a}</option>)}
@@ -1355,14 +1354,14 @@ function SpecTableRow({
         {/* Agent */}
         <td className="py-2 px-3 whitespace-nowrap">
           {spec.assignedAgentName ? (
-            spec.assignedAgentName === 'human' ? (
-              <span className="font-mono text-[11px] text-amber-400">👤 human</span>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">{spec.assignedAgentName}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">
+                {spec.assignedAgentName}{spec.assignedAgentName === 'human' ? ' 👤' : ''}
+              </span>
+              {spec.assignedAgentName !== 'human' && (
                 <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70 transition-opacity flex-shrink-0" title={`Chat with ${spec.assignedAgentName}`}>💬</a>
-              </div>
-            )
+              )}
+            </div>
           ) : <span className="text-[11px] text-zinc-600">—</span>}
         </td>
 
@@ -1717,7 +1716,7 @@ export default function EpicDetailPage() {
 
                 <div className="px-4 py-2 border-t border-zinc-800 flex items-center gap-3 flex-wrap">
                   <span className="text-[10px] text-zinc-600">{epic.specs.length} specs</span>
-                  {(['drafting', 'ready', 'coding', 'code_review', 'ac', 'done'] as const).map(state => {
+                  {(['spec_drafting', 'ready', 'coding', 'code_review', 'ac', 'done'] as const).map(state => {
                     const count = epic.specs.filter(s => s.currentStateName === state).length;
                     if (count === 0) return null;
                     return (

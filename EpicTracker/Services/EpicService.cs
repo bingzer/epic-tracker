@@ -609,6 +609,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         var entity = await db.FindSpecOrThrow(spec.Id, cancellationToken);
         var epicEntity = await db.FindEpicOrThrow(entity.EpicId, cancellationToken);
 
+        entity.AssignedAgentName = spec.AssignedAgentName;
         entity.SpecDocPath = spec.SpecDocPath;
         entity.IsSpecDrafted = spec.IsSpecDrafted;
         entity.IsCodeDone = spec.IsCodeDone;

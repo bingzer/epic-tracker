@@ -926,6 +926,13 @@ function SpecDetailDialog({
   const progress = specProgress(spec);
   const isDone = spec.currentStateName === 'done';
   const lbl = 'text-xs font-semibold tracking-widest uppercase text-zinc-500';
+  const [allAgents, setAllAgents] = useState<string[]>([]);
+
+  useEffect(() => {
+    AgentApi.list()
+      .then(list => setAllAgents(list.map(a => a.sessionName).sort()))
+      .catch(() => {});
+  }, []);
 
   const FLAG_CONFIGS: { field: keyof Spec; label: string }[] = [
     { field: 'isSpecDrafted', label: 'Spec Drafted' },
@@ -1031,18 +1038,47 @@ function SpecDetailDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className={lbl + ' mb-1'}>Assigned Agent</p>
-              {spec.assignedAgentName ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-mono text-zinc-300">{spec.assignedAgentName}</span>
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={spec.assignedAgentName ?? ''}
+                  onChange={async e => {
+                    if (!e.target.value) return;
+                    try {
+                      await SpecApi.update(spec.id, { ...spec, assignedAgentName: e.target.value });
+                      onUpdated();
+                    } catch (err) { alert(String(err)); }
+                  }}
+                  className="flex-1 text-xs rounded border border-zinc-700 bg-zinc-800 text-zinc-300 font-mono px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="human">👤 human</option>
+                  {allAgents.map(a => <option key={a} value={a}>{a}</option>)}
+                  {spec.assignedAgentName && spec.assignedAgentName !== 'human' && !allAgents.includes(spec.assignedAgentName) && (
+                    <option value={spec.assignedAgentName}>{spec.assignedAgentName}</option>
+                  )}
+                </select>
+                {spec.assignedAgentName && spec.assignedAgentName !== 'human' && (
                   <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70">💬</a>
-                </div>
-              ) : <span className="text-sm text-zinc-500">—</span>}
+                )}
+              </div>
             </div>
             <div>
               <p className={lbl + ' mb-1'}>Reviewer</p>
-              {spec.reviewerAgentName
-                ? <span className="text-sm font-mono text-orange-400">{spec.reviewerAgentName}</span>
-                : <span className="text-sm text-zinc-500">—</span>}
+              <select
+                value={spec.reviewerAgentName ?? ''}
+                onChange={async e => {
+                  try {
+                    await SpecApi.update(spec.id, { ...spec, reviewerAgentName: e.target.value || null });
+                    onUpdated();
+                  } catch (err) { alert(String(err)); }
+                }}
+                className="w-full text-xs rounded border border-zinc-700 bg-zinc-800 text-orange-300 font-mono px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value="">— none —</option>
+                {allAgents.map(a => <option key={a} value={a}>{a}</option>)}
+                {spec.reviewerAgentName && !allAgents.includes(spec.reviewerAgentName) && (
+                  <option value={spec.reviewerAgentName}>{spec.reviewerAgentName}</option>
+                )}
+              </select>
             </div>
           </div>
 
@@ -1199,6 +1235,7 @@ function NewSpecDialog({
               className={inputCls}
             >
               <option value="">Select agent…</option>
+              <option value="human">👤 human</option>
               {allAgents.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
@@ -1318,10 +1355,14 @@ function SpecTableRow({
         {/* Agent */}
         <td className="py-2 px-3 whitespace-nowrap">
           {spec.assignedAgentName ? (
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">{spec.assignedAgentName}</span>
-              <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70 transition-opacity flex-shrink-0" title={`Chat with ${spec.assignedAgentName}`}>💬</a>
-            </div>
+            spec.assignedAgentName === 'human' ? (
+              <span className="font-mono text-[11px] text-amber-400">👤 human</span>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-[11px] text-indigo-300 truncate max-w-[120px]">{spec.assignedAgentName}</span>
+                <a href={`openterm:${spec.assignedAgentName}`} className="text-sm leading-none hover:opacity-70 transition-opacity flex-shrink-0" title={`Chat with ${spec.assignedAgentName}`}>💬</a>
+              </div>
+            )
           ) : <span className="text-[11px] text-zinc-600">—</span>}
         </td>
 

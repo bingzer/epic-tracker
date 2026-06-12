@@ -184,6 +184,17 @@ One sentence describing what this spec delivers.
 
 Save spec files under `specs/`, mockups under `mockups/`, and other output under `output/`. Always use absolute paths when reporting file locations back to the epic agent.
 
+### Human-Assigned Specs
+
+A spec can be assigned to `human` instead of a coding agent. Use this when the work requires manual human action (e.g., setting up external credentials, configuring third-party services, running manual setup steps).
+
+- Set `assignedAgentName` to `human` when creating or updating the spec.
+- The epic agent sends a broker message to `human` (the broker routes it to the human's inbox in the dashboard).
+- The human performs the work and signals completion back via broker message to the epic agent.
+- The epic agent then calls `update_spec(specId, IsCodeDone, true)` as normal to advance the spec.
+
+The spec lifecycle is identical to any other spec — no special handling required.
+
 ### Signaling Completion
 
 When done with a spec, reply to the epic agent with:

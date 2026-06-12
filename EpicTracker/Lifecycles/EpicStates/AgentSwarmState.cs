@@ -130,7 +130,7 @@ internal class AgentSwarmState : EpicState
 
             BLOCKED means: "I cannot vote because I need X from the coordinator before I can assess." It is not a soft DISAGREE.
 
-            Do not wait for others before posting your verdict. After posting, leave the channel. The coordinator will collect all votes and advance the epic.
+            Do not wait for others before posting your verdict. The coordinator will collect all votes and advance the epic.
             """;
     }
 

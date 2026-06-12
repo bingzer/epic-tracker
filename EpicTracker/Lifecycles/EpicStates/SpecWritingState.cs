@@ -74,7 +74,7 @@ internal class SpecWritingState : EpicState
 
         if (epic.NeedsHumanReview())
         {
-            var specList = string.Join("\n", epic.Specs.Where(s => !s.IsAbandoned).Select(s => $"- {s.Id}: {s.SpecDocPath}"));
+            var specList = string.Join("\n", epic.Specs.Where(s => !s.IsAbandoned).Select(s => $"- {(s.SpecName is not null ? $"{s.SpecName} ({s.Id})" : s.Id)}"));
 
             return RaiseHumanInLoop(
                 context: context,

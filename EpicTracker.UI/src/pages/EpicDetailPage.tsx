@@ -1394,9 +1394,9 @@ function SpecTableRow({
               <button onClick={() => setDialog('code')} className={`${btnBase} bg-emerald-500/10 border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20`}>code</button>
             )}
             {spec.specDocPath && (
-              <button onClick={() => onViewDoc(spec.specDocPath!)} className={`${btnBase} bg-white/[0.04] border-zinc-700 text-zinc-500 hover:text-zinc-300`}>doc</button>
+              <button onClick={() => onViewDoc(spec.specDocPath!)} className={`${btnBase} bg-white/[0.06] border-zinc-600 text-zinc-300 hover:text-zinc-100 hover:border-zinc-500`}>doc</button>
             )}
-            <button onClick={() => setDialog('detail')} className={`${btnBase} bg-white/[0.04] border-zinc-700 text-zinc-500 hover:text-zinc-300`}>…</button>
+            <button onClick={() => setDialog('detail')} className={`${btnBase} bg-white/[0.06] border-zinc-600 text-zinc-300 hover:text-zinc-100 hover:border-zinc-500`}>…</button>
           </div>
         </td>
       </tr>

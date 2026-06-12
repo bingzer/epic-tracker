@@ -80,6 +80,7 @@ internal static class EpicMapper
             ReviewerAgentName = entity.ReviewerAgentName,
             IsACRequired = entity.IsACRequired,
             IsCodeReviewRequired = entity.IsCodeReviewRequired,
+            SpecName = entity.SpecName,
             SpecDocPath = entity.SpecDocPath,
             IsSpecApproved = entity.IsSpecApproved,
             IsAbandoned = entity.IsAbandoned,

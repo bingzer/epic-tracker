@@ -546,6 +546,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         {
             Id = slug,
             EpicId = epicId,
+            SpecName = request.SpecName,
             AssignedAgentName = request.AssignedAgentName,
             ReviewerAgentName = request.ReviewerAgentName,
             IsCodeReviewRequired = request.IsCodeReviewRequired,

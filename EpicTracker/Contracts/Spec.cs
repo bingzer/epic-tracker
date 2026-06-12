@@ -8,6 +8,7 @@ public class Spec
     public string? ReviewerAgentName { get; set; }
     public bool? IsACRequired { get; set; }
     public bool? IsCodeReviewRequired { get; set; }
+    public string? SpecName { get; set; }
     public string? SpecDocPath { get; set; }
     public bool IsSpecApproved { get; set; }
     public bool IsAbandoned { get; set; }

@@ -31,12 +31,15 @@ internal class HumanInLoopSpecState : SpecState
             ? spec.HumanInLoop.ApproveToStateName
             : spec.HumanInLoop.RejectToStateName;
 
-        spec.ResetHumanApproval();
-
         if (toStateName == CodingSpecState.StateName)
         {
+            spec.LastRejectionNote = spec.HumanInLoop.HumanInput;
             spec.IsCodeDone = false;
+            spec.IsCodeReviewApproved = null;
+            spec.IsAcPassed = null;
         }
+
+        spec.ResetHumanApproval();
 
         return MoveTo(toStateName);
     }

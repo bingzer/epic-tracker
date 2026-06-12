@@ -91,6 +91,7 @@ internal static class EpicMapper
             CodeReviewIterations = entity.CodeReviewIterations,
             CurrentStateName = entity.CurrentStateName,
             LastKnownStateName = entity.LastKnownStateName,
+            LastRejectionNote = entity.LastRejectionNote,
             DependsOn = entity.DependsOn is not null
                 ? JsonSerializer.Deserialize<List<string>>(entity.DependsOn) ?? []
                 : []
@@ -135,6 +136,7 @@ internal static class EpicMapper
         entity.IsCodeReviewRequired = spec.IsCodeReviewRequired;
 
         entity.LastKnownStateName = spec.LastKnownStateName;
+        entity.LastRejectionNote = spec.LastRejectionNote;
 
         entity.DependsOn = spec.DependsOn.Count > 0
             ? JsonSerializer.Serialize(spec.DependsOn)

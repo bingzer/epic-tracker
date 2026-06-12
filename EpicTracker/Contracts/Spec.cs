@@ -20,6 +20,7 @@ public class Spec
 
     public string CurrentStateName { get; set; } = default!;
     public string? LastKnownStateName { get; set; }
+    public string? LastRejectionNote { get; set; }
     public List<string> DependsOn { get; set; } = [];
     public string? EpicAgentInstruction { get; private set; }
     public HumanInLoop? HumanInLoop { get; set; }

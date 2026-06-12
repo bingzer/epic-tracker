@@ -47,11 +47,16 @@ internal class CodingSpecState : SpecState
 
         if (!spec.IsCodeDone)
         {
+            var rejectionContext = spec.LastRejectionNote is { Length: > 0 } note
+                ? $"\nThis is a retry after human rejection. Human's reason: \"{note}\"\n"
+                : string.Empty;
+
+            spec.LastRejectionNote = null;
+
             return Exit(
                 context: context,
                 instruction: $"""
-                    Hand off spec {spec.Id} to {spec.AssignedAgentName} via tmux-broker. Tell them to implement the spec at {spec.SpecDocPath}.
-                    If this is a retry after a rejected code review, include the rejection reason from the last review in your assignment to the coding agent.
+                    Hand off spec {spec.Id} to {spec.AssignedAgentName} via tmux-broker. Tell them to implement the spec at {spec.SpecDocPath}.{rejectionContext}
                     Output directory for this epic: {context.Epic.OutputDirectory}
                     Tell {spec.AssignedAgentName} to tick each item in the ## Development Plan section of the spec doc as they complete it (change - [ ] to - [x]).
                     When implementation is complete, {spec.AssignedAgentName} sends to you (epic agent): SPEC {spec.Id} STATUS: coding-done

@@ -19,6 +19,7 @@ public class SpecEntity
     public int CodeReviewIterations { get; set; }
     public string CurrentStateName { get; set; } = default!;
     public string? LastKnownStateName { get; set; }
+    public string? LastRejectionNote { get; set; }
     public string? DependsOn { get; set; }
     public string? EpicAgentInstruction { get; set; }
     public string? HumanInLoop { get; set; }

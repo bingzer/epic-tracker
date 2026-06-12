@@ -59,6 +59,7 @@ internal class CodingSpecState : SpecState
                     Hand off spec {spec.Id} to {spec.AssignedAgentName} via tmux-broker. Tell them to implement the spec at {spec.SpecDocPath}.{rejectionContext}
                     Output directory for this epic: {context.Epic.OutputDirectory}
                     Tell {spec.AssignedAgentName} to tick each item in the ## Development Plan section of the spec doc as they complete it (change - [ ] to - [x]).
+                    If the spec has a ## Deliverables section, tell {spec.AssignedAgentName} to tick each deliverable once the file exists at the specified path.
                     When implementation is complete, {spec.AssignedAgentName} sends to you (epic agent): SPEC {spec.Id} STATUS: coding-done
                     When you receive that, call update_spec({spec.Id}, IsCodeDone, true). That automatically advances the spec.
                     Any testing done during implementation should be labeled as "implementation smoke test" — not as AC results. AC is formally verified in the ac state after code review.
@@ -80,6 +81,7 @@ internal class CodingSpecState : SpecState
                     """
             );
         }
+
 
         if (context.IsCodeReviewRequired)
         {

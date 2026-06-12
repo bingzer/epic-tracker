@@ -19,7 +19,8 @@ internal class AcSpecState : SpecState
                 context: context,
                 instruction: $"""
                     Hand off spec {spec.Id} to {spec.AssignedAgentName} via tmux-broker to run the AC checklist in the spec doc at {spec.SpecDocPath}.
-                    Tell {spec.AssignedAgentName} to reply via tmux-broker with results when done.
+                    Tell {spec.AssignedAgentName} to tick each item in the ## Acceptance Criteria section as they verify it (change - [ ] to - [x]). All items must be checked — the state machine enforces this before IsAcPassed can be set.
+                    Tell {spec.AssignedAgentName} to reply via tmux-broker with pass/fail results when done.
                     Wait for their reply, then call update_spec({spec.Id}, IsAcPassed, true/false). That automatically advances the spec.
                     Governance: {context.Epic.EpicGovernancePath}
                     """

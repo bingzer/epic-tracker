@@ -105,7 +105,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
             ? dependsOn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
             : null;
 
-        var result = await service.CreateSpec(epicId, new CreateSpecRequest(specName, assignedAgentName, specDocPath, isCodeReviewRequired, reviewerAgentId, deps), cancellationToken);
+        var result = await service.CreateSpec(epicId, new CreateSpecRequest(specName, assignedAgentName, specDocPath, isCodeReviewRequired, reviewerAgentId, DependsOn: deps), cancellationToken);
         var epic = await service.GetEpic(epicId, cancellationToken);
         await hubContext.Clients.All.SendAsync("EpicUpdated", epic, cancellationToken);
         return new CreateSpecResult(result.Id, result.CurrentStateName);

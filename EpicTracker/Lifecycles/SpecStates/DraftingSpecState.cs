@@ -38,6 +38,7 @@ internal class DraftingSpecState : SpecState
         
         spec.IsACRequired ??= context.Epic.IsACRequired;
         spec.IsCodeReviewRequired ??= context.Epic.IsCodeReviewRequired;
+        spec.IsSpecDrafted = true;
 
         return new ReadySpecState();
     }

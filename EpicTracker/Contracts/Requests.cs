@@ -16,6 +16,7 @@ public record CreateSpecRequest(
     string? SpecDocPath,
     bool? IsCodeReviewRequired,
     string? ReviewerAgentName,
+    bool? IsACRequired = null,
     List<string>? DependsOn = null);
 
 public record ApproveSpecHumanInLoopRequest(bool IsApproved, string? HumanInput);

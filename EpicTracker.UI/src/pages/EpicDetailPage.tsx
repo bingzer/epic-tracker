@@ -733,14 +733,16 @@ function HilDialog({
   onApproveHumanInLoop: (specId: string, isApproved: boolean, feedback: string | null) => void;
 }) {
   const [feedback, setFeedback] = useState('');
+  const [pending, setPending] = useState<boolean | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose();
   }
 
-  function handleResolve(approved: boolean) {
-    onApproveHumanInLoop(spec.id, approved, feedback.trim() || null);
+  function handleConfirm() {
+    if (pending === null) return;
+    onApproveHumanInLoop(spec.id, pending, feedback.trim() || null);
     onClose();
   }
 
@@ -762,20 +764,38 @@ function HilDialog({
             rows={3}
             className="w-full text-xs rounded-lg border border-zinc-700 bg-white/5 text-zinc-200 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-600 placeholder:text-zinc-600"
           />
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleResolve(true)}
-              className="flex-1 text-xs font-semibold py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-            >
-              ✓ Approve
-            </button>
-            <button
-              onClick={() => handleResolve(false)}
-              className="flex-1 text-xs font-semibold py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors"
-            >
-              ✗ Reject
-            </button>
-          </div>
+          {pending === null ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPending(true)}
+                className="flex-1 text-xs font-semibold py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+              >
+                ✓ Approve
+              </button>
+              <button
+                onClick={() => setPending(false)}
+                className="flex-1 text-xs font-semibold py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors"
+              >
+                ✗ Reject
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-400 flex-1">{pending ? 'Approve' : 'Reject'} — are you sure?</span>
+              <button
+                onClick={handleConfirm}
+                className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${pending ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20' : 'bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20'}`}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setPending(null)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 bg-white/[0.04] text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                No
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -14,8 +14,13 @@ internal class ClosedState : EpicState
         {
             return Exit(
                 context: context,
-                instruction: $"Cannot close this epic: deliverables.md is missing. " +
-                             $"Create {context.Epic.EpicDeliverablesPath} documenting what was built and delivered, then call advance again."
+                instruction: $"""
+                    Before closing, you must write a deliverables document.
+                    1. Message each coding agent via tmux asking them to summarize: what they built, which files changed (absolute paths), and how to verify their work.
+                    2. Collect their replies.
+                    3. Write {context.Epic.EpicDeliverablesPath} with one section per spec, following the Deliverables format in {context.Epic.EpicGovernancePath}.
+                    4. Call advance("{context.Epic.Id}") once the file is written.
+                    """
             );
         }
 

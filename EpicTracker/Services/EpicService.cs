@@ -549,6 +549,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
             AssignedAgentName = request.AssignedAgentName,
             ReviewerAgentName = request.ReviewerAgentName,
             IsCodeReviewRequired = request.IsCodeReviewRequired,
+            IsACRequired = request.IsACRequired,
             SpecDocPath = request.SpecDocPath,
             DependsOn = request.DependsOn is { Count: > 0 }
                 ? JsonSerializer.Serialize(request.DependsOn)
@@ -561,6 +562,19 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         db.Specs.Add(entity);
 
         var epicEntity = await db.FindEpicOrThrow(epicId, cancellationToken);
+
+        if (string.IsNullOrEmpty(entity.ReviewerAgentName) && !string.IsNullOrEmpty(epicEntity.ReviewerAgentName))
+        {
+            entity.ReviewerAgentName = epicEntity.ReviewerAgentName;
+        }
+
+        entity.IsACRequired ??= epicEntity.IsACRequired;
+        entity.IsCodeReviewRequired ??= epicEntity.IsCodeReviewRequired;
+
+        if (!string.IsNullOrEmpty(entity.SpecDocPath) && fileSystem.FileExists(entity.SpecDocPath))
+        {
+            entity.IsSpecDrafted = true;
+        }
 
         db.AuditLogs.Add(EpicMapper.MakeAuditLog(
             action: AuditAction.SpecCreated,

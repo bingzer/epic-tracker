@@ -1084,7 +1084,7 @@ function SpecDetailDialog({
           {spec.specDocPath && (
             <div>
               <p className={lbl + ' mb-1'}>Spec Doc</p>
-              <button onClick={() => { onViewDoc(spec.specDocPath!); onClose(); }} className="text-sm text-indigo-400 hover:text-indigo-300 font-mono truncate max-w-full text-left">
+              <button onClick={() => { onViewDoc(spec.specDocPath!); onClose(); }} className="text-sm text-indigo-400 hover:text-indigo-300 font-mono break-all text-left">
                 {spec.specDocPath}
               </button>
             </div>

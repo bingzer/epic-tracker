@@ -699,6 +699,14 @@ function EpicSummaryCard({
                 📋 Governance
               </button>
             )}
+            {epic.epicDeliverablesExists && (
+              <button
+                onClick={() => onViewDoc(epic.epicDeliverablesPath)}
+                className="text-[10px] px-2.5 py-1 rounded-md bg-white/[0.04] border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                ✅ Deliverables
+              </button>
+            )}
           </div>
         </div>
       </div>

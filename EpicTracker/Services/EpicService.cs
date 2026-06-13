@@ -94,7 +94,12 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
         return created;
     }
 
-    private Epic ToEpic(EpicEntity entity) => EpicMapper.ToEpic(entity, options.Value.EpicsBasePath);
+    private Epic ToEpic(EpicEntity entity)
+    {
+        var epic = EpicMapper.ToEpic(entity, options.Value.EpicsBasePath);
+        epic.EpicDeliverablesExists = fileSystem.FileExists(epic.EpicDeliverablesPath);
+        return epic;
+    }
 
     private static string Slugify(string? name, string fallbackGuid)
     {

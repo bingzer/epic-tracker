@@ -53,6 +53,8 @@ export interface Epic {
   slug: string;
   epicDocumentPath: string;
   epicGovernancePath: string;
+  epicDeliverablesPath: string;
+  epicDeliverablesExists: boolean;
   codingAgentNames: string[];
   needsMockup: boolean;
   isDocDrafted: boolean;

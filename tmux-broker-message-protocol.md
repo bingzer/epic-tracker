@@ -1,4 +1,4 @@
-Version: 4
+Version: 5
 
 # tmux-broker Protocol — epictrackerdev
 
@@ -27,6 +27,14 @@ For channel posts: call `get_message(token, from: "epictrackerdev")` — the `fr
 - Set `requiresReply: true` when you need a response. Ricky sees the message in the UI inbox and replies from there.
 - Channel posts from Ricky arrive as `[human → @channel #hexid]` — handle them like any other sender.
 - Never try to `start_agent` or `stop_agent` for `human` — it has no tmux session.
+
+## Batch Fetch Mandate
+
+Never call `get_message` more than once per turn. Collect ALL broker tokens present in the current input, then pass them as a single array to one `get_message` call. Looping over tokens with separate calls is forbidden — dropped or duplicate delivery may result.
+
+## Channel Reply Rule
+
+When `get_message` returns `replyToChannel: true`, you MUST reply via `post_to_channel(channelId, payload, from: "epictrackerdev")` using the returned `channelId`. Never use `send_message` or plain CLI output to reply to a channel message — the reply will not reach channel members.
 
 ## Rules
 

@@ -14,6 +14,7 @@ public class Epic
     public string SpecsDirectory => Path.Combine(BasePath, "epics", Slug, "specs");
     public string OutputDirectory => Path.Combine(BasePath, "epics", Slug, "output");
     public string EpicDeliverablesPath => Path.Combine(BasePath, "epics", Slug, "deliverables.md");
+    public bool EpicDeliverablesExists { get; set; }
     public bool NeedsMockup { get; set; }
     public bool IsDocDrafted { get; set; }
     public bool IsMockupDone { get; set; }

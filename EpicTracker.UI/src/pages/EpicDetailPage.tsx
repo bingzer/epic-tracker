@@ -364,8 +364,7 @@ function EpicEditDialog({
 }) {
   const [epicName, setEpicName] = useState(epic.name ?? '');
   const [epicBrief, setEpicBrief] = useState(epic.brief ?? '');
-  const [epicSlug, setEpicSlug] = useState(epic.slug ?? '');
-  const [epicMockupPath, setEpicMockupPath] = useState(epic.mockupPath ?? '');
+  const [epicSlug] = useState(epic.slug ?? '');
   const [agentInput, setAgentInput] = useState('');
   const [reviewerInput, setReviewerInput] = useState(epic.reviewerAgentName ?? '');
   const [allAgents, setAllAgents] = useState<string[]>([]);
@@ -463,6 +462,7 @@ function EpicEditDialog({
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Name</label>
             <input
               disabled={isClosed}
+              autoComplete="off"
               value={epicName}
               onChange={e => setEpicName(e.target.value)}
               onBlur={() => handleTextField('name', epicName)}
@@ -472,13 +472,10 @@ function EpicEditDialog({
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Slug</label>
+            <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Slug <span className="text-zinc-700 normal-case tracking-normal font-normal">(read-only)</span></label>
             <input
-              disabled={isClosed}
+              disabled
               value={epicSlug}
-              onChange={e => setEpicSlug(e.target.value)}
-              onBlur={() => handleTextField('slug', epicSlug)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleTextField('slug', epicSlug); } }}
               className={inputCls}
             />
           </div>
@@ -573,20 +570,6 @@ function EpicEditDialog({
             </div>
           </div>
 
-          {epic.needsMockup && (
-            <div>
-              <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Mockup Path</label>
-              <input
-                disabled={isClosed}
-                value={epicMockupPath}
-                onChange={e => setEpicMockupPath(e.target.value)}
-                onBlur={() => handleTextField('mockupPath', epicMockupPath)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleTextField('mockupPath', epicMockupPath); } }}
-                placeholder="/path/to/mockup"
-                className={inputCls}
-              />
-            </div>
-          )}
 
           <div>
             <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Force State</label>
@@ -1417,9 +1400,6 @@ export default function EpicDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [drawerPath, setDrawerPath] = useState<string | null>(null);
   const [governanceEditorOpen, setGovernanceEditorOpen] = useState(false);
-  const [swarmObjective, setSwarmObjective] = useState('');
-  const [swarmToState, setSwarmToState] = useState('');
-  const [swarmSubmitting, setSwarmSubmitting] = useState(false);
   const [advanceDisabled, setAdvanceDisabled] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteNameInput, setDeleteNameInput] = useState('');
@@ -1520,22 +1500,6 @@ export default function EpicDetailPage() {
     }
   }
 
-  async function handleRaiseSwarm() {
-    if (!epicId || !swarmObjective.trim() || !swarmToState.trim()) return;
-
-    setSwarmSubmitting(true);
-
-    try {
-      await EpicApi.raiseAgentSwarm(epicId, swarmObjective.trim(), swarmToState.trim());
-      setSwarmObjective('');
-      setSwarmToState('');
-      load();
-    } catch (e) {
-      alert(String(e));
-    } finally {
-      setSwarmSubmitting(false);
-    }
-  }
 
   if (loading) return <div className="p-6 text-sm text-zinc-500">Loading…</div>;
   if (error) return <div className="p-6 text-sm text-red-500">{error}</div>;
@@ -1546,12 +1510,6 @@ export default function EpicDetailPage() {
   );
 
   const nudgeLabel = 'Advance';
-
-  let swarmBtnLabel = 'Raise Swarm';
-
-  if (swarmSubmitting) {
-    swarmBtnLabel = 'Raising…';
-  }
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -1658,43 +1616,6 @@ export default function EpicDetailPage() {
               <SwarmPanelBlock epic={epic} />
             )}
 
-            <details className="group">
-              <summary className="text-[10px] font-bold tracking-widest uppercase text-zinc-700 hover:text-zinc-500 cursor-pointer select-none list-none flex items-center gap-1.5">
-                <span className="group-open:rotate-90 transition-transform inline-block leading-none">›</span>
-                Raise Agent Swarm
-              </summary>
-
-              <div className="mt-3 space-y-2.5 pl-3 border-l border-zinc-800">
-                <div>
-                  <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">Objective</label>
-                  <textarea
-                    value={swarmObjective}
-                    onChange={e => setSwarmObjective(e.target.value)}
-                    rows={3}
-                    placeholder="Describe the swarm objective…"
-                    className="w-full text-xs rounded-lg border border-zinc-700 bg-white/[0.04] px-2.5 py-1.5 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 block mb-1.5">To State (after consensus)</label>
-                  <input
-                    value={swarmToState}
-                    onChange={e => setSwarmToState(e.target.value)}
-                    placeholder="e.g. implementation"
-                    className="w-full text-xs rounded-lg border border-zinc-700 bg-white/[0.04] px-2.5 py-1.5 text-zinc-100 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <button
-                  onClick={handleRaiseSwarm}
-                  disabled={swarmSubmitting || !swarmObjective.trim() || !swarmToState.trim()}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {swarmBtnLabel}
-                </button>
-              </div>
-            </details>
 
           </div>
 

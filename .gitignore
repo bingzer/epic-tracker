@@ -30,3 +30,6 @@ publish-pkg/
 dist/
 
 tmux-broker-message-protocol.md
+
+## Local knowledge base
+knowledge/

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { marked } from 'marked';
 import { useNavigate, useParams } from 'react-router-dom';
 import { EpicApi, SpecApi, DocApi, AgentApi } from '../epicApi';
@@ -56,7 +57,7 @@ function useAgentStatuses() {
         .catch(() => {});
     }
     fetch();
-    const id = setInterval(fetch, 20000);
+    const id = setInterval(fetch, 5000);
     return () => clearInterval(id);
   }, []);
 
@@ -1419,8 +1420,9 @@ export default function EpicDetailPage() {
   const [swarmObjective, setSwarmObjective] = useState('');
   const [swarmToState, setSwarmToState] = useState('');
   const [swarmSubmitting, setSwarmSubmitting] = useState(false);
-  const [nudgeSent, setNudgeSent] = useState(false);
+  const [advanceDisabled, setAdvanceDisabled] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteNameInput, setDeleteNameInput] = useState('');
   const [newSpecOpen, setNewSpecOpen] = useState(false);
   const agentStatuses = useAgentStatuses();
 
@@ -1459,13 +1461,18 @@ export default function EpicDetailPage() {
   useEffect(() => { load(); loadAudit(); }, [load, loadAudit]);
 
   async function handleWakeAgent() {
-    if (!epicId) return;
+    if (!epicId || advanceDisabled) return;
 
-    setNudgeSent(true);
+    setAdvanceDisabled(true);
     try {
       await EpicApi.wakeAgent(epicId);
+      const delay = 2000 + Math.random() * 1000;
+      setTimeout(() => {
+        setAdvanceDisabled(false);
+        toast.success('Agent nudged — check the channel for activity.');
+      }, delay);
     } catch (e) {
-      setNudgeSent(false);
+      setAdvanceDisabled(false);
       alert(String(e));
     }
   }
@@ -1490,6 +1497,7 @@ export default function EpicDetailPage() {
       navigate('/');
     } catch (e) {
       setDeleteConfirm(false);
+      setDeleteNameInput('');
       alert(String(e));
     }
   }
@@ -1537,11 +1545,7 @@ export default function EpicDetailPage() {
     epic.currentStateName === 'agent_swarm' || epic.currentStateName === 'waterproofing'
   );
 
-  let nudgeLabel = 'Nudge Agent';
-
-  if (epic.currentStateName === 'drafting') {
-    nudgeLabel = `Let's work on ${epic.name}`;
-  }
+  const nudgeLabel = 'Advance';
 
   let swarmBtnLabel = 'Raise Swarm';
 
@@ -1569,40 +1573,62 @@ export default function EpicDetailPage() {
           <span className="font-mono text-[10px] text-zinc-600">{epic.id}</span>
 
           <div className="ml-auto flex items-center gap-2">
-            {!(nudgeSent && epic.currentStateName === 'drafting') && (
-              <button
-                onClick={handleWakeAgent}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
-              >
-                {nudgeLabel}
-              </button>
-            )}
+            <button
+              onClick={handleWakeAgent}
+              disabled={advanceDisabled}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {advanceDisabled ? 'Advancing…' : nudgeLabel}
+            </button>
 
-            {deleteConfirm ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-zinc-400">Delete epic?</span>
-                <button
-                  onClick={handleDeleteEpic}
-                  className="text-xs px-2.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 transition-colors font-semibold"
-                >
-                  Confirm
-                </button>
-                <button
-                  onClick={() => setDeleteConfirm(false)}
-                  className="text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setDeleteConfirm(true)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors"
-              >
-                Delete
-              </button>
-            )}
+            <a
+              href={`http://localhost:6789/channels/epic-${epic.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs px-3 py-1.5 rounded-lg bg-zinc-700/50 border border-zinc-600/40 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
+            >
+              Channel
+            </a>
+
+            <button
+              onClick={() => { setDeleteConfirm(true); setDeleteNameInput(''); }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              Delete
+            </button>
           </div>
+
+          {deleteConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setDeleteConfirm(false)}>
+              <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-80 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+                <h2 className="text-sm font-semibold text-zinc-100">Delete epic</h2>
+                <p className="text-xs text-zinc-400">Type <span className="font-mono text-zinc-200">{epic.name ?? ''}</span> to confirm.</p>
+                <input
+                  autoFocus
+                  value={deleteNameInput}
+                  onChange={e => setDeleteNameInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') setDeleteConfirm(false); }}
+                  className="text-xs px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 outline-none focus:border-zinc-400"
+                  placeholder={epic.name ?? ''}
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setDeleteConfirm(false)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteEpic}
+                    disabled={deleteNameInput !== (epic.name ?? '')}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 transition-colors font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Route, Routes } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { useSignalR } from './hooks/useSignalR';
 import EpicsListPage from './pages/EpicsListPage';
 import EpicDetailPage from './pages/EpicDetailPage';
@@ -55,6 +56,8 @@ export default function App() {
           </button>
         </div>
       </nav>
+
+      <Toaster position="bottom-right" theme="dark" richColors />
 
       <main className="flex-1 min-h-0">
         <Routes>

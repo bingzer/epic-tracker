@@ -431,9 +431,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        var message = entity.CurrentStateName == DraftingState.StateName
-            ? $"Work on epic \"{entity.Id}\". Call get_epic(\"{entity.Id}\") to read the current state and instruction, then call advance(\"{entity.Id}\") to begin."
-            : $"Continue epic \"{entity.Id}\". Call get_epic(\"{entity.Id}\") to read the current state and instruction, then call advance(\"{entity.Id}\") to proceed.";
+        var message = $"Call get_epic(\"{entity.Id}\") then advance(\"{entity.Id}\")";
 
         db.AuditLogs.Add(EpicMapper.MakeAuditLog(
             action: AuditAction.EpicNudged,

@@ -42,6 +42,19 @@ internal class AcSpecState : SpecState
             );
         }
 
+        if (HasUncheckedItems(context, out var acItems))
+        {
+            return Exit(
+                context: context,
+                instruction: $"""
+                    Cannot advance spec {spec.Id} — ## Acceptance Criteria has unchecked items:
+                    {acItems}
+                    Tell {spec.AssignedAgentName} to tick all items before marking IsAcPassed again.
+                    Governance: {context.Epic.EpicGovernancePath}
+                    """
+            );
+        }
+
         if (spec.NeedsHumanReview())
         {
             return RaiseHumanInLoop(
@@ -52,19 +65,6 @@ internal class AcSpecState : SpecState
                 instruction: $"""
                     AC passed. HumanInLoop raised for final sign-off.
                     Call advance_spec("{spec.Id}") then wait for tmux to wake you.
-                    Governance: {context.Epic.EpicGovernancePath}
-                    """
-            );
-        }
-
-        if (HasUncheckedItems(context, out var acItems))
-        {
-            return Exit(
-                context: context,
-                instruction: $"""
-                    Cannot advance spec {spec.Id} — ## Acceptance Criteria has unchecked items:
-                    {acItems}
-                    Tell {spec.AssignedAgentName} to tick all items before marking IsAcPassed again.
                     Governance: {context.Epic.EpicGovernancePath}
                     """
             );

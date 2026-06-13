@@ -71,6 +71,7 @@ internal class CodeReviewSpecState : SpecState
 
         if (context.IsACRequired)
         {
+            spec.IsAcPassed = null;
             return new AcSpecState();
         }
 

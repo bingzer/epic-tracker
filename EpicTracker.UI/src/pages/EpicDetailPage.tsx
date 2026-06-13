@@ -97,7 +97,7 @@ function MarkdownDrawer({ path, onClose }: { path: string | null; onClose: () =>
     >
       <div className="w-full md:w-1/2 bg-zinc-900 h-full flex flex-col shadow-xl border-l border-zinc-800">
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-          <span className="text-xs font-mono text-zinc-400 truncate max-w-xs">{path}</span>
+          <span className="text-xs font-mono text-zinc-400 truncate min-w-0 flex-1">{path}</span>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-200 text-lg leading-none ml-4">×</button>
         </div>
         <div className="flex-1 overflow-auto p-5">
@@ -154,7 +154,7 @@ function GovernanceEditor({ path, onClose }: { path: string; onClose: () => void
     >
       <div className="w-full md:w-1/2 bg-zinc-900 h-full flex flex-col shadow-xl border-l border-zinc-800">
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-          <span className="text-xs font-mono text-zinc-400 truncate max-w-xs">{path}</span>
+          <span className="text-xs font-mono text-zinc-400 truncate min-w-0 flex-1">{path}</span>
           <div className="flex items-center gap-2 ml-4 shrink-0">
             {dirty && (
               <button

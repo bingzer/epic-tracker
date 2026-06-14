@@ -83,6 +83,12 @@ internal abstract class EpicState
             return true;
         }
 
+        if (fieldName == nameof(Epic.SpecWritingPhase))
+        {
+            context.Epic.SpecWritingPhase = int.Parse(value);
+            return true;
+        }
+
         return UpdateEpicFieldAt(context, fieldName, value);
     }
 

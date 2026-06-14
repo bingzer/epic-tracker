@@ -36,12 +36,26 @@ Why this is being done. Context, motivation, or problem being solved.
 All open questions must be resolved during waterproofing before the epic can advance to spec_writing.
 - [ ] <question — can be added at any stage by any agent or human; tick off when resolved>  
 
+## Agents
+Agent names are added at drafting time; domain and cwd are filled in at the start of spec_writing after agents self-report. The authoritative roster is the tracker's `codingAgentNames`.
+- agentname: role — domain description. cwd: /path
+
 ## Waterproofing
 
 ### Iteration 1
 | Agent | Vote | Key Insight |
 |-------|------|-------------|
 | <agent> | AGREE / DISAGREE / BLOCKED | <insight> |
+
+## Spec Writing
+
+| Phase | What Happened | Agents Involved | Notes |
+|-------|---------------|-----------------|-------|
+| 1 | <agents who self-reported and their domains> | <agent list> | |
+| 2 | <specs registered; any Goldilocks rejections> | <agent list> | |
+| 3 | <agents who signed; any blocks raised> | <agent list> | |
+| 4 | <concerns raised; specs edited/added/dropped> | <agent list> | |
+| 5 | <all agents signed off; advancing to implementation> | <agent list> | |
 ```
 
 ## Agent Roles
@@ -167,6 +181,9 @@ One sentence describing what this spec delivers.
 ## Out of Scope
 - Bullet list of what is explicitly excluded.
 
+## Dependencies
+- none (or comma-separated spec IDs this spec depends on)
+
 ## Acceptance Criteria
 - [ ] Testable, observable condition 1
 - [ ] Testable, observable condition 2
@@ -180,7 +197,34 @@ One sentence describing what this spec delivers.
 
 ## Files Affected
 - Absolute paths to files that will be created or modified.
+
+## Reviewer
+- [ ] agentname  (one line per coding agent from ## Agents)
 ```
+
+Reviewer checkbox states: `[x]` = approved, `[-]` = blocked (agent posts reason in channel), `[ ]` = not yet reviewed.
+
+**Post-edit reset rule:** if a spec is edited after any agent has signed `[x]`, the spec author must reset all `[x]` to `[ ]` in `## Reviewer` and post to the channel notifying agents to re-review. The spec author is responsible for this reset — not the reviewer.
+
+### Goldilocks Specs
+
+One spec = one deployable concern. Testable in isolation once dependencies are met.
+
+- **Too big:** "Add spec_writing phase system: DB migration, update_epic tool, all 5 phase instructions, and ## Reviewer gate." — 4 layers, can't test any part until all done.
+- **Too small:** "Add SpecWritingPhase column to DB." — useless until something reads or writes it.
+- **Goldilocks:** "Add update_epic() MCP tool that accepts SpecWritingPhase and saves it to DB." — tool + migration together, testable: call it, check DB value.
+
+PM challenges oversized specs at registration time, not after review starts.
+
+### specName Convention
+
+`specName` passed to `create_spec` must be a clean human-readable title (e.g. `"Governance Doc Update"`). Never append a counter or suffix (e.g. `"Governance Doc Update 3"`). The backend handles slug uniqueness automatically.
+
+### Spec Authorship
+
+Only the assigned coding agent may write or update a spec document's content (scope, AC, dev plan, etc.). The epic agent calls MCP tools (`create_spec`, `update_spec` fields) but never writes or edits the spec document file itself.
+
+The epic agent may: read specs, update `## Reviewer` sign-off checkboxes (`[x]`/`[-]`/`[ ]`) in spec files, and register/update specs via MCP tools.
 
 Save spec files under `specs/`, mockups under `mockups/`, and other output under `output/`. Always use absolute paths when reporting file locations back to the epic agent.
 

@@ -22,6 +22,7 @@ public class Epic
     public bool IsACRequired { get; set; }
     public bool IsCodeReviewRequired { get; set; }
     public int WaterproofingIterations { get; set; }
+    public int SpecWritingPhase { get; set; } = 1;
     public string? ReviewerAgentName { get; set; }
     public List<string> CodingAgentNames { get; set; } = [];
     public List<Spec> Specs { get; set; } = [];

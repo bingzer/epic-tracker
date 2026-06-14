@@ -41,6 +41,7 @@ public class EpicTrackerDbContext(DbContextOptions<EpicTrackerDbContext> options
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Slug).IsUnique();
             e.Property(x => x.CodingAgentNames).HasColumnType("TEXT");
+            e.Property(x => x.SpecWritingPhase).HasDefaultValue(1);
             e.HasMany(x => x.Specs).WithOne(x => x.Epic).HasForeignKey(x => x.EpicId);
             e.HasMany(x => x.AuditLogs).WithOne(x => x.Epic).HasForeignKey(x => x.EpicId);
         });

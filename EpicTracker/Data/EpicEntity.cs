@@ -14,6 +14,7 @@ public class EpicEntity
     public bool IsACRequired { get; set; }
     public bool IsCodeReviewRequired { get; set; }
     public int WaterproofingIterations { get; set; }
+    public int SpecWritingPhase { get; set; } = 1;
     public string? ReviewerAgentName { get; set; }
     public string CodingAgentNames { get; set; } = default!;
     public string CurrentStateName { get; set; } = default!;

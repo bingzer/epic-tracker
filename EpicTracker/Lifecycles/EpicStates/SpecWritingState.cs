@@ -1,3 +1,5 @@
+using EpicTracker.Lifecycles.SpecStates;
+
 namespace EpicTracker.Lifecycles.EpicStates;
 
 internal class SpecWritingState : EpicState
@@ -12,83 +14,6 @@ internal class SpecWritingState : EpicState
         var epic = context.Epic;
         epic.LastKnownStateName = Name;
 
-        if (epic.Specs.All(s => s.IsAbandoned))
-        {
-            var agentList = string.Join(", ", epic.CodingAgentNames);
-            return Exit(
-                context: context,
-                instruction: $"""
-                    Read the epic document at {epic.EpicDocumentPath}.
-                    DO NOT write any spec documents yourself. Your job is to coordinate — message each coding agent via tmux and ask them to write their own spec doc.
-
-                    Step-by-step:
-                    1. Send each coding agent a tmux message asking them to write a spec document for their area of responsibility, following the governance format at {epic.EpicGovernancePath}.
-                    2. Wait for each agent to reply with an absolute file path and a short spec name (e.g. 'auth-flow').
-                    3. Only after receiving their reply, call create_spec with the path and agent ID they provided.
-                    4. Once all agents have responded and all specs are registered, call advance("{epic.Id}").
-
-                    Agents: {agentList}
-                    Tell each agent: specs should be Goldilocks-sized — not too big (one spec per concern), not too small (don't split trivial changes). One spec per output file is a good heuristic.
-                    Tell each agent: save the spec file using an absolute path and report back with the absolute path (e.g. C:\Users\... or /home/...) — relative paths will be rejected.
-                    Tell each agent: if their spec depends on another spec completing first (e.g. a shared module must exist before they can build on top of it), they should flag it in their reply. You can register the dependency via create_spec's dependsOn parameter (comma-separated spec IDs) or update it later with update_spec(specId, DependsOn, "spec-a,spec-b").
-                    Do NOT dispatch any coding work yet — this is the spec writing phase only.
-                    """
-            );
-        }
-
-        var pendingSpecs = epic.Specs.Where(s => !s.IsSpecApproved && !s.IsAbandoned).ToList();
-
-        if (pendingSpecs.Count > 0 && epic.NeedsAgentSwarm())
-        {
-            var specList = string.Join("\n", pendingSpecs.Select(s => $"- {s.Id}: {s.SpecDocPath}"));
-
-            var participants = epic.CodingAgentNames.Append(epic.EpicAgentName).ToList();
-            var objective = $"""
-                Review all pending specs together. Reach consensus on the final spec list.
-                If a spec should be abandoned, tell the epic agent the spec ID and it will call update_spec to mark it abandoned.
-                If new specs are needed that were not thought of, tell the epic agent and it will call create_spec to register them.
-                Once all changes are made, all agents must agree the spec list is complete and correct.
-                Pending specs:
-                {specList}
-                """;
-
-            return RaiseAgentSwarm(
-                context: context,
-                objective: objective,
-                whenApprovedStateName: Name,
-                instruction: AgentSwarmState.BuildCoordinatorInstruction(
-                    epicId: epic.Id,
-                    participants: participants,
-                    epicAgentName: epic.EpicAgentName,
-                    preamble: objective,
-                    footer: "Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told. Coding agents cannot call MCP tools themselves — they post VOTE to the channel and you submit on their behalf."
-                )
-            );
-        }
-
-        if (pendingSpecs.Count > 0 && epic.AgentSwarmHasConsensus())
-        {
-            epic.ApproveAllSpecs();
-            epic.ResetAgentSwarm();
-        }
-
-        if (epic.NeedsHumanReview())
-        {
-            var specList = string.Join("\n", epic.Specs.Where(s => !s.IsAbandoned).Select(s => $"- {(s.SpecName is not null ? $"{s.SpecName} ({s.Id})" : s.Id)}"));
-
-            return RaiseHumanInLoop(
-                context: context,
-                questions: $"All specs have been reviewed and approved by agents. Please review the final spec list in the dashboard and approve to proceed to implementation.\n\nSpecs:\n{specList}",
-                approveToStateName: ImplementationState.StateName,
-                rejectToStateName: Name,
-                instruction: $"""
-                    All specs approved by agents. HumanInLoop raised for final human review.
-                    Call advance("{epic.Id}") then wait for tmux to wake you.
-                    Do NOT dispatch any coding work — this is the spec writing phase only. Remind coding agents not to begin coding until told.
-                    """
-            );
-        }
-
         if (epic.IsHumanRejected())
         {
             var rejectionReason = epic.HumanInLoop?.HumanInput;
@@ -96,6 +21,7 @@ internal class SpecWritingState : EpicState
                 ? "No specific reason was given."
                 : $"Reason: {rejectionReason}";
 
+            epic.SpecWritingPhase = 1;
             epic.AbandonAllSpecs();
             epic.ResetAgentSwarm();
             epic.ResetHumanApproval();
@@ -103,24 +29,119 @@ internal class SpecWritingState : EpicState
             return Exit(
                 context: context,
                 instruction: $"""
-                    Human rejected the spec list. All specs abandoned. {rejectionNote}
-                    Instruct coding agents to start fresh with this feedback in mind, then call advance("{epic.Id}").
+                    Human rejected the spec list. All specs abandoned. SpecWritingPhase reset to 1. {rejectionNote}
+                    Start fresh — call advance("{epic.Id}") to begin phase 1.
                     """
             );
         }
 
-        var missingSpecs = epic.Specs.Where(s => !s.IsAbandoned && !context.FileSystem.FileExists(s.SpecDocPath)).ToList();
-        if (missingSpecs.Count > 0)
+        if (epic.SpecWritingPhase <= 1)
         {
-            var missingList = string.Join("\n", missingSpecs.Select(s => $"- {s.Id} ({s.AssignedAgentName}): {s.SpecDocPath}"));
-
             return Exit(
                 context: context,
                 instruction: $"""
-                    Not all spec documents can be found. Please ensure each coding agent has written their spec and the file paths are correct.
-                    Missing specs:
-                    {missingList}
-                    Once all specs are confirmed to exist, call advance("{epic.Id}").
+                    Post kickoff message to the epic channel. Ask all coding agents to reply with their session name, what they own, and their cwd. Once all agents have replied, write `## Agents` in the epic doc using their responses (format: `- agentname: role — domain description. cwd: /path`). Then call `update_epic(SpecWritingPhase, 2)`.
+
+                    Log in epic.md under ## Spec Writing — Phase 1: list agents who self-reported and their domains.
+                    """
+            );
+        }
+
+        if (epic.SpecWritingPhase == 2)
+        {
+            return Exit(
+                context: context,
+                instruction: """
+                    Wait for all coding agents to post their spec paths to the channel. For each spec, review it for Goldilocks size before registering (one concern, one layer, testable in isolation once deps met — challenge specs that violate this). Call `create_spec` for each approved spec — pass a clean human-readable title as `specName` (e.g. 'Auth Flow'), never append a counter or suffix (the backend handles slug uniqueness). Post the full spec list (name, path, assigned agent) back to the channel. Then call `update_epic(SpecWritingPhase, 3)`.
+
+                    Log in epic.md under ## Spec Writing — Phase 2: specs registered and any Goldilocks rejections.
+                    """
+            );
+        }
+
+        if (epic.SpecWritingPhase == 3)
+        {
+            return Exit(
+                context: context,
+                instruction: """
+                    Agents are now reading all specs in parallel and signing `[x]` or blocking `[-]` directly in spec files. Do not intervene. Wait for every coding agent to post `DONE READING` to the channel. Once all agents have confirmed, call `update_epic(SpecWritingPhase, 4)`.
+
+                    Log in epic.md under ## Spec Writing — Phase 3: which agents signed and any blocks raised.
+                    """
+            );
+        }
+
+        if (epic.SpecWritingPhase == 4)
+        {
+            return Exit(
+                context: context,
+                instruction: $"""
+                    Collect all concerns agents posted to the channel. For each concern: if a spec edit is needed, pm makes the edit (not the agent), then resets all `[x]` to `[ ]` in that spec's `## Reviewer` section and posts to channel notifying agents to re-review. If a new spec is needed, call `create_spec`. If a spec should be dropped, call `update_spec` to abandon it. Wait for every coding agent to post `NO MORE CONCERNS` to the channel. Then call `update_epic(SpecWritingPhase, 5)`.
+
+                    Log in epic.md under ## Spec Writing — Phase 4: concerns raised, specs edited, specs added/dropped.
+                    """
+            );
+        }
+
+        var failures = new List<string>();
+        var activeSpecs = epic.Specs.Where(s => !s.IsAbandoned).ToList();
+
+        foreach (var spec in activeSpecs)
+        {
+            if (!context.FileSystem.FileExists(spec.SpecDocPath))
+            {
+                failures.Add($"Spec '{spec.Id}' file not found at {spec.SpecDocPath}");
+                continue;
+            }
+
+            var content = context.FileSystem.ReadAllText(spec.SpecDocPath!);
+            var reviewerItems = MarkdownChecklist.Parse(content, "## Reviewer");
+
+            if (reviewerItems.Count == 0)
+            {
+                failures.Add($"Spec '{spec.Id}' is missing ## Reviewer section or has no entries");
+                continue;
+            }
+
+            foreach (var agentName in epic.CodingAgentNames)
+            {
+                var signed = reviewerItems.Any(item =>
+                    item.IsChecked &&
+                    string.Equals(item.Name, agentName, StringComparison.OrdinalIgnoreCase));
+
+                if (!signed)
+                {
+                    failures.Add($"Spec '{spec.Id}': {agentName} has not approved");
+                }
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            var failureList = string.Join("\n", failures.Select(f => $"- {f}"));
+            return Exit(
+                context: context,
+                instruction: $"""
+                    Spec review gate failed. Resolve all issues then call advance("{epic.Id}"):
+                    {failureList}
+                    """
+            );
+        }
+
+        if (epic.NeedsHumanReview())
+        {
+            var specList = string.Join("\n", activeSpecs.Select(s =>
+                $"- {(s.SpecName is not null ? $"{s.SpecName} ({s.Id})" : s.Id)}"));
+
+            return RaiseHumanInLoop(
+                context: context,
+                questions: $"All coding agents have signed off on all specs. Please review the final spec list and approve to proceed to implementation.\n\nSpecs:\n{specList}",
+                approveToStateName: ImplementationState.StateName,
+                rejectToStateName: Name,
+                instruction: $"""
+                    All coding agents have signed off on all specs. HumanInLoop raised for final review. Call advance("{epic.Id}") then wait for tmux to wake you.
+
+                    Log in epic.md under ## Spec Writing — Phase 5: all agents signed off, advancing to implementation.
                     """
             );
         }

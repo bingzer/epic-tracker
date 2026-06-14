@@ -47,9 +47,17 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         [Description("The ID of the epic agent making the call.")] string epicAgentId,
         CancellationToken cancellationToken = default)
     {
-        var result = await service.Advance(epicId, new AdvanceEpicRequest(epicAgentId), cancellationToken);
-        await hubContext.Clients.All.SendAsync("EpicUpdated", result, cancellationToken);
-        return new AdvanceEpicResult(result.Id, result.CurrentStateName, result.EpicAgentInstruction, result.HumanInLoop);
+        try
+        {
+            var result = await service.Advance(epicId, new AdvanceEpicRequest(epicAgentId), cancellationToken);
+            await hubContext.Clients.All.SendAsync("EpicUpdated", result, cancellationToken);
+            return new AdvanceEpicResult(result.Id, result.CurrentStateName, result.EpicAgentInstruction, result.HumanInLoop);
+        }
+        catch (Exception ex)
+        {
+            var current = await service.GetEpic(epicId, cancellationToken);
+            return new AdvanceEpicResult(current.Id, current.CurrentStateName, $"ERROR: advance failed — {ex.Message}", current.HumanInLoop);
+        }
     }
 
     [McpServerTool(Name = "raise_agent_swarm"), Description("Raises an agent swarm event on the epic, signalling that a group of coding agents should be spawned to work toward an objective. Call advance after this to transition into the swarm-waiting state.")]
@@ -127,7 +135,7 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         return new AdvanceSpecResult(result.Id, result.CurrentStateName, result.EpicAgentInstruction);
     }
 
-    [McpServerTool(Name = "update_epic"), Description("Sets a single field on an epic. Available fields: Name (string), Brief (string), EpicAgentName (string), CodingAgentNames (comma-separated string), NeedsMockup (bool), IsBriefRefined (bool), IsDocDrafted (bool), IsMockupDone (bool).")]
+    [McpServerTool(Name = "update_epic"), Description("Sets a single field on an epic. Available fields: Name (string), Brief (string), EpicAgentName (string), CodingAgentNames (comma-separated string), NeedsMockup (bool), IsBriefRefined (bool), IsDocDrafted (bool), IsMockupDone (bool), SpecWritingPhase (int — phase 1–5 of the spec_writing process; use to advance or reset the phase).")]
     public async Task<Epic> UpdateEpic(
         [Description("The ID of the epic to update.")] string epicId,
         [Description("The name of the field to set.")] string fieldName,

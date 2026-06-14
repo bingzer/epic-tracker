@@ -22,6 +22,7 @@ internal static class EpicMapper
             IsACRequired = entity.IsACRequired,
             IsCodeReviewRequired = entity.IsCodeReviewRequired,
             WaterproofingIterations = entity.WaterproofingIterations,
+            SpecWritingPhase = entity.SpecWritingPhase,
             ReviewerAgentName = entity.ReviewerAgentName,
             CreatedAt = entity.CreatedAt,
             CodingAgentNames = JsonSerializer.Deserialize<List<string>>(entity.CodingAgentNames) ?? [],
@@ -57,6 +58,7 @@ internal static class EpicMapper
         entity.IsACRequired = epic.IsACRequired;
         entity.IsCodeReviewRequired = epic.IsCodeReviewRequired;
         entity.WaterproofingIterations = epic.WaterproofingIterations;
+        entity.SpecWritingPhase = epic.SpecWritingPhase;
         entity.ReviewerAgentName = epic.ReviewerAgentName;
 
         entity.LastKnownStateName = epic.LastKnownStateName;

@@ -30,7 +30,7 @@ internal class ClosedState : EpicState
 
         return Exit(
             context: context,
-            instruction: "This epic is already closed."
+            instruction: "Epic is now closed. Deliverables have been logged. Nothing more to do."
         );
     }
 }

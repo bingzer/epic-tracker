@@ -470,7 +470,7 @@ public class EpicService(EpicTrackerDbContext db, TmuxService tmux, ILogger<Epic
     {
         var entity = await db.FindEpicOrThrow(epicId, cancellationToken);
 
-        if (entity.EpicAgentName != request.EpicAgentId)
+        if (!string.IsNullOrWhiteSpace(request.EpicAgentId) && entity.EpicAgentName != request.EpicAgentId)
         {
             throw new InvalidOperationException($"{request.EpicAgentId} is not the Epic Agent for epic {epicId}.");
         }

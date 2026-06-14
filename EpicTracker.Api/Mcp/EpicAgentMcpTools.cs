@@ -41,10 +41,10 @@ public class EpicAgentMcpTools(EpicService service, IHubContext<EpicHub> hubCont
         CancellationToken cancellationToken = default)
         => service.GetEpicHistory(epicId, cancellationToken);
 
-    [McpServerTool(Name = "advance"), Description("Advances the epic state machine one step. Call this after completing the current EpicAgentInstruction. Returns the same state (with a new instruction) when blocked waiting for external input — keep calling after acting on each instruction. Throws if epicAgentId does not match the epic's assigned agent.")]
+    [McpServerTool(Name = "advance"), Description("Advances the epic state machine one step. Call this after completing the current EpicAgentInstruction. Returns the same state (with a new instruction) when blocked waiting for external input — keep calling after acting on each instruction.")]
     public async Task<AdvanceEpicResult> Advance(
         [Description("The ID of the epic to advance.")] string epicId,
-        [Description("The ID of the epic agent making the call.")] string epicAgentId,
+        [Description("The ID of the epic agent making the call. Optional — omit or pass empty string to skip agent ID validation.")] string epicAgentId = "",
         CancellationToken cancellationToken = default)
     {
         try

@@ -8,6 +8,7 @@ public class Epic
     public string? Brief { get; set; }
     public string Slug { get; set; } = default!;
     public string BasePath { get; set; } = default!;
+    public string EpicDirectory => Path.Combine(BasePath, "epics", Slug);
     public string EpicDocumentPath => Path.Combine(BasePath, "epics", Slug, "epic.md");
     public string EpicGovernancePath => Path.Combine(BasePath, "epics", Slug, "governance.md");
     public string MockupDirectory => Path.Combine(BasePath, "epics", Slug, "mockups");

@@ -31,14 +31,21 @@ internal static class MarkdownChecklist
 
             if (trimmed.StartsWith("- [x] ") || trimmed.StartsWith("- [X] "))
             {
-                result.Add(new ChecklistItem(trimmed[6..].Trim(), IsChecked: true));
+                result.Add(new ChecklistItem(ExtractName(trimmed[6..]), IsChecked: true));
             }
-            else if (trimmed.StartsWith("- [ ] "))
+            else if (trimmed.StartsWith("- [ ] ") || trimmed.StartsWith("- [-] "))
             {
-                result.Add(new ChecklistItem(trimmed[6..].Trim(), IsChecked: false));
+                result.Add(new ChecklistItem(ExtractName(trimmed[6..]), IsChecked: false));
             }
         }
 
         return result;
+    }
+
+    private static string ExtractName(string text)
+    {
+        var trimmed = text.Trim();
+        var spaceIdx = trimmed.IndexOfAny([' ', '\t']);
+        return spaceIdx < 0 ? trimmed : trimmed[..spaceIdx];
     }
 }

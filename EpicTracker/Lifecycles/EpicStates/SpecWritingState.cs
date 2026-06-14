@@ -43,6 +43,10 @@ internal class SpecWritingState : EpicState
                     Post kickoff message to the epic channel. Ask all coding agents to reply with their session name, what they own, and their cwd. Once all agents have replied, write `## Agents` in the epic doc using their responses (format: `- agentname: role — domain description. cwd: /path`). Then call `update_epic(SpecWritingPhase, 2)`.
 
                     Log in epic.md under ## Spec Writing — Phase 1: list agents who self-reported and their domains.
+
+                    Epic directory: {epic.EpicDirectory}
+                    Epic doc: {epic.EpicDocumentPath}
+                    Governance: {epic.EpicGovernancePath}
                     """
             );
         }
@@ -51,10 +55,16 @@ internal class SpecWritingState : EpicState
         {
             return Exit(
                 context: context,
-                instruction: """
+                instruction: $"""
+                    Tell all coding agents to write their spec doc and post the path to the channel. Instruct them to read governance.md and follow the spec template exactly before writing.
+
                     Wait for all coding agents to post their spec paths to the channel. For each spec, review it for Goldilocks size before registering (one concern, one layer, testable in isolation once deps met — challenge specs that violate this). Call `create_spec` for each approved spec — pass a clean human-readable title as `specName` (e.g. 'Auth Flow'), never append a counter or suffix (the backend handles slug uniqueness). Post the full spec list (name, path, assigned agent) back to the channel. Then call `update_epic(SpecWritingPhase, 3)`.
 
                     Log in epic.md under ## Spec Writing — Phase 2: specs registered and any Goldilocks rejections.
+
+                    Epic directory: {epic.EpicDirectory}
+                    Epic doc: {epic.EpicDocumentPath}
+                    Governance: {epic.EpicGovernancePath}
                     """
             );
         }
@@ -63,10 +73,14 @@ internal class SpecWritingState : EpicState
         {
             return Exit(
                 context: context,
-                instruction: """
+                instruction: $"""
                     Agents are now reading all specs in parallel and signing `[x]` or blocking `[-]` directly in spec files. Do not intervene. Wait for every coding agent to post `DONE READING` to the channel. Once all agents have confirmed, call `update_epic(SpecWritingPhase, 4)`.
 
                     Log in epic.md under ## Spec Writing — Phase 3: which agents signed and any blocks raised.
+
+                    Epic directory: {epic.EpicDirectory}
+                    Epic doc: {epic.EpicDocumentPath}
+                    Governance: {epic.EpicGovernancePath}
                     """
             );
         }
@@ -79,6 +93,10 @@ internal class SpecWritingState : EpicState
                     Collect all concerns agents posted to the channel. For each concern: if a spec edit is needed, pm makes the edit (not the agent), then resets all `[x]` to `[ ]` in that spec's `## Reviewer` section and posts to channel notifying agents to re-review. If a new spec is needed, call `create_spec`. If a spec should be dropped, call `update_spec` to abandon it. Wait for every coding agent to post `NO MORE CONCERNS` to the channel. Then call `update_epic(SpecWritingPhase, 5)`.
 
                     Log in epic.md under ## Spec Writing — Phase 4: concerns raised, specs edited, specs added/dropped.
+
+                    Epic directory: {epic.EpicDirectory}
+                    Epic doc: {epic.EpicDocumentPath}
+                    Governance: {epic.EpicGovernancePath}
                     """
             );
         }
@@ -124,6 +142,10 @@ internal class SpecWritingState : EpicState
                 instruction: $"""
                     Spec review gate failed. Resolve all issues then call advance("{epic.Id}"):
                     {failureList}
+
+                    Epic directory: {epic.EpicDirectory}
+                    Epic doc: {epic.EpicDocumentPath}
+                    Governance: {epic.EpicGovernancePath}
                     """
             );
         }
@@ -142,6 +164,10 @@ internal class SpecWritingState : EpicState
                     All coding agents have signed off on all specs. HumanInLoop raised for final review. Call advance("{epic.Id}") then wait for tmux to wake you.
 
                     Log in epic.md under ## Spec Writing — Phase 5: all agents signed off, advancing to implementation.
+
+                    Epic directory: {epic.EpicDirectory}
+                    Epic doc: {epic.EpicDocumentPath}
+                    Governance: {epic.EpicGovernancePath}
                     """
             );
         }
